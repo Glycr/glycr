@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glycr Admin Panel</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      line-height: 1.6;
+    }
+
+    .header {
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo {
+      font-size: 1.75rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 0.875rem;
+      color: #94a3b8;
+    }
+
+    .btn {
+      padding: 0.625rem 1.25rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: none;
+      font-size: 0.875rem;
+    }
+
+    .btn-primary {
+      background: #6366f1;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #4f46e5;
+    }
+
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+    }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .btn-warning:hover {
+      background: #d97706;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .tabs {
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+    }
+
+    .tabs-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 2rem;
+      display: flex;
+      gap: 2rem;
+    }
+
+    .tab {
+      padding: 1rem 1.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s;
+      color: #94a3b8;
+    }
+
+    .tab:hover {
+      color: #f1f5f9;
+    }
+
+    .tab.active {
+      color: #f1f5f9;
+      border-bottom-color: #6366f1;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: #1e293b;
+      padding: 1.5rem;
+      border-radius: 1rem;
+      border: 1px solid #334155;
+      transition: all 0.3s;
+    }
+
+    .stat-card:hover {
+      border-color: #6366f1;
+    }
+
+    .stat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .stat-icon {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+      color: #94a3b8;
+      font-size: 0.875rem;
+    }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    .filters {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .input, .select {
+      padding: 0.625rem 1rem;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 0.5rem;
+      color: #f1f5f9;
+      font-size: 0.875rem;
+    }
+
+    .input {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .input:focus, .select:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      border-radius: 0.75rem;
+      border: 1px solid #334155;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: #334155;
+    }
+
+    th {
+      padding: 1rem;
+      text-align: left;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      text-transform: uppercase;
+    }
+
+    td {
+      padding: 1rem;
+      border-top: 1px solid #334155;
+    }
+
+    tbody tr {
+      transition: background 0.2s;
+    }
+
+    tbody tr:hover {
+      background: #1e293b;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-organizer {
+      background: rgba(139, 92, 246, 0.2);
+      color: #c084fc;
+    }
+
+    .badge-customer {
+      background: rgba(99, 102, 241, 0.2);
+      color: #818cf8;
+    }
+
+    .badge-active {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+    }
+
+    .badge-suspended {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+
+    .badge-live {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+    }
+
+    .badge-cancelled {
+      background: rgba(251, 146, 60, 0.2);
+      color: #fb923c;
+    }
+
+    .badge-flagged {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+
+    .badge-pending {
+      background: rgba(251, 191, 36, 0.2);
+      color: #fbbf24;
+    }
+
+    .badge-completed {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+    }
+
+    .badge-rejected {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-icon {
+      padding: 0.5rem;
+      border: none;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: white;
+      font-size: 0.875rem;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 1rem;
+      max-width: 800px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #94a3b8;
+      padding: 0.5rem;
+    }
+
+    .modal-close:hover {
+      color: #f1f5f9;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .detail-item {
+      background: #0f172a;
+      padding: 1rem;
+      border-radius: 0.5rem;
+    }
+
+    .detail-label {
+      color: #94a3b8;
+      font-size: 0.75rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .detail-value {
+      font-weight: 600;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: #94a3b8;
+    }
+
+    .event-item {
+      background: #0f172a;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .event-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 0.75rem;
+    }
+
+    .payout-item {
+      background: #0f172a;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .payout-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 0.75rem;
+    }
+
+    .payout-amount {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .payout-details {
+      font-size: 0.875rem;
+      color: #94a3b8;
+    }
+
+    .payout-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .info-box {
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-top: 1rem;
+      font-size: 0.875rem;
+    }
+
+    .info-box.success {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .info-box.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .quick-action {
+      background: #1e293b;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid #334155;
+    }
+
+    .quick-action:hover {
+      border-color: #6366f1;
+    }
+
+    @media (max-width: 768px) {
+      .tabs-content {
+        overflow-x: auto;
+      }
+
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .filters {
+        flex-direction: column;
+      }
+
+      .input {
+        min-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+<!-- Header -->
+<header class="header">
+  <div class="header-content">
+    <div class="header-left">
+      <div>
+        <h1 class="logo">🛡️ Glycr Admin</h1>
+        <p class="subtitle">Platform Management</p>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="loadData()">Refresh Data</button>
+  </div>
+</header>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tabs-content">
+    <div class="tab active" onclick="showTab('dashboard')">Dashboard</div>
+    <div class="tab" onclick="showTab('users')">Users</div>
+    <div class="tab" onclick="showTab('events')">Events</div>
+    <div class="tab" onclick="showTab('payouts')">Payouts</div>
+    <div class="tab" onclick="showTab('reports')">Reports</div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Dashboard Section -->
+  <section id="dashboard" class="section active">
+    <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 1.5rem;">Platform Overview</h2>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-header">
+          <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #818cf8;">👥</div>
+        </div>
+        <div class="stat-value" id="stat-users">0</div>
+        <div class="stat-label">Total Users</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #34d399;">📅</div>
+        </div>
+        <div class="stat-value" id="stat-live-events">0</div>
+        <div class="stat-label">Live Events</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #c084fc;">💰</div>
+        </div>
+        <div class="stat-value" id="stat-revenue">₵0.00</div>
+        <div class="stat-label">Total Revenue</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <div class="stat-icon" style="background: rgba(236, 72, 153, 0.1); color: #f472b6;">🎟️</div>
+        </div>
+        <div class="stat-value" id="stat-tickets">0</div>
+        <div class="stat-label">Tickets Sold</div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem;">
+      <div class="card">
+        <h3 class="card-title">Quick Actions</h3>
+        <div class="quick-action" onclick="showTab('users')">
+          <span>Manage Users</span>
+          <span id="quick-users-count">0</span>
+        </div>
+        <div class="quick-action" onclick="showTab('payouts')">
+          <span>Pending Payouts</span>
+          <span id="quick-pending-payouts">₵0.00</span>
+        </div>
+        <div class="quick-action" onclick="showTab('events'); document.getElementById('event-filter').value = 'flagged'; filterEvents();">
+          <span>Flagged Events</span>
+          <span id="quick-flagged-events">0</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">System Health</h3>
+        <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #334155;">
+          <span style="color: #94a3b8;">Platform Status</span>
+          <span style="color: #34d399;">✓ Operational</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #334155;">
+          <span style="color: #94a3b8;">Total Organizers</span>
+          <span id="stat-organizers">0</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #334155;">
+          <span style="color: #94a3b8;">Total Events</span>
+          <span id="stat-total-events">0</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 0.75rem 0;">
+          <span style="color: #94a3b8;">Avg Revenue/Event</span>
+          <span id="stat-avg-revenue">₵0.00</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Users Section -->
+  <section id="users" class="section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h2 style="font-size: 2rem; font-weight: 700;">User Management</h2>
+      <button class="btn btn-success" onclick="exportReport('users')">📥 Export CSV</button>
+    </div>
+
+    <div class="filters">
+      <input type="text" class="input" id="user-search" placeholder="Search users..." oninput="filterUsers()">
+      <select class="select" id="user-filter" onchange="filterUsers()">
+        <option value="all">All Users</option>
+        <option value="organizers">Organizers Only</option>
+        <option value="suspended">Suspended</option>
+      </select>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+        <tr>
+          <th>User</th>
+          <th>Contact</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody id="users-table"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Events Section -->
+  <section id="events" class="section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h2 style="font-size: 2rem; font-weight: 700;">Event Management</h2>
+      <button class="btn btn-success" onclick="exportReport('events')">📥 Export CSV</button>
+    </div>
+
+    <div class="filters">
+      <input type="text" class="input" id="event-search" placeholder="Search events..." oninput="filterEvents()">
+      <select class="select" id="event-filter" onchange="filterEvents()">
+        <option value="all">All Events</option>
+        <option value="live">Live Events</option>
+        <option value="cancelled">Cancelled</option>
+        <option value="flagged">Flagged</option>
+      </select>
+    </div>
+
+    <div id="events-list"></div>
+  </section>
+
+  <!-- Payouts Section -->
+  <section id="payouts" class="section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h2 style="font-size: 2rem; font-weight: 700;">Payout Management</h2>
+      <div style="text-align: right;">
+        <p style="font-size: 0.875rem; color: #94a3b8;">Pending Payouts</p>
+        <p style="font-size: 1.5rem; font-weight: 700; color: #6366f1;" id="pending-payout-amount">₵0.00</p>
+      </div>
+    </div>
+
+    <div id="payouts-list"></div>
+  </section>
+
+  <!-- Reports Section -->
+  <section id="reports" class="section">
+    <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 1.5rem;">Reports & Analytics</h2>
+
+    <div class="report-grid">
+      <div class="card">
+        <h3 class="card-title">User Reports</h3>
+        <button class="btn btn-primary" style="width: 100%;" onclick="exportReport('users')">📥 Export Users CSV</button>
+        <p style="margin-top: 1rem; font-size: 0.875rem; color: #94a3b8;">Complete list of all users with contact details and status</p>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Event Reports</h3>
+        <button class="btn btn-primary" style="width: 100%;" onclick="exportReport('events')">📥 Export Events CSV</button>
+        <p style="margin-top: 1rem; font-size: 0.875rem; color: #94a3b8;">All events with organizer info, status, and dates</p>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Revenue Reports</h3>
+        <button class="btn btn-success" style="width: 100%;" onclick="exportReport('revenue')">📥 Export Revenue CSV</button>
+        <p style="margin-top: 1rem; font-size: 0.875rem; color: #94a3b8;">Detailed ticket sales and revenue breakdown</p>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+      <div class="card">
+        <h3 class="card-title">Revenue by Category</h3>
+        <div id="revenue-by-category"></div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Top Organizers</h3>
+        <div id="top-organizers"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 1.5rem;">
+      <h3 class="card-title">Platform Statistics</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+        <div>
+          <p style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 0.25rem;">Avg. Ticket Price</p>
+          <p style="font-size: 1.5rem; font-weight: 700; color: #6366f1;" id="avg-ticket-price">₵0.00</p>
+        </div>
+        <div>
+          <p style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 0.25rem;">Avg. Event Revenue</p>
+          <p style="font-size: 1.5rem; font-weight: 700; color: #8b5cf6;" id="avg-event-revenue">₵0.00</p>
+        </div>
+        <div>
+          <p style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 0.25rem;">Total Cancelled</p>
+          <p style="font-size: 1.5rem; font-weight: 700; color: #fb923c;" id="total-cancelled">0</p>
+        </div>
+        <div>
+          <p style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 0.25rem;">Platform Fee (10%)</p>
+          <p style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="platform-fee">₵0.00</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- User Detail Modal -->
+<div id="user-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">User Details</h3>
+      <button class="modal-close" onclick="closeModal('user-modal')">&times;</button>
+    </div>
+    <div class="modal-body" id="user-modal-body"></div>
+  </div>
+</div>
+
+<!-- Event Detail Modal -->
+<div id="event-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">Event Details</h3>
+      <button class="modal-close" onclick="closeModal('event-modal')">&times;</button>
+    </div>
+    <div class="modal-body" id="event-modal-body"></div>
+  </div>
+</div>
+
+<script>
+  let users = [];
+  let events = [];
+  let tickets = [];
+  let payouts = [];
+  let stats = {};
+
+  function loadData() {
+    users = JSON.parse(localStorage.getItem('glycr_users') || '[]');
+    events = JSON.parse(localStorage.getItem('glycr_events') || '[]');
+    tickets = JSON.parse(localStorage.getItem('glycr_tickets') || '[]');
+    payouts = JSON.parse(localStorage.getItem('glycr_payouts') || '[]');
+
+    calculateStats();
+    renderDashboard();
+    renderUsers();
+    renderEvents();
+    renderPayouts();
+    renderReports();
+  }
+
+  function calculateStats() {
+    const totalOrganizers = users.filter(u => u.isOrganizer).length;
+    const liveEvents = events.filter(e => e.isPublished && !e.isCancelled && new Date(e.date) > new Date()).length;
+    const totalRevenue = tickets.reduce((sum, t) => sum + t.price, 0);
+    const pendingPayouts = payouts.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
+    const flaggedEvents = events.filter(e => e.flagged).length;
+
+    stats = {
+      totalUsers: users.length,
+      totalOrganizers,
+      totalEvents: events.length,
+      liveEvents,
+      totalRevenue,
+      pendingPayouts,
+      totalTickets: tickets.length,
+      flaggedEvents
+    };
+  }
+
+  function renderDashboard() {
+    document.getElementById('stat-users').textContent = stats.totalUsers;
+    document.getElementById('stat-live-events').textContent = stats.liveEvents;
+    document.getElementById('stat-revenue').textContent = `₵${stats.totalRevenue.toFixed(2)}`;
+    document.getElementById('stat-tickets').textContent = stats.totalTickets;
+    document.getElementById('stat-organizers').textContent = stats.totalOrganizers;
+    document.getElementById('stat-total-events').textContent = stats.totalEvents;
+    document.getElementById('stat-avg-revenue').textContent =
+      `₵${stats.totalEvents > 0 ? (stats.totalRevenue / stats.totalEvents).toFixed(2) : '0.00'}`;
+
+    document.getElementById('quick-users-count').textContent = stats.totalUsers;
+    document.getElementById('quick-pending-payouts').textContent = `₵${stats.pendingPayouts.toFixed(2)}`;
+    document.getElementById('quick-flagged-events').textContent = stats.flaggedEvents;
+  }
+
+  function renderUsers() {
+    const tableBody = document.getElementById('users-table');
+    const filtered = getFilteredUsers();
+
+    if (filtered.length === 0) {
+      tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">No users found</td></tr>';
+      return;
+    }
+
+    tableBody.innerHTML = filtered.map(user => `
+        <tr>
+          <td>
+            <div style="font-weight: 600;">${user.name || 'User'}</div>
+            <div style="font-size: 0.75rem; color: #94a3b8;">ID: ${user.id}</div>
+          </td>
+          <td>
+            <div style="font-size: 0.875rem;">
+              <div>📧 ${user.email}</div>
+              <div style="color: #94a3b8;">📱 ${user.phone}</div>
+            </div>
+          </td>
+          <td>
+            <span class="badge ${user.isOrganizer ? 'badge-organizer' : 'badge-customer'}">
+              ${user.isOrganizer ? 'Organizer' : 'Customer'}
+            </span>
+          </td>
+          <td>
+            <span class="badge ${user.suspended ? 'badge-suspended' : 'badge-active'}">
+              ${user.suspended ? 'Suspended' : 'Active'}
+            </span>
+          </td>
+          <td>
+            <div class="actions">
+              <button class="btn-icon" style="background: #6366f1;" onclick="viewUser(${user.id})" title="View Details">👁️</button>
+              <button class="btn-icon" style="background: ${user.suspended ? '#10b981' : '#f59e0b'};" onclick="suspendUser(${user.id})" title="${user.suspended ? 'Unsuspend' : 'Suspend'}">🚫</button>
+              <button class="btn-icon" style="background: #ef4444;" onclick="deleteUser(${user.id})" title="Delete">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+  }
+
+  function renderEvents() {
+    const container = document.getElementById('events-list');
+    const filtered = getFilteredEvents();
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="empty-state">No events found</div>';
+      return;
+    }
+
+    container.innerHTML = filtered.map(event => {
+      const organizer = users.find(u => u.id === event.organizerId);
+      const eventTickets = tickets.filter(t => t.eventId === event.id);
+      const revenue = eventTickets.reduce((sum, t) => sum + t.price, 0);
+      const ticketTypes = JSON.parse(event.ticketTypes || '{}');
+      const totalSold = Object.values(ticketTypes).reduce((sum, t) => sum + (t.sold || 0), 0);
+
+      return `
+          <div class="event-item">
+            <div class="event-header">
+              <div style="flex: 1;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">${event.title}</h3>
+                <div style="font-size: 0.875rem; color: #94a3b8; line-height: 1.8;">
+                  <div>📅 ${new Date(event.date).toLocaleString()}</div>
+                  <div>📍 ${event.venue}, ${event.location}</div>
+                  <div>👤 Organizer: ${organizer?.email || 'Unknown'}</div>
+                  <div>💰 Revenue: ₵${revenue.toFixed(2)} (${totalSold} tickets sold)</div>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                ${event.flagged ? '<span class="badge badge-flagged">Flagged</span>' : ''}
+                ${event.isCancelled ? '<span class="badge badge-cancelled">Cancelled</span>' : ''}
+                ${event.isPublished && !event.isCancelled ? '<span class="badge badge-live">Live</span>' : ''}
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+              <button class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="viewEvent(${event.id})">View Details</button>
+              <button class="btn ${event.flagged ? 'btn-success' : 'btn-warning'}" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="flagEvent(${event.id})">${event.flagged ? 'Unflag' : 'Flag'}</button>
+              <button class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="deleteEvent(${event.id})">Delete</button>
+            </div>
+          </div>
+        `;
+    }).join('');
+  }
+
+  function renderPayouts() {
+    const container = document.getElementById('payouts-list');
+    const sortedPayouts = [...payouts].sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
+
+    document.getElementById('pending-payout-amount').textContent = `₵${stats.pendingPayouts.toFixed(2)}`;
+
+    if (sortedPayouts.length === 0) {
+      container.innerHTML = '<div class="empty-state">No payout requests yet</div>';
+      return;
+    }
+
+    container.innerHTML = sortedPayouts.map(payout => {
+      const organizer = users.find(u => u.id === payout.organizerId);
+      return `
+          <div class="payout-item">
+            <div class="payout-header">
+              <div style="flex: 1;">
+                <div class="payout-amount">₵${payout.amount.toFixed(2)}</div>
+                <div class="payout-details">
+                  <div>👤 Organizer: ${organizer?.email || 'Unknown'}</div>
+                  <div>💳 Method: ${payout.method.toUpperCase()}</div>
+                  <div>📧 Email: ${payout.email}</div>
+                  <div>📅 Requested: ${new Date(payout.requestedAt).toLocaleString()}</div>
+                  ${payout.notes ? `<div>📝 Notes: ${payout.notes}</div>` : ''}
+                  ${payout.method === 'bank' && payout.details ? `
+                    <div style="margin-top: 0.5rem; padding: 0.5rem; background: #0f172a; border-radius: 0.375rem;">
+                      <div>🏦 ${payout.details.bankName}</div>
+                      <div>Account: ${payout.details.accountNumber}</div>
+                      <div>Name: ${payout.details.accountName}</div>
+                    </div>
+                  ` : ''}
+                  ${payout.method === 'momo' && payout.details ? `<div>📱 MoMo: ${payout.details.phone}</div>` : ''}
+                </div>
+              </div>
+              <span class="badge badge-${payout.status}">${payout.status.toUpperCase()}</span>
+            </div>
+            ${payout.status === 'pending' ? `
+              <div class="payout-actions">
+                <button class="btn btn-success" onclick="approvePayout(${payout.id})">✓ Approve</button>
+                <button class="btn btn-danger" onclick="rejectPayout(${payout.id})">✗ Reject</button>
+              </div>
+            ` : ''}
+            ${payout.status === 'rejected' && payout.rejectionReason ? `
+              <div class="info-box error">
+                <strong>Rejection Reason:</strong> ${payout.rejectionReason}
+              </div>
+            ` : ''}
+            ${payout.status === 'completed' && payout.completedAt ? `
+              <div class="info-box success">
+                <strong>Completed:</strong> ${new Date(payout.completedAt).toLocaleString()}
+              </div>
+            ` : ''}
+          </div>
+        `;
+    }).join('');
+  }
+
+  function renderReports() {
+    // Revenue by Category
+    const revenueByCategory = events.reduce((acc, event) => {
+      const eventTickets = tickets.filter(t => t.eventId === event.id);
+      const revenue = eventTickets.reduce((sum, t) => sum + t.price, 0);
+      acc[event.category] = (acc[event.category] || 0) + revenue;
+      return acc;
+    }, {});
+
+    const categoryHTML = Object.entries(revenueByCategory)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([category, revenue]) => `
+          <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #334155;">
+            <span style="text-transform: capitalize;">${category}</span>
+            <span style="font-weight: 700; color: #6366f1;">₵${revenue.toFixed(2)}</span>
+          </div>
+        `).join('');
+
+    document.getElementById('revenue-by-category').innerHTML = categoryHTML || '<div class="empty-state">No data</div>';
+
+    // Top Organizers
+    const organizerRevenue = events.reduce((acc, event) => {
+      const eventTickets = tickets.filter(t => t.eventId === event.id);
+      const revenue = eventTickets.reduce((sum, t) => sum + t.price, 0);
+      const organizer = users.find(u => u.id === event.organizerId);
+      const key = organizer?.email || 'Unknown';
+      acc[key] = (acc[key] || 0) + revenue;
+      return acc;
+    }, {});
+
+    const organizerHTML = Object.entries(organizerRevenue)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([email, revenue]) => `
+          <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #334155;">
+            <span style="overflow: hidden; text-overflow: ellipsis;">${email}</span>
+            <span style="font-weight: 700; color: #8b5cf6; margin-left: 1rem;">₵${revenue.toFixed(2)}</span>
+          </div>
+        `).join('');
+
+    document.getElementById('top-organizers').innerHTML = organizerHTML || '<div class="empty-state">No data</div>';
+
+    // Platform Statistics
+    document.getElementById('avg-ticket-price').textContent =
+      `₵${tickets.length > 0 ? (stats.totalRevenue / tickets.length).toFixed(2) : '0.00'}`;
+    document.getElementById('avg-event-revenue').textContent =
+      `₵${events.length > 0 ? (stats.totalRevenue / events.length).toFixed(2) : '0.00'}`;
+    document.getElementById('total-cancelled').textContent = events.filter(e => e.isCancelled).length;
+    document.getElementById('platform-fee').textContent = `₵${(stats.totalRevenue * 0.1).toFixed(2)}`;
+  }
+
+  function getFilteredUsers() {
+    const search = document.getElementById('user-search')?.value.toLowerCase() || '';
+    const filter = document.getElementById('user-filter')?.value || 'all';
+
+    return users.filter(u => {
+      const matchesSearch = u.name?.toLowerCase().includes(search) || u.email.toLowerCase().includes(search);
+      const matchesFilter = filter === 'all' ||
+        (filter === 'organizers' && u.isOrganizer) ||
+        (filter === 'suspended' && u.suspended);
+      return matchesSearch && matchesFilter;
+    });
+  }
+
+  function getFilteredEvents() {
+    const search = document.getElementById('event-search')?.value.toLowerCase() || '';
+    const filter = document.getElementById('event-filter')?.value || 'all';
+
+    return events.filter(e => {
+      const matchesSearch = e.title.toLowerCase().includes(search) || e.venue.toLowerCase().includes(search);
+      const matchesFilter = filter === 'all' ||
+        (filter === 'live' && e.isPublished && !e.isCancelled && new Date(e.date) > new Date()) ||
+        (filter === 'cancelled' && e.isCancelled) ||
+        (filter === 'flagged' && e.flagged);
+      return matchesSearch && matchesFilter;
+    });
+  }
+
+  function filterUsers() {
+    renderUsers();
+  }
+
+  function filterEvents() {
+    renderEvents();
+  }
+
+  function showTab(tab) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+
+    document.getElementById(tab).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  function viewUser(userId) {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+
+    const userEvents = events.filter(e => e.organizerId === userId);
+    const userTickets = tickets.filter(t => t.userId === userId);
+    const organizerRevenue = tickets
+      .filter(t => userEvents.find(e => e.id === t.eventId))
+      .reduce((sum, t) => sum + t.price, 0);
+
+    const modalBody = document.getElementById('user-modal-body');
+    modalBody.innerHTML = `
+        <div class="detail-grid">
+          <div class="detail-item">
+            <div class="detail-label">Name</div>
+            <div class="detail-value">${user.name || 'N/A'}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">User ID</div>
+            <div class="detail-value">${user.id}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Email</div>
+            <div class="detail-value">${user.email}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Phone</div>
+            <div class="detail-value">${user.phone}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Account Type</div>
+            <div class="detail-value">${user.isOrganizer ? 'Organizer' : 'Customer'}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Status</div>
+            <div class="detail-value">${user.suspended ? 'Suspended' : 'Active'}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Currency</div>
+            <div class="detail-value">${user.currency || 'GHC'}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Joined</div>
+            <div class="detail-value">${new Date(user.createdAt).toLocaleDateString()}</div>
+          </div>
+        </div>
+
+        ${user.isOrganizer ? `
+          <div style="margin-top: 1.5rem;">
+            <h4 style="font-weight: 700; margin-bottom: 1rem;">Organizer Statistics</h4>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+              <div style="background: #334155; padding: 1rem; border-radius: 0.5rem;">
+                <div style="color: #94a3b8; font-size: 0.75rem; margin-bottom: 0.25rem;">Events Created</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #6366f1;">${userEvents.length}</div>
+              </div>
+              <div style="background: #334155; padding: 1rem; border-radius: 0.5rem;">
+                <div style="color: #94a3b8; font-size: 0.75rem; margin-bottom: 0.25rem;">Total Revenue</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">₵${organizerRevenue.toFixed(2)}</div>
+              </div>
+              <div style="background: #334155; padding: 1rem; border-radius: 0.5rem;">
+                <div style="color: #94a3b8; font-size: 0.75rem; margin-bottom: 0.25rem;">Tickets Sold</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #8b5cf6;">${tickets.filter(t => userEvents.find(e => e.id === t.eventId)).length}</div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
+        <div style="margin-top: 1.5rem;">
+          <h4 style="font-weight: 700; margin-bottom: 1rem;">Recent Activity</h4>
+          <div style="max-height: 200px; overflow-y: auto;">
+            ${userTickets.slice(0, 5).map(ticket => {
+      const event = events.find(e => e.id === ticket.eventId);
+      return `
+                <div style="background: #334155; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 0.5rem; font-size: 0.875rem;">
+                  <div style="font-weight: 600;">${event?.title || 'Unknown Event'}</div>
+                  <div style="color: #94a3b8;">${ticket.ticketType.toUpperCase()} - ₵${ticket.price} - ${new Date(ticket.purchasedAt).toLocaleDateString()}</div>
+                </div>
+              `;
+    }).join('') || '<div class="empty-state">No activity yet</div>'}
+          </div>
+        </div>
+      `;
+
+    openModal('user-modal');
+  }
+
+  function viewEvent(eventId) {
+    const event = events.find(e => e.id === eventId);
+    if (!event) return;
+
+    const eventTickets = tickets.filter(t => t.eventId === eventId);
+    const revenue = eventTickets.reduce((sum, t) => sum + t.price, 0);
+    const ticketTypes = JSON.parse(event.ticketTypes || '{}');
+
+    const modalBody = document.getElementById('event-modal-body');
+    modalBody.innerHTML = `
+        <div class="detail-grid">
+          <div class="detail-item" style="grid-column: span 2;">
+            <div class="detail-label">Event Title</div>
+            <div class="detail-value" style="font-size: 1.25rem;">${event.title}</div>
+          </div>
+          <div class="detail-item" style="grid-column: span 2;">
+            <div class="detail-label">Description</div>
+            <div class="detail-value">${event.description}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Date & Time</div>
+            <div class="detail-value">${new Date(event.date).toLocaleString()}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Venue</div>
+            <div class="detail-value">${event.venue}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Location</div>
+            <div class="detail-value">${event.location}</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Category</div>
+            <div class="detail-value" style="text-transform: capitalize;">${event.category}</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+          <h4 style="font-weight: 700; margin-bottom: 1rem;">Ticket Types</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+            ${Object.entries(ticketTypes).map(([type, data]) => `
+              <div style="background: #334155; padding: 1rem; border-radius: 0.5rem;">
+                <div style="font-weight: 700; font-size: 1.125rem; margin-bottom: 0.5rem;">${type.toUpperCase()}</div>
+                <div style="font-size: 0.875rem; color: #94a3b8; line-height: 1.6;">
+                  <div>Price: ₵${data.price}</div>
+                  <div>Capacity: ${data.capacity}</div>
+                  <div>Sold: ${data.sold || 0}</div>
+                  <div>Available: ${data.capacity - (data.sold || 0)}</div>
+                </div>
+                <div style="margin-top: 0.5rem; background: #475569; border-radius: 9999px; height: 0.5rem; overflow: hidden;">
+                  <div style="background: #6366f1; height: 100%; width: ${((data.sold || 0) / data.capacity) * 100}%; transition: width 0.3s;"></div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+          <h4 style="font-weight: 700; margin-bottom: 1rem;">Revenue Summary</h4>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+            <div style="background: #334155; padding: 1rem; border-radius: 0.5rem;">
+              <div style="color: #94a3b8; font-size: 0.75rem; margin-bottom: 0.25rem;">Total Revenue</div>
+              <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">₵${revenue.toFixed(2)}</div>
+            </div>
+            <div style="background: #334155; padding: 1rem; border-radius: 0.5rem;">
+              <div style="color: #94a3b8; font-size: 0.75rem; margin-bottom: 0.25rem;">Tickets Sold</div>
+              <div style="font-size: 1.5rem; font-weight: 700; color: #6366f1;">${eventTickets.length}</div>
+            </div>
+            <div style="background: #334155; padding: 1rem; border-radius: 0.5rem;">
+              <div style="color: #94a3b8; font-size: 0.75rem; margin-bottom: 0.25rem;">Platform Fee (10%)</div>
+              <div style="font-size: 1.5rem; font-weight: 700; color: #8b5cf6;">₵${(revenue * 0.1).toFixed(2)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+          <h4 style="font-weight: 700; margin-bottom: 1rem;">Recent Purchases</h4>
+          <div style="max-height: 300px; overflow-y: auto;">
+            ${eventTickets
+      .sort((a, b) => new Date(b.purchasedAt) - new Date(a.purchasedAt))
+      .slice(0, 10)
+      .map(ticket => `
+                <div style="background: #334155; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 0.5rem; font-size: 0.875rem; display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <div style="font-weight: 600;">${ticket.userEmail}</div>
+                    <div style="color: #94a3b8;">${ticket.ticketType.toUpperCase()} - ₵${ticket.price}</div>
+                  </div>
+                  <div style="color: #94a3b8;">${new Date(ticket.purchasedAt).toLocaleDateString()}</div>
+                </div>
+              `).join('') || '<div class="empty-state">No purchases yet</div>'}
+          </div>
+        </div>
+      `;
+
+    openModal('event-modal');
+  }
+
+  function suspendUser(userId) {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+
+    user.suspended = !user.suspended;
+    localStorage.setItem('glycr_users', JSON.stringify(users));
+    loadData();
+  }
+
+  function deleteUser(userId) {
+    if (!confirm('Are you sure? This will delete all user data.')) return;
+
+    users = users.filter(u => u.id !== userId);
+    events = events.filter(e => e.organizerId !== userId);
+    tickets = tickets.filter(t => t.userId !== userId);
+
+    localStorage.setItem('glycr_users', JSON.stringify(users));
+    localStorage.setItem('glycr_events', JSON.stringify(events));
+    localStorage.setItem('glycr_tickets', JSON.stringify(tickets));
+    loadData();
+  }
+
+  function flagEvent(eventId) {
+    const event = events.find(e => e.id === eventId);
+    if (!event) return;
+
+    event.flagged = !event.flagged;
+    localStorage.setItem('glycr_events', JSON.stringify(events));
+    loadData();
+  }
+
+  function deleteEvent(eventId) {
+    if (!confirm('Are you sure? This will delete the event and all tickets.')) return;
+
+    events = events.filter(e => e.id !== eventId);
+    tickets = tickets.filter(t => t.eventId !== eventId);
+
+    localStorage.setItem('glycr_events', JSON.stringify(events));
+    localStorage.setItem('glycr_tickets', JSON.stringify(tickets));
+    loadData();
+  }
+
+  function approvePayout(payoutId) {
+    const payout = payouts.find(p => p.id === payoutId);
+    if (!payout) return;
+
+    payout.status = 'completed';
+    payout.completedAt = new Date().toISOString();
+
+    localStorage.setItem('glycr_payouts', JSON.stringify(payouts));
+    alert('Payout approved! In production, this would trigger the actual payment.');
+    loadData();
+  }
+
+  function rejectPayout(payoutId) {
+    const reason = prompt('Reason for rejection:');
+    if (!reason) return;
+
+    const payout = payouts.find(p => p.id === payoutId);
+    if (!payout) return;
+
+    payout.status = 'rejected';
+    payout.rejectionReason = reason;
+
+    localStorage.setItem('glycr_payouts', JSON.stringify(payouts));
+    loadData();
+  }
+
+  function exportReport(type) {
+    let csv = '';
+    let filename = '';
+
+    if (type === 'users') {
+      csv = 'ID,Name,Email,Phone,Is Organizer,Suspended,Created At\n';
+      users.forEach(u => {
+        csv += `${u.id},"${u.name || ''}","${u.email}","${u.phone}",${u.isOrganizer},${u.suspended || false},"${u.createdAt}"\n`;
+      });
+      filename = 'users_report.csv';
+    } else if (type === 'events') {
+      csv = 'ID,Title,Organizer,Date,Venue,Published,Cancelled,Flagged,Created At\n';
+      events.forEach(e => {
+        const organizer = users.find(u => u.id === e.organizerId);
+        csv += `${e.id},"${e.title}","${organizer?.email || 'Unknown'}","${e.date}","${e.venue}",${e.isPublished},${e.isCancelled},${e.flagged || false},"${e.createdAt}"\n`;
+      });
+      filename = 'events_report.csv';
+    } else if (type === 'revenue') {
+      csv = 'Event ID,Event Title,Ticket ID,Type,Price,Buyer Email,Purchase Date\n';
+      tickets.forEach(t => {
+        const event = events.find(e => e.id === t.eventId);
+        csv += `${t.eventId},"${event?.title || 'Unknown'}","${t.id}","${t.ticketType}",${t.price},"${t.userEmail}","${t.purchasedAt}"\n`;
+      });
+      filename = 'revenue_report.csv';
+    }
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function openModal(modalId) {
+    document.getElementById(modalId).classList.add('show');
+  }
+
+  function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('show');
+  }
+
+  // Close modals on overlay click
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('show');
+      }
+    });
+  });
+
+  // Initialize on load
+  loadData();
+</script>
+</body>
+</html>

@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Event Organizer — Prototype</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #f7fafc; }
+    .card { background: white; border-radius: 10px; box-shadow: 0 6px 18px rgba(2,6,23,0.06); }
+    .ticket-canvas { border-radius: 8px; background: white; }
+    .small { font-size: 12px; color: #6b7280; }
+  </style>
+</head>
+<body class="min-h-screen p-6">
+
+<div class="max-w-6xl mx-auto">
+
+  <!-- Header -->
+  <header class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-semibold text-orange-600">Event Organizer (Prototype)</h1>
+      <div class="small">Organizers create events & ticket tiers — users buy tickets.</div>
+    </div>
+    <div id="headerControls" class="flex items-center gap-2">
+      <!-- Filled by JS -->
+    </div>
+  </header>
+
+  <main id="appRoot">
+    <!-- content rendered by JS -->
+  </main>
+
+  <footer class="mt-8 text-center small text-gray-500">
+    Prototype — Local demo. Data stored in localStorage.
+  </footer>
+</div>
+
+<script>
+  /* ========= Simple client-side data layer using localStorage ========= */
+  const DB = {
+    key: 'event_org_db_v1',
+    load() {
+      const raw = localStorage.getItem(this.key);
+      if (!raw) {
+        const seed = {
+          users: [],    // {id, name, email, password, role:'organizer'|'user'}
+          events: [],   // {id, organizerId, title, desc, dateISO, venue, imageDataUrl, tiers: [{name, price, capacity}], createdAt}
+          purchases: [] // {id, eventId, userId, tierName, qty, total, ticketId, createdAt}
+        };
+        localStorage.setItem(this.key, JSON.stringify(seed));
+        return seed;
+      }
+      return JSON.parse(raw);
+    },
+    save(state) {
+      localStorage.setItem(this.key, JSON.stringify(state));
+    },
+    withState(fn) {
+      const s = this.load();
+      fn(s);
+      this.save(s);
+    }
+  };
+
+  /* ======= Utilities ======= */
+  function uid(prefix='id') {
+    return prefix + '_' + Math.random().toString(36).slice(2,9);
+  }
+  function money(n) { return 'GHS ' + Number(n).toFixed(2); }
+  function formatDateISO(iso) {
+    if(!iso) return '-';
+    const d = new Date(iso);
+    return d.toLocaleString();
+  }
+
+  /* ========== App State ========== */
+  let currentUser = null; // {id, name, email, role}
+  const root = document.getElementById('appRoot');
+  const headerControls = document.getElementById('headerControls');
+
+  /* ========== Render Helpers ========== */
+  function el(html) {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = html.trim();
+    return wrapper.firstChild;
+  }
+  function clear(node) { node.innerHTML = ''; }
+
+  /* ========== Auth UI & Logic ========== */
+  function renderHeader() {
+    headerControls.innerHTML = '';
+    if (!currentUser) {
+      const btnLogin = el(`<button class="px-3 py-1 rounded bg-orange-600 text-white small">Login / Signup</button>`);
+      btnLogin.addEventListener('click', () => renderAuth());
+      headerControls.appendChild(btnLogin);
+    } else {
+      const userBadge = el(`<div class="text-sm">Hi, <strong>${currentUser.name}</strong> <span class="small text-gray-500">(${currentUser.role})</span></div>`);
+      const btnDashboard = el(`<button class="px-3 py-1 rounded border small">Dashboard</button>`);
+      btnDashboard.addEventListener('click', () => renderDashboard());
+      const btnLogout = el(`<button class="px-3 py-1 rounded bg-gray-100 small">Logout</button>`);
+      btnLogout.addEventListener('click', () => { currentUser = null; renderAll(); });
+      headerControls.appendChild(userBadge);
+      headerControls.appendChild(btnDashboard);
+      headerControls.appendChild(btnLogout);
+    }
+  }
+
+  function renderAuth() {
+    clear(root);
+    const container = el(`<div class="grid gap-4 lg:grid-cols-2"></div>`);
+    // Signup
+    const signupCard = el(`
+    <div class="card p-6">
+      <h3 class="font-semibold mb-2">Sign up (Organizer or User)</h3>
+      <div class="small text-gray-600 mb-4">Create an account to manage or buy tickets.</div>
+      <input id="su_name" placeholder="Full name" class="w-full border rounded p-2 mb-2"/>
+      <input id="su_email" placeholder="Email" class="w-full border rounded p-2 mb-2"/>
+      <input id="su_password" type="password" placeholder="Password" class="w-full border rounded p-2 mb-2"/>
+      <label class="small block mb-2"><input id="su_role" type="checkbox"/> Sign up as Organizer</label>
+      <button id="su_btn" class="bg-orange-600 text-white px-3 py-2 rounded">Sign up</button>
+      <div id="su_msg" class="small text-red-500 mt-2"></div>
+    </div>`);
+    // Login
+    const loginCard = el(`
+    <div class="card p-6">
+      <h3 class="font-semibold mb-2">Login</h3>
+      <div class="small text-gray-600 mb-4">Already have an account? Login below.</div>
+      <input id="li_email" placeholder="Email" class="w-full border rounded p-2 mb-2"/>
+      <input id="li_password" type="password" placeholder="Password" class="w-full border rounded p-2 mb-2"/>
+      <button id="li_btn" class="bg-green-600 text-white px-3 py-2 rounded">Login</button>
+      <div id="li_msg" class="small text-red-500 mt-2"></div>
+    </div>`);
+
+    container.appendChild(signupCard);
+    container.appendChild(loginCard);
+    root.appendChild(container);
+
+    // Signup logic
+    signupCard.querySelector('#su_btn').addEventListener('click', () => {
+      const name = signupCard.querySelector('#su_name').value.trim();
+      const email = signupCard.querySelector('#su_email').value.trim().toLowerCase();
+      const password = signupCard.querySelector('#su_password').value;
+      const role = signupCard.querySelector('#su_role').checked ? 'organizer' : 'user';
+      const msg = signupCard.querySelector('#su_msg');
+      if (!name || !email || !password) return msg.textContent = 'Fill all fields';
+      DB.withState(state => {
+        if (state.users.some(u => u.email === email)) { msg.textContent = 'Email in use'; return; }
+        const user = { id: uid('u'), name, email, password, role };
+        state.users.push(user);
+        currentUser = { id: user.id, name: user.name, email: user.email, role: user.role };
+      });
+      renderAll();
+    });
+
+    // Login logic
+    loginCard.querySelector('#li_btn').addEventListener('click', () => {
+      const email = loginCard.querySelector('#li_email').value.trim().toLowerCase();
+      const password = loginCard.querySelector('#li_password').value;
+      const msg = loginCard.querySelector('#li_msg');
+      if (!email || !password) return msg.textContent = 'Fill both fields';
+      const state = DB.load();
+      const found = state.users.find(u => u.email === email && u.password === password);
+      if (!found) return msg.textContent = 'Invalid credentials';
+      currentUser = { id: found.id, name: found.name, email: found.email, role: found.role };
+      renderAll();
+    });
+
+    renderHeader();
+  }
+
+  /* ========== Event listing & public pages ========== */
+  function renderEventList() {
+    clear(root);
+    const state = DB.load();
+    const container = el('<div class="grid gap-6 lg:grid-cols-3"></div>');
+    const events = state.events.slice().sort((a,b) => new Date(a.dateISO) - new Date(b.dateISO));
+    if (events.length === 0) {
+      root.appendChild(el('<div class="card p-6"><h3>No events yet</h3><div class="small mt-2">Organizers can create events after signup.</div></div>'));
+      return;
+    }
+    events.forEach(ev => {
+      const card = el(`<div class="card p-4">
+      <div style="height:160px;overflow:hidden;border-radius:6px" class="mb-3">
+        ${ev.imageDataUrl ? `<img src="${ev.imageDataUrl}" style="width:100%;height:100%;object-fit:cover"/>` : `<div class="w-full h-full bg-gray-100 flex items-center justify-center small text-gray-500">No image</div>`}
+      </div>
+      <h3 class="font-semibold">${ev.title}</h3>
+      <div class="small text-gray-600">${ev.venue} • ${formatDateISO(ev.dateISO)}</div>
+      <p class="small mt-2 text-gray-700">${ev.desc ? ev.desc.slice(0,120) : ''}${ev.desc && ev.desc.length>120?'...':''}</p>
+      <div class="mt-3 flex gap-2">
+        <button class="px-3 py-1 bg-orange-600 text-white rounded viewBtn">View</button>
+      </div>
+    </div>`);
+      card.querySelector('.viewBtn').addEventListener('click', () => renderEventDetail(ev.id));
+      container.appendChild(card);
+    });
+    root.appendChild(container);
+  }
+
+  /* ========== Event Detail & Purchase ========== */
+  function renderEventDetail(eventId) {
+    const state = DB.load();
+    const ev = state.events.find(e => e.id === eventId);
+    if (!ev) { renderEventList(); return; }
+    clear(root);
+    const container = el('<div class="grid gap-6 lg:grid-cols-3"></div>');
+    const left = el(`<div class="lg:col-span-2 card p-6"></div>`);
+    left.innerHTML = `
+    <div style="height:300px;border-radius:8px;overflow:hidden;" class="mb-4">
+      ${ev.imageDataUrl ? `<img src="${ev.imageDataUrl}" style="width:100%;height:100%;object-fit:cover"/>` : `<div class="w-full h-full bg-gray-100 flex items-center justify-center small text-gray-500">No image</div>`}
+    </div>
+    <h2 class="text-xl font-semibold mb-2">${ev.title}</h2>
+    <div class="small text-gray-600 mb-3">${ev.venue} • ${formatDateISO(ev.dateISO)}</div>
+    <p class="text-gray-700">${ev.desc || ''}</p>
+    <hr class="my-4"/>
+    <h3 class="font-semibold mb-2">Tickets</h3>
+  `;
+    const ticketList = el('<div class="space-y-3"></div>');
+    ev.tiers.forEach(t => {
+      const available = t.capacity != null ? ` • ${t.capacity} left` : '';
+      const trow = el(`<div class="p-3 border rounded flex items-center justify-between">
+      <div>
+        <div class="font-medium">${t.name}</div>
+        <div class="small text-gray-600">${money(t.price)}${available}</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <input type="number" min="1" value="1" class="w-20 p-1 border rounded qty" />
+        <button class="px-3 py-1 bg-green-600 text-white rounded buyBtn">Buy</button>
+      </div>
+    </div>`);
+      trow.querySelector('.buyBtn').addEventListener('click', () => {
+        const qty = parseInt(trow.querySelector('.qty').value) || 1;
+        if (!currentUser) return alert('Please login to buy tickets.');
+        purchaseTicket(ev, t, qty);
+      });
+      ticketList.appendChild(trow);
+    });
+    left.appendChild(ticketList);
+
+    const right = el(`<div class="card p-6">
+    <div class="small text-gray-600">Hosted by</div>
+    <div class="font-semibold mb-2">${(state.users.find(u=>u.id===ev.organizerId)||{name:'Organizer'}).name}</div>
+    <div class="small text-gray-600">Event created</div>
+    <div class="small mb-3">${formatDateISO(ev.createdAt)}</div>
+    <button id="backBtn" class="px-3 py-1 border rounded small">Back</button>
+  </div>`);
+
+    right.querySelector('#backBtn').addEventListener('click', () => renderEventList());
+
+    container.appendChild(left);
+    container.appendChild(right);
+    root.appendChild(container);
+  }
+
+  /* ========== Purchase flow (mock payment) ========== */
+  function purchaseTicket(ev, tier, qty) {
+    // quick capacity check
+    if (tier.capacity != null && qty > tier.capacity) return alert('Not enough tickets available');
+    // show payment modal (simulated)
+    const total = Number(tier.price) * qty;
+    const modal = el(`<div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999">
+    <div class="card p-6" style="width:420px">
+      <h3 class="font-semibold mb-2">Confirm Purchase</h3>
+      <div class="small text-gray-600 mb-4">${ev.title} — ${tier.name} • ${qty} x ${money(tier.price)}</div>
+      <div class="font-semibold mb-4">Total: ${money(total)}</div>
+      <div class="flex gap-2">
+        <button id="pay_btn" class="bg-green-600 text-white px-3 py-1 rounded">Pay (simulate)</button>
+        <button id="cancel_btn" class="px-3 py-1 border rounded">Cancel</button>
+      </div>
+    </div>
+  </div>`);
+    document.body.appendChild(modal);
+    modal.querySelector('#cancel_btn').addEventListener('click', () => modal.remove());
+    modal.querySelector('#pay_btn').addEventListener('click', () => {
+      // simulate payment success
+      const ticketId = uid('TICKET');
+      DB.withState(state => {
+        // reduce capacity if applicable
+        const evt = state.events.find(x => x.id === ev.id);
+        const tierObj = evt.tiers.find(tt => tt.name === tier.name);
+        if (tierObj.capacity != null) tierObj.capacity = Math.max(0, tierObj.capacity - qty);
+        state.purchases.push({
+          id: uid('p'),
+          eventId: ev.id,
+          userId: currentUser.id,
+          tierName: tier.name,
+          qty, total, ticketId, createdAt: new Date().toISOString()
+        });
+      });
+      modal.remove();
+      alert('Payment successful — generating ticket');
+      renderTicketView(ticketId);
+    });
+  }
+
+  /* ========== Ticket View & Download ========= */
+  function renderTicketView(ticketId) {
+    const state = DB.load();
+    const purchase = state.purchases.find(p => p.ticketId === ticketId);
+    if (!purchase) {
+      // maybe purchaseId isn't stored — show latest purchase for user
+      const latest = state.purchases.filter(p => p.userId === currentUser.id).slice(-1)[0];
+      if (!latest) return renderEventList();
+      return renderTicketView(latest.ticketId);
+    }
+    const ev = state.events.find(e => e.id === purchase.eventId);
+    clear(root);
+    const card = el(`<div class="card p-6 max-w-3xl mx-auto"></div>`);
+    card.innerHTML = `
+    <h2 class="text-xl font-semibold mb-2">Your Ticket</h2>
+    <div class="small text-gray-600 mb-4">Show this ticket at entry. You can download it as an image.</div>
+    <div id="ticketWrap" class="mb-4"></div>
+    <div class="flex gap-2">
+      <button id="downloadTicket" class="px-3 py-2 bg-orange-600 text-white rounded">Download Ticket Image</button>
+      <button id="backHome" class="px-3 py-2 border rounded">Back to Events</button>
+    </div>
+  `;
+    root.appendChild(card);
+
+    // Render ticket into a canvas
+    const ticketWrap = card.querySelector('#ticketWrap');
+    const canvas = document.createElement('canvas');
+    canvas.width = 1000; canvas.height = 520;
+    canvas.className = 'ticket-canvas';
+    ticketWrap.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+
+    // draw background
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#ffedd5';
+    ctx.fillRect(0,0,canvas.width,120);
+    ctx.fillStyle = '#111827';
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillText(ev.title, 24, 64);
+    ctx.font = '14px sans-serif';
+    ctx.fillStyle = '#374151';
+    ctx.fillText(ev.venue + ' • ' + formatDateISO(ev.dateISO), 24, 94);
+
+    // ticket details
+    ctx.fillStyle = '#111827';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText('Ticket', 24, 160);
+    ctx.font = '16px sans-serif';
+    ctx.fillText(`${purchase.tierName} • Qty: ${purchase.qty}`, 24, 192);
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '14px sans-serif';
+    ctx.fillText('Ticket ID: ' + purchase.ticketId, 24, 220);
+    ctx.fillText('Purchased by: ' + (state.users.find(u=>u.id===purchase.userId)||{name:'User'}).name, 24, 244);
+
+    // draw simple QR placeholder (we'll draw a simple code)
+    const qx = 740, qy = 160, qs = 220;
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(qx, qy, qs, qs);
+    // carve small white squares to fake QR style
+    ctx.fillStyle = '#fff';
+    for (let i=0;i<12;i++){
+      for (let j=0;j<12;j++){
+        if (Math.random() > 0.7) ctx.fillRect(qx+8*i, qy+8*j, 6,6);
+      }
+    }
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('Scan at gate', qx+8, qy+qs+20);
+
+    // if event image exists, draw thumbnail
+    if (ev.imageDataUrl) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, canvas.width-240-24, 24, 240, 80);
+      };
+      img.src = ev.imageDataUrl;
+    }
+
+    // Buttons
+    card.querySelector('#downloadTicket').addEventListener('click', () => {
+      const data = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = data;
+      a.download = `${ev.title.replace(/\s+/g,'_')}_${purchase.ticketId}.png`;
+      a.click();
+    });
+    card.querySelector('#backHome').addEventListener('click', () => renderEventList());
+  }
+
+  /* ========== Organizer Dashboard (create events) ========== */
+  function renderDashboard() {
+    if (!currentUser) return renderAuth();
+    if (currentUser.role !== 'organizer') {
+      // show a simplified dashboard for users: show purchases
+      renderUserDashboard();
+      return;
+    }
+    clear(root);
+    const page = el(`<div class="grid gap-4 lg:grid-cols-3"></div>`);
+    const createCard = el(`<div class="card p-6 lg:col-span-2">
+    <h2 class="font-semibold mb-3">Create Event</h2>
+    <input id="ev_title" placeholder="Event title" class="w-full border rounded p-2 mb-2"/>
+    <input id="ev_date" type="datetime-local" class="w-full border rounded p-2 mb-2"/>
+    <input id="ev_venue" placeholder="Venue" class="w-full border rounded p-2 mb-2"/>
+    <textarea id="ev_desc" placeholder="Description" class="w-full border rounded p-2 mb-2"></textarea>
+    <label class="small mb-2">Event image</label>
+    <input id="ev_image" type="file" accept="image/*" class="mb-2"/>
+    <div id="ev_preview" class="mb-2 small text-gray-600"></div>
+    <h3 class="font-semibold mb-2">Ticket tiers (add at least one)</h3>
+    <div id="tiersWrap" class="space-y-2 mb-2"></div>
+    <button id="addTierBtn" class="px-3 py-1 border rounded small">Add Tier</button>
+    <div class="mt-4">
+      <button id="createEventBtn" class="px-4 py-2 bg-orange-600 text-white rounded">Create Event</button>
+    </div>
+    <div id="createMsg" class="small text-red-500 mt-2"></div>
+  </div>`);
+
+    // right column: list of organizer's events
+    const listCard = el(`<div class="card p-6">
+    <h3 class="font-semibold mb-3">Your Events</h3>
+    <div id="myEventsList"></div>
+  </div>`);
+
+    page.appendChild(createCard);
+    page.appendChild(listCard);
+    root.appendChild(page);
+
+    const ev_image = createCard.querySelector('#ev_image');
+    const ev_preview = createCard.querySelector('#ev_preview');
+    let imageData = null;
+    ev_image.addEventListener('change', (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      const r = new FileReader();
+      r.onload = () => { imageData = r.result; ev_preview.innerHTML = `<img src="${imageData}" style="max-width:100%;border-radius:6px"/>`; };
+      r.readAsDataURL(f);
+    });
+
+    // Tier logic
+    const tiersWrap = createCard.querySelector('#tiersWrap');
+    function addTierRow(data={name:'Regular', price:50, capacity:100}) {
+      const row = el(`<div class="p-2 border rounded flex gap-2 items-center">
+      <input class="tierName border rounded p-1" value="${data.name}"/>
+      <input class="tierPrice border rounded p-1 w-24" type="number" value="${data.price}"/>
+      <input class="tierCapacity border rounded p-1 w-24" type="number" value="${data.capacity}"/>
+      <button class="removeTier px-2 py-1 border rounded small">Remove</button>
+    </div>`);
+      row.querySelector('.removeTier').addEventListener('click', ()=>{ row.remove(); });
+      tiersWrap.appendChild(row);
+    }
+    addTierRow(); // default
+    createCard.querySelector('#addTierBtn').addEventListener('click', ()=> addTierRow());
+
+    // create event
+    createCard.querySelector('#createEventBtn').addEventListener('click', () => {
+      const title = createCard.querySelector('#ev_title').value.trim();
+      const dateISO = createCard.querySelector('#ev_date').value;
+      const venue = createCard.querySelector('#ev_venue').value.trim();
+      const desc = createCard.querySelector('#ev_desc').value.trim();
+      const msg = createCard.querySelector('#createMsg');
+      if (!title || !dateISO || !venue) return msg.textContent = 'Title, date and venue required';
+      const tiersEls = Array.from(tiersWrap.querySelectorAll('div'));
+      const tiers = tiersEls.map(r => ({
+        name: r.querySelector('.tierName').value.trim() || 'Regular',
+        price: Number(r.querySelector('.tierPrice').value) || 0,
+        capacity: r.querySelector('.tierCapacity').value ? Number(r.querySelector('.tierCapacity').value) : null
+      })).filter(t=>t.price>0);
+      if (tiers.length===0) return msg.textContent = 'Add at least one ticket tier with a price';
+      DB.withState(state => {
+        const ev = {
+          id: uid('ev'),
+          organizerId: currentUser.id,
+          title, desc, dateISO, venue,
+          imageDataUrl: imageData,
+          tiers, createdAt: new Date().toISOString()
+        };
+        state.events.push(ev);
+      });
+      // reset
+      createCard.querySelector('#ev_title').value = '';
+      createCard.querySelector('#ev_date').value = '';
+      createCard.querySelector('#ev_venue').value = '';
+      createCard.querySelector('#ev_desc').value = '';
+      tiersWrap.innerHTML = ''; addTierRow();
+      imageData = null; ev_preview.innerHTML = '';
+      loadMyEvents();
+      alert('Event created');
+    });
+
+    function loadMyEvents() {
+      const s = DB.load();
+      const my = s.events.filter(e => e.organizerId === currentUser.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+      const wrap = listCard.querySelector('#myEventsList');
+      wrap.innerHTML = '';
+      if (my.length===0) wrap.innerHTML = '<div class="small text-gray-500">No events yet</div>';
+      my.forEach(e => {
+        const elCard = el(`<div class="p-2 border rounded mb-2">
+        <div class="font-medium">${e.title}</div>
+        <div class="small text-gray-600">${formatDateISO(e.dateISO)}</div>
+        <div class="mt-2 flex gap-2">
+          <button class="px-2 py-1 border rounded viewBtn small">View</button>
+          <button class="px-2 py-1 border rounded editBtn small">Edit</button>
+        </div>
+      </div>`);
+        elCard.querySelector('.viewBtn').addEventListener('click', ()=> renderEventDetail(e.id));
+        elCard.querySelector('.editBtn').addEventListener('click', ()=> renderEditEvent(e.id));
+        wrap.appendChild(elCard);
+      });
+    }
+    loadMyEvents();
+
+    renderHeader();
+  }
+
+  /* ========== Edit Event (minimal) ========== */
+  function renderEditEvent(eventId) {
+    const s = DB.load();
+    const ev = s.events.find(x=>x.id===eventId);
+    if (!ev) return renderDashboard();
+    clear(root);
+    const card = el(`<div class="card p-6 max-w-3xl mx-auto"></div>`);
+    card.innerHTML = `
+    <h2 class="font-semibold mb-3">Edit Event</h2>
+    <input id="e_title" class="w-full border rounded p-2 mb-2" value="${ev.title}"/>
+    <input id="e_date" type="datetime-local" class="w-full border rounded p-2 mb-2" value="${ev.dateISO}"/>
+    <input id="e_venue" class="w-full border rounded p-2 mb-2" value="${ev.venue}"/>
+    <textarea id="e_desc" class="w-full border rounded p-2 mb-2">${ev.desc||''}</textarea>
+    <div id="tiersWrap"></div>
+    <div class="mt-4 flex gap-2">
+      <button id="saveBtn" class="px-3 py-1 bg-green-600 text-white rounded">Save</button>
+      <button id="cancelBtn" class="px-3 py-1 border rounded">Cancel</button>
+    </div>
+  `;
+    root.appendChild(card);
+    const tiersWrap = card.querySelector('#tiersWrap');
+    ev.tiers.forEach(t => {
+      const row = el(`<div class="p-2 border rounded mb-2 flex gap-2 items-center">
+      <input class="tName border rounded p-1" value="${t.name}"/>
+      <input class="tPrice border rounded p-1 w-24" type="number" value="${t.price}"/>
+      <input class="tCap border rounded p-1 w-24" type="number" value="${t.capacity!=null? t.capacity : ''}"/>
+      <button class="remove small px-2 py-1 border rounded">Remove</button>
+    </div>`);
+      row.querySelector('.remove').addEventListener('click', ()=> row.remove());
+      tiersWrap.appendChild(row);
+    });
+    card.querySelector('#cancelBtn').addEventListener('click', ()=> renderDashboard());
+    card.querySelector('#saveBtn').addEventListener('click', ()=>{
+      const newTitle = card.querySelector('#e_title').value.trim();
+      const newDate = card.querySelector('#e_date').value;
+      const newVenue = card.querySelector('#e_venue').value.trim();
+      const newDesc = card.querySelector('#e_desc').value.trim();
+      const tierEls = Array.from(tiersWrap.querySelectorAll('div'));
+      const newTiers = tierEls.map(r=>({
+        name: r.querySelector('.tName').value.trim(),
+        price: Number(r.querySelector('.tPrice').value)||0,
+        capacity: r.querySelector('.tCap').value ? Number(r.querySelector('.tCap').value) : null
+      }));
+      DB.withState(state => {
+        const evt = state.events.find(x=>x.id===eventId);
+        evt.title = newTitle; evt.dateISO = newDate; evt.venue = newVenue; evt.desc = newDesc; evt.tiers = newTiers;
+      });
+      alert('Saved');
+      renderDashboard();
+    });
+  }
+
+  /* ========== Simple user dashboard (purchases) ========== */
+  function renderUserDashboard() {
+    clear(root);
+    const s = DB.load();
+    const purchases = s.purchases.filter(p=>p.userId === currentUser.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    const wrap = el('<div class="card p-6"><h2 class="font-semibold mb-3">Your Purchases</h2></div>');
+    if (purchases.length===0) {
+      wrap.appendChild(el('<div class="small text-gray-500">No purchases yet</div>'));
+    } else {
+      purchases.forEach(p => {
+        const ev = s.events.find(e=>e.id===p.eventId) || {};
+        const item = el(`<div class="p-3 border rounded mb-2">
+        <div class="font-medium">${ev.title || 'Event deleted'}</div>
+        <div class="small text-gray-600">${p.tierName} • ${p.qty} • ${money(p.total)}</div>
+        <div class="mt-2 flex gap-2">
+          <button class="px-2 py-1 border rounded viewTicketBtn small">View ticket</button>
+        </div>
+      </div>`);
+        item.querySelector('.viewTicketBtn').addEventListener('click', ()=> renderTicketView(p.ticketId));
+        wrap.appendChild(item);
+      });
+    }
+    root.appendChild(wrap);
+    renderHeader();
+  }
+
+  /* ========== App entry & navigation ========= */
+  function renderAll() {
+    renderHeader();
+    // Default view: event list
+    renderEventList();
+  }
+  renderAll();
+
+</script>
+</body>
+</html>

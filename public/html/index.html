@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glycr - Event Ticketing Platform</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<!-- Navigation -->
+<nav class="navbar glass">
+  <div class="nav-container">
+    <div class="logo-section">
+      <h1 class="logo">Glycr</h1>
+    </div>
+    <ul class="nav-menu" id="navMenu" role="menubar" aria-hidden="true">
+      <li><a href="#" id="home-link" class="nav-link active">Events</a></li>
+      <li><a href="#" id="profile-link" class="nav-link" style="display:none;">Profile</a></li>
+      <li><a href="#" id="dashboard-link" class="nav-link" style="display:none;">Dashboard</a></li>
+      <li><a href="#" id="analytics-link" class="nav-link" style="display:none;">Analytics</a></li>
+    </ul>
+    <div class="nav-actions">
+      <button class="btn-ghost" id="login-link">Sign In</button>
+      <button class="btn-primary" id="logout-link" style="display:none;">Logout</button>
+    </div>
+    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation menu" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- Hero Section -->
+<section id="hero" class="hero">
+  <div class="hero-content">
+    <h1 class="hero-title">Discover Amazing Events</h1>
+    <p class="hero-subtitle">Digital tickets. Instant payouts.</p>
+    <div class="hero-search">
+      <input type="text" id="search-input" placeholder="Search events, artists, venues..." class="search-input">
+      <button class="btn-primary">Search</button>
+    </div>
+  </div>
+</section>
+
+<!-- Filters -->
+<section class="filters-section">
+  <div class="container">
+    <div class="filters">
+      <select id="category-filter" class="filter-select">
+        <option value="">All Categories</option>
+        <option value="music">🎵 Music</option>
+        <option value="food">🍽️ Food & Drink</option>
+        <option value="arts">🎭 Arts & Theater</option>
+        <option value="sports">⚽ Sports & Fitness</option>
+        <option value="business">💼 Business & Networking</option>
+        <option value="nightlife">🌃 Nightlife & Parties</option>
+        <option value="family">👨‍👩‍👧‍👦 Family & Kids</option>
+        <option value="workshops">🛠️ Workshops & Classes</option>
+        <option value="community">🎉 Community & Festivals</option>
+        <option value="free">🆓 Free Events</option>
+      </select>
+      <select id="location-filter" class="filter-select">
+        <option value="">All Locations</option>
+        <optgroup label="Accra & Greater Accra Region">
+          <option value="accra-central">Accra Central (CBD)</option>
+          <option value="osu">Osu</option>
+          <option value="east-legon">East Legon</option>
+          <option value="airport-residential-area">Airport Residential Area</option>
+          <option value="west-legon">West Legon</option>
+          <option value="spintex">Spintex</option>
+          <option value="labone">Labone</option>
+          <option value="cantonments">Cantonments</option>
+          <option value="dansoman">Dansoman</option>
+          <option value="tema">Tema</option>
+          <option value="madina">Madina</option>
+          <option value="adenta">Adenta</option>
+          <option value="ashaiman">Ashaiman</option>
+          <option value="tesano">Tesano</option>
+          <option value="lapaz">Lapaz</option>
+          <option value="circle">Circle</option>
+          <option value="achimota">Achimota</option>
+          <option value="kasoa">Kasoa</option>
+          <option value="dzorwulu">Dzorwulu</option>
+          <option value="haatso">Haatso</option>
+          <option value="taifa">Taifa</option>
+          <option value="sakumono">Sakumono</option>
+          <option value="nungua">Nungua</option>
+          <option value="teshie">Teshie</option>
+          <option value="labadi">Labadi</option>
+          <option value="burma-camp">Burma Camp</option>
+          <option value="kaneshie">Kaneshie</option>
+          <option value="mallam">Mallam</option>
+          <option value="james-town">James Town</option>
+        </optgroup>
+        <optgroup label="Other Major Cities & Regional Capitals">
+          <option value="kumasi">Kumasi (Ashanti Region)</option>
+          <option value="takoradi">Takoradi (Western Region)</option>
+          <option value="sekondi">Sekondi (Western Region)</option>
+          <option value="cape-coast">Cape Coast (Central Region)</option>
+          <option value="tamale">Tamale (Northern Region)</option>
+          <option value="sunyani">Sunyani (Bono Region)</option>
+          <option value="ho">Ho (Volta Region)</option>
+          <option value="wa">Wa (Upper West Region)</option>
+          <option value="koforidua">Koforidua (Eastern Region)</option>
+          <option value="bolgatanga">Bolgatanga (Upper East Region)</option>
+          <option value="techiman">Techiman (Bono East Region)</option>
+          <option value="goaso">Goaso (Ahafo Region)</option>
+          <option value="nkawkaw">Nkawkaw (Eastern Region)</option>
+          <option value="obuasi">Obuasi (Ashanti Region)</option>
+          <option value="tarkwa">Tarkwa (Western Region)</option>
+          <option value="elmina">Elmina (Central Region)</option>
+          <option value="winneba">Winneba (Central Region)</option>
+          <option value="aflao">Aflao (Volta Region)</option>
+          <option value="hohoe">Hohoe (Volta Region)</option>
+        </optgroup>
+        <option value="online-events">Online Events</option>
+      </select>
+      <button class="filter-btn" id="clearFilters">Clear Filters</button>
+    </div>
+  </div>
+</section>
+
+<!-- Events Grid -->
+<section id="home" class="section">
+  <div class="container">
+    <div class="section-header">
+      <h2>Upcoming Events</h2>
+      <button class="btn-ghost" id="create-event-btn-hero" style="display:none;">+ Create Event</button>
+    </div>
+    <div id="events-grid" class="events-grid">
+      <!-- Events will be loaded here -->
+    </div>
+    <div id="loading" class="loading" style="display:none;">
+      <div class="spinner"></div>
+      <p>Loading events...</p>
+    </div>
+  </div>
+</section>
+
+<!-- User Profile -->
+<section id="profile" class="section" style="display:none;">
+  <div class="container">
+    <div class="section-header">
+      <h2>User Profile</h2>
+    </div>
+    <div class="profile-content">
+      <div class="profile-info glass">
+        <h3 id="profile-name">Profile</h3>
+        <p id="profile-email"></p>
+        <p id="profile-phone"></p>
+        <button class="btn-primary" id="edit-profile-btn">Edit Profile</button>
+      </div>
+      <div class="purchase-history">
+        <h3>Ticket Purchase History</h3>
+        <div id="purchase-history-list"></div>
+      </div>
+      <div class="favorite-events">
+        <h3>Favorite Events</h3>
+        <div id="favorite-events-list" class="events-grid"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Dashboard -->
+<section id="dashboard" class="section" style="display:none;">
+  <div class="container">
+    <div class="dashboard-header">
+      <h2>Organizer Dashboard</h2>
+      <button class="btn-primary" id="create-event-btn">+ Create Event</button>
+    </div>
+
+    <div class="stats-grid" id="quick-stats">
+      <div class="stat-card glass">
+        <div class="stat-icon">💰</div>
+        <div class="stat-content">
+          <div class="stat-value"><span id="total-revenue">0</span></div>
+          <div class="stat-label">Total Revenue</div>
+        </div>
+      </div>
+      <div class="stat-card glass">
+        <div class="stat-icon">🎟️</div>
+        <div class="stat-content">
+          <div class="stat-value"><span id="total-sold">0</span></div>
+          <div class="stat-label">Tickets Sold</div>
+        </div>
+      </div>
+      <div class="stat-card glass">
+        <div class="stat-icon">📅</div>
+        <div class="stat-content">
+          <div class="stat-value"><span id="events-live">0</span></div>
+          <div class="stat-label">Live Events</div>
+        </div>
+      </div>
+      <div class="stat-card glass">
+        <div class="stat-icon">💳</div>
+        <div class="stat-content">
+          <div class="stat-value"><span id="pending-payouts">0</span></div>
+          <div class="stat-label">Pending Payouts</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="payout-section">
+      <h3>Payouts</h3>
+      <button class="btn-primary" id="request-payout-btn">Request Payout</button>
+      <div id="payout-history" class="payout-history-list"></div>
+    </div>
+
+    <div class="my-events-section">
+      <h3>My Events</h3>
+      <select id="event-date-filter" class="filter-select">
+        <option value="upcoming">Upcoming Events</option>
+        <option value="past">Past Events</option>
+        <option value="all">All Events</option>
+      </select>
+      <div id="my-events" class="events-grid"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Analytics -->
+<section id="insights" class="section" style="display:none;">
+  <div class="container">
+    <h2>AI-Powered Insights</h2>
+    <div class="analytics-grid">
+      <div class="analytics-card glass">
+        <h3>Sales Forecast</h3>
+        <div id="ai-predictions"></div>
+      </div>
+      <div class="analytics-card glass">
+        <h3>Sales Trend</h3>
+        <canvas id="sales-chart"></canvas>
+      </div>
+    </div>
+    <button class="btn-primary" id="generate-promo">Generate AI Promo</button>
+  </div>
+</section>
+
+<!-- Event Detail Modal -->
+<div id="event-modal" class="modal">
+  <div class="modal-overlay"></div>
+  <div class="modal-content large" role="dialog" aria-modal="true" aria-labelledby="event-detail-h2">
+    <button class="modal-close" aria-label="Close event modal">&times;</button>
+    <div id="event-detail" class="event-detail">
+      <h2 id="event-detail-h2"></h2>
+    </div>
+    <div id="ticket-benefits" class="ticket-options"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="share-btn">Share</button>
+      <button class="btn-primary" id="buy-ticket-btn">Buy Tickets</button>
+    </div>
+  </div>
+</div>
+
+<!-- Purchase Modal -->
+<div id="purchase-modal" class="modal">
+  <div class="modal-overlay"></div>
+  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="purchase-title">
+    <button class="modal-close" aria-label="Close purchase modal">&times;</button>
+    <h3 id="purchase-title">Select Ticket</h3>
+    <div id="ticket-types" class="ticket-selection"></div>
+    <div id="quantity-section" class="form-grid" style="display:none; margin: 1rem 0;">
+      <label for="ticket-quantity">Quantity:</label>
+      <input type="number" id="ticket-quantity" min="1" value="1" class="input">
+      <div id="discount-info" style="color: var(--success); font-size: 0.9rem;"></div>
+    </div>
+    <div id="group-booking-section" class="form-grid" style="display:none; margin: 1rem 0;">
+      <label for="company-name">Company Name:</label>
+      <input type="text" id="company-name" placeholder="Company/Organization Name" class="input">
+      <label for="billing-address">Billing Address:</label>
+      <input type="text" id="billing-address" placeholder="Billing Address" class="input">
+      <label for="po-number">PO Number (optional):</label>
+      <input type="text" id="po-number" placeholder="Purchase Order Number" class="input">
+    </div>
+    <div id="payment-section" class="payment-section" style="display:none;">
+      <h4>Payment Method</h4>
+      <div class="payment-methods">
+        <button class="payment-method-btn active" data-method="mtn-momo">
+          <span>📱</span>
+          <span>MTN MoMo</span>
+        </button>
+        <button class="payment-method-btn" data-method="vodafone-cash">
+          <span>📱</span>
+          <span>Vodafone Cash</span>
+        </button>
+        <button class="payment-method-btn" data-method="airteltigo-money">
+          <span>📱</span>
+          <span>AirtelTigo Money</span>
+        </button>
+        <button class="payment-method-btn" data-method="stripe">
+          <span>💳</span>
+          <span>Card</span>
+        </button>
+        <button class="payment-method-btn" data-method="paypal">
+          <span>🅿️</span>
+          <span>PayPal</span>
+        </button>
+        <button class="payment-method-btn" data-method="crypto">
+          <span>₿</span>
+          <span>Crypto</span>
+        </button>
+      </div>
+      <input type="email" id="payer-email" placeholder="Email for receipt" class="input" pattern="[^@]+@[^@]+\.[^@]+" required>
+      <input type="tel" id="payer-phone" placeholder="Phone number (for SMS notifications & Mobile Money)" class="input" pattern="^\+233\d{9}$" required>
+      <div id="card-element" class="card-element" style="display:none;"></div>
+      <label class="checkbox-label">
+        <input type="checkbox" id="set-reminder">
+        <span>Set event reminder (SMS/Email)</span>
+      </label>
+      <button class="btn-primary btn-block" id="pay-btn">Complete Purchase</button>
+      <div id="payment-status" class="payment-status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Waitlist Modal -->
+<div id="waitlist-modal" class="modal">
+  <div class="modal-overlay"></div>
+  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="waitlist-title">
+    <button class="modal-close" aria-label="Close waitlist modal">&times;</button>
+    <h3 id="waitlist-title">Join Waitlist</h3>
+    <form id="waitlist-form" class="form">
+      <input type="text" id="waitlist-name" placeholder="Full Name" class="input" required>
+      <input type="email" id="waitlist-email" placeholder="Email" class="input" pattern="[^@]+@[^@]+\.[^@]+" required>
+      <input type="tel" id="waitlist-phone" placeholder="Phone Number" class="input" pattern="^\+233\d{9}$" required>
+      <button type="submit" class="btn-primary btn-block" id="join-waitlist-btn">Join Waitlist</button>
+    </form>
+    <div id="waitlist-status" class="payment-status"></div>
+  </div>
+</div>
+
+<!-- Auth Modal -->
+<div id="auth-modal" class="modal">
+  <div class="modal-overlay"></div>
+  <div class="modal-content small" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <button class="modal-close" aria-label="Close auth modal">&times;</button>
+    <h3 id="auth-title">Sign In</h3>
+    <form id="auth-form" class="form">
+      <input type="email" id="email" placeholder="Email" class="input" pattern="[^@]+@[^@]+\.[^@]+" required>
+      <input type="password" id="password" placeholder="Password" class="input" required>
+      <input type="tel" id="phone" placeholder="Phone Number" class="input" pattern="^\+233\d{9}$" style="display: none;" required>
+      <label class="checkbox-label">
+        <input type="checkbox" id="is-organizer">
+        <span>I'm an event organizer</span>
+      </label>
+      <button type="submit" class="btn-primary btn-block" id="auth-btn">Sign In</button>
+    </form>
+    <p class="auth-toggle" id="toggle-auth">
+      Don't have an account? <a href="#">Create one</a>
+    </p>
+  </div>
+</div>
+
+<!-- Profile Edit Modal -->
+<div id="profile-edit-modal" class="modal">
+  <div class="modal-overlay"></div>
+  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="profile-edit-title">
+    <button class="modal-close" aria-label="Close profile edit modal">&times;</button>
+    <h3 id="profile-edit-title">Edit Profile</h3>
+    <form id="profile-form" class="form">
+      <input type="text" id="profile-name-input" placeholder="Full Name" class="input" required>
+      <input type="email" id="profile-email-input" placeholder="Email" class="input" pattern="[^@]+@[^@]+\.[^@]+" required>
+      <input type="tel" id="profile-phone-input" placeholder="Phone Number" class="input" pattern="^\+233\d{9}$" required>
+      <button type="submit" class="btn-primary btn-block">Save Changes</button>
+    </form>
+  </div>
+</div>
+
+<!-- Event Form Modal -->
+<div id="event-form-modal" class="modal">
+  <div class="modal-overlay"></div>
+  <div class="modal-content large" role="dialog" aria-modal="true" aria-labelledby="form-title">
+    <button class="modal-close" aria-label="Close event form modal">&times;</button>
+    <h3 id="form-title">Create Event</h3>
+    <form id="event-form" class="form">
+      <div class="form-grid">
+        <input type="text" id="event-title" placeholder="Event Title" class="input" required>
+        <select id="event-category" class="input" required>
+          <option value="">Select Category</option>
+          <option value="music">Music</option>
+          <option value="food">Food & Drink</option>
+          <option value="arts">Arts & Theater</option>
+          <option value="sports">Sports & Fitness</option>
+          <option value="business">Business & Networking</option>
+          <option value="nightlife">Nightlife & Parties</option>
+          <option value="family">Family & Kids</option>
+          <option value="workshops">Workshops & Classes</option>
+          <option value="community">Community & Festivals</option>
+          <option value="free">Free Events</option>
+        </select>
+      </div>
+      <textarea id="event-desc" placeholder="Event Description" class="input" rows="4" required></textarea>
+      <div class="form-grid">
+        <input type="datetime-local" id="event-date" class="input" required>
+        <input type="text" id="event-venue" placeholder="Venue Name" class="input" required>
+      </div>
+      <div class="form-grid">
+        <input type="text" id="event-location" placeholder="City/Location" class="input">
+        <select id="event-currency" class="input" required>
+          <option value="USD">$ USD</option>
+          <option value="EUR">€ EUR</option>
+          <option value="GBP">£ GBP</option>
+          <option value="CAD">CA$ CAD</option>
+          <option value="GHC">₵ GHC</option>
+        </select>
+      </div>
+      <div class="form-grid">
+        <input type="email" id="organizer-email" placeholder="Organizer Email" class="input" pattern="[^@]+@[^@]+\.[^@]+" required>
+        <input type="tel" id="organizer-phone" placeholder="Organizer Phone" class="input" pattern="^\+233\d{9}$" required>
+      </div>
+      <div class="file-upload">
+        <label for="event-image" class="file-label">Upload Event Image</label>
+        <input type="file" id="event-image" accept="image/*">
+      </div>
+
+      <h4>Ticket Types</h4>
+      <div id="ticket-types-form" class="ticket-types-form"></div>
+      <button type="button" class="btn-ghost" id="add-ticket-type">+ Add Ticket Type</button>
+
+      <button type="submit" class="btn-primary btn-block">Publish Event</button>
+    </form>
+  </div>
+</div>
+
+<!-- Ticket Modal -->
+<div id="ticket-modal" class="modal">
+  <div class="modal-overlay"></div>
+  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="ticket-title">
+    <button class="modal-close" aria-label="Close ticket modal">&times;</button>
+    <div class="ticket-display">
+      <h3 id="ticket-title">🎟️ Your Ticket</h3>
+      <div id="ticket-canvas" class="ticket-canvas"></div>
+      <p id="ticket-id" class="ticket-id"></p>
+      <button class="btn-primary btn-block" id="validate-ticket">Validate at Door</button>
+    </div>
+  </div>
+</div>
+
+<!-- Waitlist View Modal -->
+<div id="waitlist-view-modal" class="modal">
+  <div class="modal-overlay"></div>
+  <div class="modal-content large" role="dialog" aria-modal="true" aria-labelledby="waitlist-view-title">
+    <button class="modal-close" aria-label="Close waitlist view modal">&times;</button>
+    <h3 id="waitlist-view-title">Waitlist Entries</h3>
+    <div id="waitlist-entries"></div>
+    <div class="modal-actions">
+      <button class="btn-primary" id="notify-waitlist-btn">Notify Waitlist</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cancel Event Modal -->
+<div id="cancel-event-modal" class="modal">
+  <div class="modal-overlay"></div>
+  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="cancel-title">
+    <button class="modal-close" aria-label="Close cancel modal">&times;</button>
+    <h3 id="cancel-title">Cancel Event</h3>
+    <p id="cancel-reason"></p>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="confirm-cancel">Confirm Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Payout Modal -->
+<div id="payout-modal" class="modal">
+  <div class="modal-overlay"></div>
+  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="payout-title">
+    <button class="modal-close" aria-label="Close payout modal">&times;</button>
+    <h3 id="payout-title">Request Payout</h3>
+    <form id="payout-form" class="form">
+      <div class="form-grid">
+        <input type="number" id="payout-amount" placeholder="Amount to Payout" min="10" class="input" required>
+        <select id="payout-method" class="input" required>
+          <option value="">Select Method</option>
+          <option value="bank">Bank Transfer</option>
+          <option value="momo">Mobile Money</option>
+          <option value="paypal">PayPal</option>
+        </select>
+      </div>
+      <div id="bank-details" class="form-grid" style="display:none;">
+        <input type="text" id="bank-name" placeholder="Bank Name" class="input">
+        <input type="text" id="account-number" placeholder="Account Number" class="input">
+        <input type="text" id="account-name" placeholder="Account Name" class="input">
+      </div>
+      <div id="momo-details" style="display:none;">
+        <input type="tel" id="momo-number" placeholder="Mobile Money Number" class="input" pattern="^\+233\d{9}$">
+      </div>
+      <input type="email" id="payout-email" placeholder="Email for Confirmation" class="input" pattern="[^@]+@[^@]+\.[^@]+" required>
+      <textarea id="payout-notes" placeholder="Additional Notes (optional)" class="input" rows="2"></textarea>
+      <button type="submit" class="btn-primary btn-block" id="submit-payout">Request Payout</button>
+    </form>
+    <div id="payout-status" class="payment-status"></div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+</body>
+</html>
