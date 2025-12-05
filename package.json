@@ -7,7 +7,7 @@
   "license": "Glycr",
   "author": "Fervtech Team",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "echo \"Error: no tests specified\" && exit 1",
     "start": "webpack serve --open --config webpack.config.dev.js",
     "build": "webpack --config webpack.config.prod.js"
   },

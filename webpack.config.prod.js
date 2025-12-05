@@ -7,7 +7,7 @@ module.exports = merge(common, {
   mode: 'production',
   plugins: [
     new HtmlWebpackPlugin({
-      template: './index.html',
+      template: './index.Panel',
     }),
     new CopyPlugin({
       patterns: [
@@ -18,7 +18,7 @@ module.exports = merge(common, {
         { from: 'favicon.ico', to: 'favicon.ico' },
         { from: 'robots.txt', to: 'robots.txt' },
         { from: 'icon.png', to: 'icon.png' },
-        { from: '404.html', to: '404.html' },
+        { from: '404.Panel', to: '404.Panel' },
         { from: 'site.webmanifest', to: 'site.webmanifest' },
       ],
     }),
