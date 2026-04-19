@@ -3,502 +3,717 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Glycr - Event Ticketing Platform</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <link rel="stylesheet" href="css/style.css">
+  <title>Glycr — Event Ticketing</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<!-- Navigation -->
-<nav class="navbar glass">
-  <div class="nav-container">
-    <div class="logo-section">
-      <h1 class="logo">Glycr</h1>
+
+<!-- ===== NAVBAR ===== -->
+<nav class="navbar">
+  <a class="nav-logo" id="logo-home">Glycr<span class="nav-logo-dot"></span></a>
+  <ul class="nav-links" id="navMenu" role="menubar">
+    <li><a href="#" id="home-link" class="active">Events</a></li>
+    <li><a href="#" id="dashboard-link" style="display:none;"><i class="fas fa-gauge-high"></i> Dashboard</a></li>
+    <li><a href="#" id="payout-link" style="display:none;"><i class="fas fa-wallet"></i> Payouts</a></li>
+    <li><a href="#" id="myevents-link" style="display:none;"><i class="fas fa-calendar-alt"></i> My Events</a></li>
+    <li><a href="#" id="report-link" style="display:none;"><i class="fas fa-chart-bar"></i> Reports</a></li>
+  </ul>
+  <div class="nav-right">
+    <button class="btn btn-ghost" id="login-link">Sign In</button>
+    <div class="profile-dropdown" id="profile-dropdown" style="display:none;">
+      <button class="profile-trigger" id="profile-trigger">
+        <div class="profile-avatar-small" id="profile-avatar-small">U</div>
+        <span class="profile-name-small" id="profile-name-small">User</span>
+        <i class="fas fa-chevron-down"></i>
+      </button>
+      <div class="dropdown-menu" id="dropdown-menu">
+        <a href="#" id="dropdown-profile-page"><i class="fas fa-user"></i> My Profile</a>
+        <a href="#" id="dropdown-edit-profile"><i class="fas fa-user-edit"></i> Edit Profile</a>
+        <a href="#" id="dropdown-settings"><i class="fas fa-cog"></i> Settings</a>
+        <a href="#" id="dropdown-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+      </div>
     </div>
-    <ul class="nav-menu" id="navMenu" role="menubar" aria-hidden="true">
-      <li><a href="#" id="home-link" class="nav-link active">Events</a></li>
-      <li><a href="#" id="profile-link" class="nav-link" style="display:none;">Profile</a></li>
-      <li><a href="#" id="dashboard-link" class="nav-link" style="display:none;">Dashboard</a></li>
-      <li><a href="#" id="analytics-link" class="nav-link" style="display:none;">Analytics</a></li>
-    </ul>
-    <div class="nav-actions">
-      <button class="btn-ghost" id="login-link">Sign In</button>
-      <button class="btn-primary" id="logout-link" style="display:none;">Logout</button>
-    </div>
-    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation menu" aria-expanded="false">
-      <span></span>
-      <span></span>
-      <span></span>
+    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
     </button>
   </div>
 </nav>
 
-<!-- Hero Section -->
-<section id="hero" class="hero">
-  <div class="hero-content">
-    <h1 class="hero-title">Discover Amazing Events</h1>
-    <p class="hero-subtitle">Digital tickets. Instant payouts.</p>
-    <div class="hero-search">
-      <input type="text" id="search-input" placeholder="Search events, artists, venues..." class="search-input">
-      <button class="btn-primary">Search</button>
+<!-- ===== HOME ===== -->
+<div id="home-section">
+  <section class="hero">
+    <div class="hero-left">
+      <div class="hero-badge">
+        <span>Ghana's premier event platform</span>
+        <span class="hero-badge-live"></span>
+      </div>
+      <h1 class="hero-title">
+        Discover<br><span class="accent">Remarkable</span><br><span class="accent-2">Events.</span>
+      </h1>
+      <p class="hero-sub">Digital tickets, instant payouts, and the pulse of Ghana's cultural scene — all in one place.</p>
+      <div class="hero-search-row">
+        <input type="text" id="search-input" placeholder="Search events, artists, venues…">
+        <button onclick="app && app.renderEvents()"><i class="fas fa-search"></i> Search</button>
+      </div>
+      <div class="hero-stats">
+        <div><div class="hero-stat-val">12k<em>+</em></div><div class="hero-stat-key"><i class="fas fa-calendar-alt"></i> Events hosted</div></div>
+        <div><div class="hero-stat-val">₵2M<em>+</em></div><div class="hero-stat-key"><i class="fas fa-money-bill-wave"></i> Paid out</div></div>
+        <div><div class="hero-stat-val">50k<em>+</em></div><div class="hero-stat-key"><i class="fas fa-ticket-alt"></i> Tickets sold</div></div>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="hero-right-inner">
+        <div class="carousel-label">Featured Tonight</div>
+        <div class="carousel-slides" id="carousel-slides"></div>
+        <div class="carousel-dots" id="carousel-dots"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="filters-bar">
+    <span class="filters-label">Filter</span>
+    <select id="category-filter" class="filter-chip">
+      <option value="">All Categories</option>
+      <option value="music">Music</option><option value="food">Food & Drink</option>
+      <option value="arts">Arts & Theater</option><option value="sports">Sports</option>
+      <option value="business">Business</option><option value="nightlife">Nightlife</option>
+      <option value="family">Family</option><option value="workshops">Workshops</option>
+      <option value="community">Community</option><option value="free">Free</option>
+    </select>
+    <select id="location-filter" class="filter-chip">
+      <option value="">All Locations</option>
+      <optgroup label="Accra">
+        <option value="osu">Osu</option><option value="east-legon">East Legon</option>
+        <option value="airport-residential-area">Airport Area</option><option value="cantonments">Cantonments</option>
+        <option value="labone">Labone</option><option value="tema">Tema</option>
+        <option value="madina">Madina</option><option value="spintex">Spintex</option>
+        <option value="accra-central">Accra Central</option><option value="west-legon">West Legon</option>
+      </optgroup>
+      <optgroup label="Other Cities">
+        <option value="kumasi">Kumasi</option><option value="takoradi">Takoradi</option>
+        <option value="cape-coast">Cape Coast</option><option value="tamale">Tamale</option>
+        <option value="ho">Ho</option><option value="sunyani">Sunyani</option>
+        <option value="koforidua">Koforidua</option>
+      </optgroup>
+      <option value="online-events">Online</option>
+    </select>
+    <button class="filter-clear" id="clearFilters">Clear all</button>
+    <button class="btn btn-primary" id="create-event-btn-hero" style="display:none; margin-left:auto; font-size:0.82rem;"><i class="fas fa-plus"></i> New Event</button>
+  </div>
+
+  <div class="events-section" id="home">
+    <div class="section-head"><h2 class="section-title">Upcoming Events</h2></div>
+    <div class="events-grid" id="events-grid">
+      <div class="loading-placeholder">
+        <div class="spinner"></div>
+        <p style="color:var(--muted); font-size:0.82rem;">Loading events…</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PROFILE ===== -->
+<section class="section" id="profile" style="padding-top:calc(64px + 2.5rem);">
+  <div class="section-head">
+    <h2 class="section-title">Profile</h2>
+    <button class="btn btn-ghost" id="edit-profile-btn" style="font-size:0.82rem;"><i class="fas fa-edit"></i> Edit Profile</button>
+  </div>
+  <div class="profile-layout">
+    <div class="profile-sidebar">
+      <div class="profile-avatar" id="profile-avatar">U</div>
+      <div class="profile-name" id="profile-name">—</div>
+      <div class="profile-detail" id="profile-email"></div>
+      <div class="profile-detail" id="profile-phone"></div>
+    </div>
+    <div class="profile-main">
+      <p class="form-label" style="margin-bottom:1rem;">Purchase History</p>
+      <div id="purchase-history-list"></div>
+      <p class="form-label" style="margin:2rem 0 1rem;">Favourites</p>
+      <div class="events-grid" id="favorite-events-list"></div>
     </div>
   </div>
 </section>
 
-<!-- Filters -->
-<section class="filters-section">
-  <div class="container">
-    <div class="filters">
-      <select id="category-filter" class="filter-select">
-        <option value="">All Categories</option>
-        <option value="music">🎵 Music</option>
-        <option value="food">🍽️ Food & Drink</option>
-        <option value="arts">🎭 Arts & Theater</option>
-        <option value="sports">⚽ Sports & Fitness</option>
-        <option value="business">💼 Business & Networking</option>
-        <option value="nightlife">🌃 Nightlife & Parties</option>
-        <option value="family">👨‍👩‍👧‍👦 Family & Kids</option>
-        <option value="workshops">🛠️ Workshops & Classes</option>
-        <option value="community">🎉 Community & Festivals</option>
-        <option value="free">🆓 Free Events</option>
+<!-- ===== DASHBOARD (Redesigned — KPI only, no payout/my-events blocks) ===== -->
+<section class="section" id="dashboard" style="padding-top:calc(64px + 2.5rem);">
+  <div class="dash-header">
+    <div>
+      <h2 class="section-title">Dashboard</h2>
+      <p class="dash-subtitle" id="dash-greeting">Good day — here's your overview</p>
+    </div>
+    <button class="btn btn-primary" id="create-event-btn"><i class="fas fa-plus"></i> New Event</button>
+  </div>
+
+  <!-- 6 KPI cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-revenue">
+      <div class="kpi-icon"><i class="fas fa-coins"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="total-revenue">—</div>
+        <div class="kpi-label">Total Revenue</div>
+      </div>
+    </div>
+    <div class="kpi-card kpi-tickets">
+      <div class="kpi-icon"><i class="fas fa-ticket-alt"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="total-sold">—</div>
+        <div class="kpi-label">Tickets Sold</div>
+      </div>
+    </div>
+    <div class="kpi-card kpi-total-events">
+      <div class="kpi-icon"><i class="fas fa-calendar-alt"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="total-events">0</div>
+        <div class="kpi-label">Total Events</div>
+      </div>
+    </div>
+    <div class="kpi-card kpi-live">
+      <div class="kpi-icon"><i class="fas fa-broadcast-tower"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="events-live">0</div>
+        <div class="kpi-label">Live Events</div>
+      </div>
+    </div>
+    <div class="kpi-card kpi-payout">
+      <div class="kpi-icon"><i class="fas fa-money-check-alt"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="pending-payouts">—</div>
+        <div class="kpi-label">Pending Payouts</div>
+      </div>
+    </div>
+    <div class="kpi-card kpi-fee">
+      <div class="kpi-icon"><i class="fas fa-percent"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-value" id="platform-fee-display">—%</div>
+        <div class="kpi-label">Platform Fee</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick nav tiles -->
+  <div class="dash-quick-row">
+    <button class="dash-quick-tile" onclick="app.showSection('payout-page')">
+      <i class="fas fa-wallet"></i>
+      <span>Payouts</span>
+      <i class="fas fa-arrow-right dash-tile-arrow"></i>
+    </button>
+    <button class="dash-quick-tile" onclick="app.showSection('myevents-page')">
+      <i class="fas fa-calendar-alt"></i>
+      <span>My Events</span>
+      <i class="fas fa-arrow-right dash-tile-arrow"></i>
+    </button>
+    <button class="dash-quick-tile" onclick="app.showSection('report-page')">
+      <i class="fas fa-chart-bar"></i>
+      <span>Reports</span>
+      <i class="fas fa-arrow-right dash-tile-arrow"></i>
+    </button>
+    <button class="dash-quick-tile" onclick="app.showEventForm()">
+      <i class="fas fa-plus-circle"></i>
+      <span>Create Event</span>
+      <i class="fas fa-arrow-right dash-tile-arrow"></i>
+    </button>
+  </div>
+
+  <!-- 7-day sales chart -->
+  <div class="dash-chart-block">
+    <div class="dash-chart-header">
+      <span><i class="fas fa-chart-line"></i> Sales Overview — Last 7 Days</span>
+    </div>
+    <canvas id="dash-sales-chart" style="max-height:200px;"></canvas>
+  </div>
+</section>
+
+<!-- ===== PAYOUT PAGE ===== -->
+<section class="section" id="payout-page" style="padding-top:calc(64px + 2.5rem);">
+  <div class="section-head">
+    <h2 class="section-title"><i class="fas fa-wallet"></i> Payout History</h2>
+    <button class="btn btn-primary" id="request-payout-page-btn"><i class="fas fa-paper-plane"></i> Request Payout</button>
+  </div>
+
+  <div class="page-filters">
+    <div class="filter-group">
+      <label class="filter-label"><i class="fas fa-calendar"></i> From</label>
+      <input type="date" id="payout-start-date" class="filter-input" onchange="app.loadPayoutPage()">
+    </div>
+    <div class="filter-group">
+      <label class="filter-label"><i class="fas fa-calendar"></i> To</label>
+      <input type="date" id="payout-end-date" class="filter-input" onchange="app.loadPayoutPage()">
+    </div>
+    <div class="filter-group">
+      <label class="filter-label"><i class="fas fa-filter"></i> Status</label>
+      <select id="payout-status-filter" class="filter-input" onchange="app.loadPayoutPage()">
+        <option value="all">All Status</option>
+        <option value="pending">Pending</option>
+        <option value="completed">Completed</option>
+        <option value="failed">Failed</option>
       </select>
-      <select id="location-filter" class="filter-select">
-        <option value="">All Locations</option>
-        <optgroup label="Accra & Greater Accra Region">
-          <option value="accra-central">Accra Central (CBD)</option>
-          <option value="osu">Osu</option>
-          <option value="east-legon">East Legon</option>
-          <option value="airport-residential-area">Airport Residential Area</option>
-          <option value="west-legon">West Legon</option>
-          <option value="spintex">Spintex</option>
-          <option value="labone">Labone</option>
-          <option value="cantonments">Cantonments</option>
-          <option value="dansoman">Dansoman</option>
-          <option value="tema">Tema</option>
-          <option value="madina">Madina</option>
-          <option value="adenta">Adenta</option>
-          <option value="ashaiman">Ashaiman</option>
-          <option value="tesano">Tesano</option>
-          <option value="lapaz">Lapaz</option>
-          <option value="circle">Circle</option>
-          <option value="achimota">Achimota</option>
-          <option value="kasoa">Kasoa</option>
-          <option value="dzorwulu">Dzorwulu</option>
-          <option value="haatso">Haatso</option>
-          <option value="taifa">Taifa</option>
-          <option value="sakumono">Sakumono</option>
-          <option value="nungua">Nungua</option>
-          <option value="teshie">Teshie</option>
-          <option value="labadi">Labadi</option>
-          <option value="burma-camp">Burma Camp</option>
-          <option value="kaneshie">Kaneshie</option>
-          <option value="mallam">Mallam</option>
-          <option value="james-town">James Town</option>
-        </optgroup>
-        <optgroup label="Other Major Cities & Regional Capitals">
-          <option value="kumasi">Kumasi (Ashanti Region)</option>
-          <option value="takoradi">Takoradi (Western Region)</option>
-          <option value="sekondi">Sekondi (Western Region)</option>
-          <option value="cape-coast">Cape Coast (Central Region)</option>
-          <option value="tamale">Tamale (Northern Region)</option>
-          <option value="sunyani">Sunyani (Bono Region)</option>
-          <option value="ho">Ho (Volta Region)</option>
-          <option value="wa">Wa (Upper West Region)</option>
-          <option value="koforidua">Koforidua (Eastern Region)</option>
-          <option value="bolgatanga">Bolgatanga (Upper East Region)</option>
-          <option value="techiman">Techiman (Bono East Region)</option>
-          <option value="goaso">Goaso (Ahafo Region)</option>
-          <option value="nkawkaw">Nkawkaw (Eastern Region)</option>
-          <option value="obuasi">Obuasi (Ashanti Region)</option>
-          <option value="tarkwa">Tarkwa (Western Region)</option>
-          <option value="elmina">Elmina (Central Region)</option>
-          <option value="winneba">Winneba (Central Region)</option>
-          <option value="aflao">Aflao (Volta Region)</option>
-          <option value="hohoe">Hohoe (Volta Region)</option>
-        </optgroup>
-        <option value="online-events">Online Events</option>
+    </div>
+    <div class="filter-actions">
+      <button class="btn btn-outline btn-sm" id="export-payouts-csv"><i class="fas fa-file-csv"></i> CSV</button>
+      <button class="btn btn-outline btn-sm" id="export-payouts-pdf"><i class="fas fa-file-pdf"></i> PDF</button>
+    </div>
+  </div>
+
+  <div class="payout-summary-row">
+    <div class="payout-summary-card">
+      <div class="payout-summary-label">Total Paid Out</div>
+      <div class="payout-summary-value" id="total-paid-out">₵0</div>
+    </div>
+    <div class="payout-summary-card">
+      <div class="payout-summary-label">Pending</div>
+      <div class="payout-summary-value pending" id="total-pending-amount">₵0</div>
+    </div>
+    <div class="payout-summary-card">
+      <div class="payout-summary-label">Total Requests</div>
+      <div class="payout-summary-value" id="total-payout-count">0</div>
+    </div>
+  </div>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+      <tr><th>Amount</th><th>Method</th><th>Status</th><th>Requested</th><th>Completed</th></tr>
+      </thead>
+      <tbody id="payout-table-body">
+      <tr><td colspan="5" class="table-empty">No payouts found</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===== MY EVENTS PAGE ===== -->
+<section class="section" id="myevents-page" style="padding-top:calc(64px + 2.5rem);">
+  <div class="section-head">
+    <h2 class="section-title"><i class="fas fa-calendar-alt"></i> My Events</h2>
+    <button class="btn btn-primary" id="create-event-page-btn"><i class="fas fa-plus"></i> New Event</button>
+  </div>
+
+  <div class="page-filters">
+    <div class="filter-group" style="flex:2;">
+      <label class="filter-label"><i class="fas fa-search"></i> Search</label>
+      <input type="text" id="myevents-search" class="filter-input" placeholder="Search by event name…" oninput="app.loadMyEventsPage()">
+    </div>
+    <div class="filter-group">
+      <label class="filter-label"><i class="fas fa-filter"></i> Status</label>
+      <select id="event-status-filter" class="filter-input" onchange="app.loadMyEventsPage()">
+        <option value="all">All</option>
+        <option value="upcoming">Upcoming</option>
+        <option value="past">Past</option>
+        <option value="draft">Draft</option>
+        <option value="cancelled">Cancelled</option>
       </select>
-      <button class="filter-btn" id="clearFilters">Clear Filters</button>
+    </div>
+    <div class="filter-group">
+      <label class="filter-label"><i class="fas fa-calendar"></i> From</label>
+      <input type="date" id="myevents-start" class="filter-input" onchange="app.loadMyEventsPage()">
+    </div>
+    <div class="filter-group">
+      <label class="filter-label"><i class="fas fa-calendar"></i> To</label>
+      <input type="date" id="myevents-end" class="filter-input" onchange="app.loadMyEventsPage()">
+    </div>
+  </div>
+
+  <div id="my-events-list"></div>
+</section>
+
+<!-- ===== REPORT PAGE ===== -->
+<section class="section" id="report-page" style="padding-top:calc(64px + 2.5rem);">
+  <div class="section-head">
+    <h2 class="section-title"><i class="fas fa-chart-bar"></i> Reports &amp; Analytics</h2>
+  </div>
+
+  <div class="report-kpi-grid">
+    <div class="report-kpi-card">
+      <div class="report-kpi-icon" style="color:var(--teal);"><i class="fas fa-calendar-alt"></i></div>
+      <div class="report-kpi-value" id="report-total-events">0</div>
+      <div class="report-kpi-label">Total Events</div>
+    </div>
+    <div class="report-kpi-card">
+      <div class="report-kpi-icon" style="color:var(--mint);"><i class="fas fa-ticket-alt"></i></div>
+      <div class="report-kpi-value" id="report-total-tickets">0</div>
+      <div class="report-kpi-label">Tickets Sold</div>
+    </div>
+    <div class="report-kpi-card">
+      <div class="report-kpi-icon" style="color:var(--gold);"><i class="fas fa-coins"></i></div>
+      <div class="report-kpi-value" id="report-total-revenue">₵0</div>
+      <div class="report-kpi-label">Gross Revenue</div>
+    </div>
+    <div class="report-kpi-card">
+      <div class="report-kpi-icon" style="color:var(--coral);"><i class="fas fa-hand-holding-usd"></i></div>
+      <div class="report-kpi-value" id="report-net-revenue">₵0</div>
+      <div class="report-kpi-label">Net Revenue</div>
+    </div>
+  </div>
+
+  <div class="report-section-card">
+    <div class="report-section-title"><i class="fas fa-sliders-h"></i> Export Data</div>
+    <div class="page-filters" style="margin-bottom:1.25rem;">
+      <div class="filter-group">
+        <label class="filter-label"><i class="fas fa-calendar"></i> From</label>
+        <input type="date" id="report-start-date" class="filter-input">
+      </div>
+      <div class="filter-group">
+        <label class="filter-label"><i class="fas fa-calendar"></i> To</label>
+        <input type="date" id="report-end-date" class="filter-input">
+      </div>
+    </div>
+    <div class="export-btn-grid">
+      <button class="export-btn export-btn-csv" id="export-events-csv"><i class="fas fa-file-csv"></i><span>Events CSV</span></button>
+      <button class="export-btn export-btn-csv" id="export-payouts-csv-report"><i class="fas fa-file-csv"></i><span>Payouts CSV</span></button>
+      <button class="export-btn export-btn-pdf" id="export-events-pdf"><i class="fas fa-file-pdf"></i><span>Events PDF</span></button>
+      <button class="export-btn export-btn-pdf" id="export-payouts-pdf"><i class="fas fa-file-pdf"></i><span>Payouts PDF</span></button>
+    </div>
+  </div>
+
+  <div class="report-charts-row">
+    <div class="report-section-card">
+      <div class="report-section-title"><i class="fas fa-chart-line"></i> Revenue Trend (7 Days)</div>
+      <canvas id="report-revenue-chart" style="max-height:200px;"></canvas>
+    </div>
+    <div class="report-section-card">
+      <div class="report-section-title"><i class="fas fa-chart-pie"></i> Tickets by Type</div>
+      <canvas id="report-ticket-chart" style="max-height:200px;"></canvas>
+    </div>
+  </div>
+
+  <div class="report-section-card">
+    <div class="report-section-title"><i class="fas fa-trophy"></i> Top Events by Revenue</div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+        <tr><th>Event</th><th>Date</th><th>Tickets Sold</th><th>Revenue</th><th>Status</th></tr>
+        </thead>
+        <tbody id="report-events-tbody">
+        <tr><td colspan="5" class="table-empty">Loading…</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </section>
 
-<!-- Events Grid -->
-<section id="home" class="section">
-  <div class="container">
-    <div class="section-header">
-      <h2>Upcoming Events</h2>
-      <button class="btn-ghost" id="create-event-btn-hero" style="display:none;">+ Create Event</button>
-    </div>
-    <div id="events-grid" class="events-grid">
-      <!-- Events will be loaded here -->
-    </div>
-    <div id="loading" class="loading" style="display:none;">
-      <div class="spinner"></div>
-      <p>Loading events...</p>
-    </div>
-  </div>
-</section>
+<!-- ===== MODALS ===== -->
 
-<!-- User Profile -->
-<section id="profile" class="section" style="display:none;">
-  <div class="container">
-    <div class="section-header">
-      <h2>User Profile</h2>
-    </div>
-    <div class="profile-content">
-      <div class="profile-info glass">
-        <h3 id="profile-name">Profile</h3>
-        <p id="profile-email"></p>
-        <p id="profile-phone"></p>
-        <button class="btn-primary" id="edit-profile-btn">Edit Profile</button>
-      </div>
-      <div class="purchase-history">
-        <h3>Ticket Purchase History</h3>
-        <div id="purchase-history-list"></div>
-      </div>
-      <div class="favorite-events">
-        <h3>Favorite Events</h3>
-        <div id="favorite-events-list" class="events-grid"></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Dashboard -->
-<section id="dashboard" class="section" style="display:none;">
-  <div class="container">
-    <div class="dashboard-header">
-      <h2>Organizer Dashboard</h2>
-      <button class="btn-primary" id="create-event-btn">+ Create Event</button>
-    </div>
-
-    <div class="stats-grid" id="quick-stats">
-      <div class="stat-card glass">
-        <div class="stat-icon">💰</div>
-        <div class="stat-content">
-          <div class="stat-value"><span id="total-revenue">0</span></div>
-          <div class="stat-label">Total Revenue</div>
-        </div>
-      </div>
-      <div class="stat-card glass">
-        <div class="stat-icon">🎟️</div>
-        <div class="stat-content">
-          <div class="stat-value"><span id="total-sold">0</span></div>
-          <div class="stat-label">Tickets Sold</div>
-        </div>
-      </div>
-      <div class="stat-card glass">
-        <div class="stat-icon">📅</div>
-        <div class="stat-content">
-          <div class="stat-value"><span id="events-live">0</span></div>
-          <div class="stat-label">Live Events</div>
-        </div>
-      </div>
-      <div class="stat-card glass">
-        <div class="stat-icon">💳</div>
-        <div class="stat-content">
-          <div class="stat-value"><span id="pending-payouts">0</span></div>
-          <div class="stat-label">Pending Payouts</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="payout-section">
-      <h3>Payouts</h3>
-      <button class="btn-primary" id="request-payout-btn">Request Payout</button>
-      <div id="payout-history" class="payout-history-list"></div>
-    </div>
-
-    <div class="my-events-section">
-      <h3>My Events</h3>
-      <select id="event-date-filter" class="filter-select">
-        <option value="upcoming">Upcoming Events</option>
-        <option value="past">Past Events</option>
-        <option value="all">All Events</option>
-      </select>
-      <div id="my-events" class="events-grid"></div>
-    </div>
-  </div>
-</section>
-
-<!-- Analytics -->
-<section id="insights" class="section" style="display:none;">
-  <div class="container">
-    <h2>AI-Powered Insights</h2>
-    <div class="analytics-grid">
-      <div class="analytics-card glass">
-        <h3>Sales Forecast</h3>
-        <div id="ai-predictions"></div>
-      </div>
-      <div class="analytics-card glass">
-        <h3>Sales Trend</h3>
-        <canvas id="sales-chart"></canvas>
-      </div>
-    </div>
-    <button class="btn-primary" id="generate-promo">Generate AI Promo</button>
-  </div>
-</section>
-
-<!-- Event Detail Modal -->
 <div id="event-modal" class="modal">
-  <div class="modal-overlay"></div>
-  <div class="modal-content large" role="dialog" aria-modal="true" aria-labelledby="event-detail-h2">
-    <button class="modal-close" aria-label="Close event modal">&times;</button>
-    <div id="event-detail" class="event-detail">
-      <h2 id="event-detail-h2"></h2>
-    </div>
-    <div id="ticket-benefits" class="ticket-options"></div>
-    <div class="modal-actions">
-      <button class="btn-ghost" id="share-btn">Share</button>
-      <button class="btn-primary" id="buy-ticket-btn">Buy Tickets</button>
+  <div class="modal-backdrop"></div>
+  <div class="modal-box wide" role="dialog" aria-modal="true">
+    <button class="modal-close" aria-label="Close">&times;</button>
+    <div id="event-detail"></div>
+    <div id="ticket-benefits"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="share-btn"><i class="fas fa-share-alt"></i> Share</button>
+      <button class="btn btn-primary" id="buy-ticket-btn" style="flex:1;"><i class="fas fa-ticket-alt"></i> Buy Tickets</button>
     </div>
   </div>
 </div>
 
-<!-- Purchase Modal -->
 <div id="purchase-modal" class="modal">
-  <div class="modal-overlay"></div>
-  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="purchase-title">
-    <button class="modal-close" aria-label="Close purchase modal">&times;</button>
-    <h3 id="purchase-title">Select Ticket</h3>
-    <div id="ticket-types" class="ticket-selection"></div>
-    <div id="quantity-section" class="form-grid" style="display:none; margin: 1rem 0;">
-      <label for="ticket-quantity">Quantity:</label>
-      <input type="number" id="ticket-quantity" min="1" value="1" class="input">
-      <div id="discount-info" style="color: var(--success); font-size: 0.9rem;"></div>
+  <div class="modal-backdrop"></div>
+  <div class="modal-box" role="dialog" aria-modal="true">
+    <div class="modal-header"><h3 class="modal-title" id="purchase-title">Select Ticket</h3><button class="modal-close" aria-label="Close">&times;</button></div>
+    <div id="ticket-types"></div>
+    <div id="quantity-section" style="display:none; margin:1rem 0;">
+      <label class="form-label">Quantity</label>
+      <input type="number" id="ticket-quantity" min="1" value="1" class="input" style="max-width:110px; margin-top:0.35rem;">
+      <div id="discount-info" style="color:var(--mint); font-size:0.78rem; margin-top:0.35rem;"></div>
     </div>
-    <div id="group-booking-section" class="form-grid" style="display:none; margin: 1rem 0;">
-      <label for="company-name">Company Name:</label>
-      <input type="text" id="company-name" placeholder="Company/Organization Name" class="input">
-      <label for="billing-address">Billing Address:</label>
-      <input type="text" id="billing-address" placeholder="Billing Address" class="input">
-      <label for="po-number">PO Number (optional):</label>
-      <input type="text" id="po-number" placeholder="Purchase Order Number" class="input">
-    </div>
-    <div id="payment-section" class="payment-section" style="display:none;">
-      <h4>Payment Method</h4>
-      <div class="payment-methods">
-        <button class="payment-method-btn active" data-method="mtn-momo">
-          <span>📱</span>
-          <span>MTN MoMo</span>
-        </button>
-        <button class="payment-method-btn" data-method="vodafone-cash">
-          <span>📱</span>
-          <span>Vodafone Cash</span>
-        </button>
-        <button class="payment-method-btn" data-method="airteltigo-money">
-          <span>📱</span>
-          <span>AirtelTigo Money</span>
-        </button>
-        <button class="payment-method-btn" data-method="stripe">
-          <span>💳</span>
-          <span>Card</span>
-        </button>
-        <button class="payment-method-btn" data-method="paypal">
-          <span>🅿️</span>
-          <span>PayPal</span>
-        </button>
-        <button class="payment-method-btn" data-method="crypto">
-          <span>₿</span>
-          <span>Crypto</span>
-        </button>
+    <div id="group-booking-section" style="display:none; margin:1rem 0;">
+      <div class="form-row">
+        <div class="form-field"><label class="form-label">Company Name</label><input type="text" id="company-name" placeholder="Organisation" class="input"></div>
+        <div class="form-field"><label class="form-label">Billing Address</label><input type="text" id="billing-address" placeholder="Address" class="input"></div>
       </div>
-      <input type="email" id="payer-email" placeholder="Email for receipt" class="input" pattern="[^@]+@[^@]+\.[^@]+" required>
-      <input type="tel" id="payer-phone" placeholder="Phone number (for SMS notifications & Mobile Money)" class="input" pattern="^\+233\d{9}$" required>
-      <div id="card-element" class="card-element" style="display:none;"></div>
-      <label class="checkbox-label">
-        <input type="checkbox" id="set-reminder">
-        <span>Set event reminder (SMS/Email)</span>
-      </label>
-      <button class="btn-primary btn-block" id="pay-btn">Complete Purchase</button>
-      <div id="payment-status" class="payment-status"></div>
+      <div class="form-field" style="margin-top:0.5rem;"><label class="form-label">PO Number (optional)</label><input type="text" id="po-number" placeholder="PO-0000" class="input"></div>
+    </div>
+    <div id="payment-section" style="display:none;">
+      <p class="form-label" style="margin-bottom:0.6rem;">Payment Method</p>
+      <div class="pmeth-grid">
+        <button class="pmeth-btn active" data-method="mtn-momo"><span class="pmeth-icon">📱</span>MTN MoMo</button>
+        <button class="pmeth-btn" data-method="vodafone-cash"><span class="pmeth-icon">📱</span>Vodafone</button>
+        <button class="pmeth-btn" data-method="airteltigo-money"><span class="pmeth-icon">📱</span>AirtelTigo</button>
+        <button class="pmeth-btn" data-method="stripe"><span class="pmeth-icon">💳</span>Card</button>
+        <button class="pmeth-btn" data-method="paypal"><span class="pmeth-icon">🅿️</span>PayPal</button>
+        <button class="pmeth-btn" data-method="crypto"><span class="pmeth-icon">₿</span>Crypto</button>
+      </div>
+      <div class="form-row" style="margin-bottom:0.75rem;">
+        <div class="form-field"><label class="form-label">Email</label><input type="email" id="payer-email" placeholder="your@email.com" class="input"></div>
+        <div class="form-field"><label class="form-label">Phone</label><input type="tel" id="payer-phone" placeholder="+233xxxxxxxxx" class="input"></div>
+      </div>
+      <div id="card-element" style="display:none; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:1rem; margin-bottom:0.75rem; font-size:0.82rem; color:var(--muted);">Stripe card element</div>
+      <label class="checkbox-row" style="margin-bottom:1rem;"><input type="checkbox" id="set-reminder"> Set reminder (SMS / Email)</label>
+      <button class="btn btn-primary btn-block" id="pay-btn">Complete Purchase</button>
+      <div id="payment-status" class="status-msg" style="display:none;"></div>
     </div>
   </div>
 </div>
 
-<!-- Waitlist Modal -->
 <div id="waitlist-modal" class="modal">
-  <div class="modal-overlay"></div>
-  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="waitlist-title">
-    <button class="modal-close" aria-label="Close waitlist modal">&times;</button>
-    <h3 id="waitlist-title">Join Waitlist</h3>
+  <div class="modal-backdrop"></div>
+  <div class="modal-box" role="dialog" aria-modal="true">
+    <div class="modal-header"><h3 class="modal-title" id="waitlist-title">Join Waitlist</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <form id="waitlist-form" class="form">
-      <input type="text" id="waitlist-name" placeholder="Full Name" class="input" required>
-      <input type="email" id="waitlist-email" placeholder="Email" class="input" pattern="[^@]+@[^@]+\.[^@]+" required>
-      <input type="tel" id="waitlist-phone" placeholder="Phone Number" class="input" pattern="^\+233\d{9}$" required>
-      <button type="submit" class="btn-primary btn-block" id="join-waitlist-btn">Join Waitlist</button>
+      <div class="form-field"><label class="form-label">Full Name</label><input type="text" id="waitlist-name" placeholder="Your name" class="input" required></div>
+      <div class="form-row">
+        <div class="form-field"><label class="form-label">Email</label><input type="email" id="waitlist-email" placeholder="your@email.com" class="input" required></div>
+        <div class="form-field"><label class="form-label">Phone (+233…)</label><input type="tel" id="waitlist-phone" placeholder="+233xxxxxxxxx" class="input" required></div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Join Waitlist</button>
     </form>
-    <div id="waitlist-status" class="payment-status"></div>
+    <div id="waitlist-status" class="status-msg" style="display:none; margin-top:0.75rem;"></div>
   </div>
 </div>
 
-<!-- Auth Modal -->
 <div id="auth-modal" class="modal">
-  <div class="modal-overlay"></div>
-  <div class="modal-content small" role="dialog" aria-modal="true" aria-labelledby="auth-title">
-    <button class="modal-close" aria-label="Close auth modal">&times;</button>
-    <h3 id="auth-title">Sign In</h3>
+  <div class="modal-backdrop"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:460px;">
+    <div class="modal-header"><h3 class="modal-title" id="auth-title">Sign In</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <form id="auth-form" class="form">
-      <input type="email" id="email" placeholder="Email" class="input" pattern="[^@]+@[^@]+\.[^@]+" required>
-      <input type="password" id="password" placeholder="Password" class="input" required>
-      <input type="tel" id="phone" placeholder="Phone Number" class="input" pattern="^\+233\d{9}$" style="display: none;" required>
-      <label class="checkbox-label">
-        <input type="checkbox" id="is-organizer">
-        <span>I'm an event organizer</span>
-      </label>
-      <button type="submit" class="btn-primary btn-block" id="auth-btn">Sign In</button>
+      <div class="form-field"><label class="form-label">Email</label><input type="email" id="email" placeholder="your@email.com" class="input" required></div>
+      <div class="form-field">
+        <label class="form-label">Password</label>
+        <input type="password" id="password" placeholder="••••••••" class="input" required>
+        <div class="strength-track"><div class="strength-fill" id="strength-bar"></div></div>
+        <div class="strength-hint" id="strength-text"></div>
+      </div>
+      <div id="register-fields" style="display:none;">
+        <div class="form-row" style="margin-top:0.25rem;">
+          <div class="form-field"><label class="form-label">First Name</label><input type="text" id="first-name" placeholder="Kwame" class="input"></div>
+          <div class="form-field"><label class="form-label">Last Name</label><input type="text" id="last-name" placeholder="Mensah" class="input"></div>
+        </div>
+        <div class="form-field" style="margin-top:0.5rem;"><label class="form-label">Username</label><input type="text" id="username" placeholder="@handle" class="input"></div>
+        <div class="form-field" style="margin-top:0.5rem;"><label class="form-label">Confirm Password</label><input type="password" id="confirm-password" placeholder="••••••••" class="input"></div>
+        <div class="form-field" style="margin-top:0.5rem;"><label class="form-label">Phone (+233…)</label><input type="tel" id="phone" placeholder="+233xxxxxxxxx" class="input"></div>
+        <label class="checkbox-row" style="margin-top:0.75rem;"><input type="checkbox" id="is-organizer"> I'm an event organiser</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="auth-btn" style="margin-top:0.25rem;">Sign In</button>
     </form>
-    <p class="auth-toggle" id="toggle-auth">
-      Don't have an account? <a href="#">Create one</a>
-    </p>
+    <p class="auth-toggle" id="toggle-auth">Don't have an account? <a href="#">Create one</a></p>
+    <p class="auth-toggle" id="forgot-password-link" style="margin-top:0.5rem;"><a href="#">Forgot Password?</a></p>
   </div>
 </div>
 
-<!-- Profile Edit Modal -->
+<div id="forgot-password-modal" class="modal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:460px;">
+    <div class="modal-header"><h3 class="modal-title">Reset Password</h3><button class="modal-close" aria-label="Close">&times;</button></div>
+    <form id="forgot-password-form" class="form">
+      <div class="form-field"><label class="form-label">Email</label><input type="email" id="forgot-email" placeholder="your@email.com" class="input" required></div>
+      <button type="submit" class="btn btn-primary btn-block">Send Reset Link</button>
+    </form>
+    <div id="forgot-status" class="status-msg" style="display:none;"></div>
+  </div>
+</div>
+
+<div id="reset-password-modal" class="modal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:460px;">
+    <div class="modal-header"><h3 class="modal-title">Set New Password</h3><button class="modal-close" aria-label="Close">&times;</button></div>
+    <form id="reset-password-form" class="form">
+      <div class="form-field">
+        <label class="form-label">New Password</label>
+        <input type="password" id="new-password" placeholder="••••••••" class="input" required>
+        <div class="strength-track"><div class="strength-fill" id="reset-strength-bar"></div></div>
+        <div class="strength-hint" id="reset-strength-text"></div>
+      </div>
+      <div class="form-field"><label class="form-label">Confirm Password</label><input type="password" id="confirm-new-password" placeholder="••••••••" class="input" required></div>
+      <button type="submit" class="btn btn-primary btn-block">Reset Password</button>
+    </form>
+    <div id="reset-status" class="status-msg" style="display:none;"></div>
+  </div>
+</div>
+
 <div id="profile-edit-modal" class="modal">
-  <div class="modal-overlay"></div>
-  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="profile-edit-title">
-    <button class="modal-close" aria-label="Close profile edit modal">&times;</button>
-    <h3 id="profile-edit-title">Edit Profile</h3>
+  <div class="modal-backdrop"></div>
+  <div class="modal-box" role="dialog" aria-modal="true">
+    <div class="modal-header"><h3 class="modal-title">Edit Profile</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <form id="profile-form" class="form">
-      <input type="text" id="profile-name-input" placeholder="Full Name" class="input" required>
-      <input type="email" id="profile-email-input" placeholder="Email" class="input" pattern="[^@]+@[^@]+\.[^@]+" required>
-      <input type="tel" id="profile-phone-input" placeholder="Phone Number" class="input" pattern="^\+233\d{9}$" required>
-      <button type="submit" class="btn-primary btn-block">Save Changes</button>
+      <div class="form-field"><label class="form-label">Full Name</label><input type="text" id="profile-name-input" class="input" required></div>
+      <div class="form-field"><label class="form-label">Email</label><input type="email" id="profile-email-input" class="input" required></div>
+      <div class="form-field"><label class="form-label">Phone (+233…)</label><input type="tel" id="profile-phone-input" placeholder="+233xxxxxxxxx" class="input" required></div>
+      <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
     </form>
   </div>
 </div>
 
-<!-- Event Form Modal -->
+<!-- Event Form with Google Maps -->
 <div id="event-form-modal" class="modal">
-  <div class="modal-overlay"></div>
-  <div class="modal-content large" role="dialog" aria-modal="true" aria-labelledby="form-title">
-    <button class="modal-close" aria-label="Close event form modal">&times;</button>
-    <h3 id="form-title">Create Event</h3>
+  <div class="modal-backdrop"></div>
+  <div class="modal-box wide" role="dialog" aria-modal="true">
+    <div class="modal-header"><h3 class="modal-title" id="form-title">Create Event</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <form id="event-form" class="form">
-      <div class="form-grid">
-        <input type="text" id="event-title" placeholder="Event Title" class="input" required>
-        <select id="event-category" class="input" required>
-          <option value="">Select Category</option>
-          <option value="music">Music</option>
-          <option value="food">Food & Drink</option>
-          <option value="arts">Arts & Theater</option>
-          <option value="sports">Sports & Fitness</option>
-          <option value="business">Business & Networking</option>
-          <option value="nightlife">Nightlife & Parties</option>
-          <option value="family">Family & Kids</option>
-          <option value="workshops">Workshops & Classes</option>
-          <option value="community">Community & Festivals</option>
-          <option value="free">Free Events</option>
-        </select>
+      <div class="form-row">
+        <div class="form-field"><label class="form-label">Event Title</label><input type="text" id="event-title" placeholder="Event name…" class="input" required></div>
+        <div class="form-field"><label class="form-label">Category</label>
+          <select id="event-category" class="input" required>
+            <option value="">Select</option>
+            <option value="music">Music</option><option value="food">Food & Drink</option>
+            <option value="arts">Arts & Theater</option><option value="sports">Sports & Fitness</option>
+            <option value="business">Business & Networking</option><option value="nightlife">Nightlife & Parties</option>
+            <option value="family">Family & Kids</option><option value="workshops">Workshops & Classes</option>
+            <option value="community">Community & Festivals</option><option value="free">Free Events</option>
+          </select>
+        </div>
       </div>
-      <textarea id="event-desc" placeholder="Event Description" class="input" rows="4" required></textarea>
-      <div class="form-grid">
-        <input type="datetime-local" id="event-date" class="input" required>
-        <input type="text" id="event-venue" placeholder="Venue Name" class="input" required>
+      <div class="form-field"><label class="form-label">Description</label><textarea id="event-desc" placeholder="Tell attendees what makes this special…" class="input" rows="3" required></textarea></div>
+      <div class="form-row">
+        <div class="form-field"><label class="form-label">Date & Time</label><input type="datetime-local" id="event-date" class="input" required></div>
+        <div class="form-field"><label class="form-label">Venue Name</label><input type="text" id="event-venue" placeholder="Venue" class="input" required></div>
       </div>
-      <div class="form-grid">
-        <input type="text" id="event-location" placeholder="City/Location" class="input">
-        <select id="event-currency" class="input" required>
-          <option value="USD">$ USD</option>
-          <option value="EUR">€ EUR</option>
-          <option value="GBP">£ GBP</option>
-          <option value="CAD">CA$ CAD</option>
-          <option value="GHC">₵ GHC</option>
-        </select>
-      </div>
-      <div class="form-grid">
-        <input type="email" id="organizer-email" placeholder="Organizer Email" class="input" pattern="[^@]+@[^@]+\.[^@]+" required>
-        <input type="tel" id="organizer-phone" placeholder="Organizer Phone" class="input" pattern="^\+233\d{9}$" required>
-      </div>
-      <div class="file-upload">
-        <label for="event-image" class="file-label">Upload Event Image</label>
-        <input type="file" id="event-image" accept="image/*">
+      <div class="form-row">
+        <div class="form-field"><label class="form-label">City / Area</label><input type="text" id="event-location" placeholder="Accra" class="input"></div>
+        <div class="form-field"><label class="form-label">Currency</label>
+          <select id="event-currency" class="input" required>
+            <option value="GHC">₵ GHC</option><option value="USD">$ USD</option>
+            <option value="EUR">€ EUR</option><option value="GBP">£ GBP</option>
+          </select>
+        </div>
       </div>
 
-      <h4>Ticket Types</h4>
-      <div id="ticket-types-form" class="ticket-types-form"></div>
-      <button type="button" class="btn-ghost" id="add-ticket-type">+ Add Ticket Type</button>
+      <!-- Google Maps Location Picker -->
+      <div class="form-field">
+        <label class="form-label"><i class="fas fa-map-marker-alt"></i> Maps Location (optional)</label>
+        <div class="maps-search-wrap">
+          <input type="text" id="maps-search-input" class="input" placeholder="Search for your venue on Google Maps…" autocomplete="off">
+          <button type="button" class="btn btn-ghost" id="maps-search-btn" style="padding:0.55rem 1rem;"><i class="fas fa-search"></i></button>
+        </div>
+        <div id="maps-container" class="maps-container">
+          <div id="maps-map"></div>
+        </div>
+        <div id="maps-selected-info" class="maps-selected-info" style="display:none;">
+          <i class="fas fa-map-marker-alt"></i>
+          <span id="maps-selected-address">—</span>
+          <button type="button" class="maps-clear-btn" id="maps-clear-btn"><i class="fas fa-times"></i></button>
+        </div>
+        <input type="hidden" id="event-lat">
+        <input type="hidden" id="event-lng">
+        <input type="hidden" id="event-address">
+      </div>
 
-      <button type="submit" class="btn-primary btn-block">Publish Event</button>
+      <div class="form-row">
+        <div class="form-field"><label class="form-label">Organiser Email</label><input type="email" id="organizer-email" placeholder="you@email.com" class="input" required></div>
+        <div class="form-field"><label class="form-label">Organiser Phone</label><input type="tel" id="organizer-phone" placeholder="+233xxxxxxxxx" class="input" required></div>
+      </div>
+      <div class="form-field"><label class="form-label">Event Image</label><label class="file-drop" for="event-image"><input type="file" id="event-image" accept="image/*">Click to upload image (JPG, PNG, WebP)</label></div>
+      <div style="margin-top:0.25rem;">
+        <p class="form-label" style="margin-bottom:0.75rem;">Ticket Types</p>
+        <div id="ticket-types-form"></div>
+        <button type="button" class="btn btn-ghost" id="add-ticket-type" style="margin-top:0.6rem; font-size:0.8rem;"><i class="fas fa-plus"></i> Add Ticket Type</button>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:0.5rem;"><i class="fas fa-cloud-upload-alt"></i> Publish Event</button>
     </form>
   </div>
 </div>
 
-<!-- Ticket Modal -->
 <div id="ticket-modal" class="modal">
-  <div class="modal-overlay"></div>
-  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="ticket-title">
-    <button class="modal-close" aria-label="Close ticket modal">&times;</button>
+  <div class="modal-backdrop"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:380px;">
+    <button class="modal-close" aria-label="Close">&times;</button>
     <div class="ticket-display">
-      <h3 id="ticket-title">🎟️ Your Ticket</h3>
+      <h3><i class="fas fa-ticket-alt"></i> Your Ticket</h3>
       <div id="ticket-canvas" class="ticket-canvas"></div>
-      <p id="ticket-id" class="ticket-id"></p>
-      <button class="btn-primary btn-block" id="validate-ticket">Validate at Door</button>
+      <p id="ticket-id" class="ticket-id-mono"></p>
+      <button class="btn btn-outline btn-block" id="validate-ticket">Validate at Door</button>
     </div>
   </div>
 </div>
 
-<!-- Waitlist View Modal -->
 <div id="waitlist-view-modal" class="modal">
-  <div class="modal-overlay"></div>
-  <div class="modal-content large" role="dialog" aria-modal="true" aria-labelledby="waitlist-view-title">
-    <button class="modal-close" aria-label="Close waitlist view modal">&times;</button>
-    <h3 id="waitlist-view-title">Waitlist Entries</h3>
-    <div id="waitlist-entries"></div>
-    <div class="modal-actions">
-      <button class="btn-primary" id="notify-waitlist-btn">Notify Waitlist</button>
-    </div>
+  <div class="modal-backdrop"></div>
+  <div class="modal-box" role="dialog" aria-modal="true">
+    <div class="modal-header"><h3 class="modal-title" id="waitlist-view-title">Waitlist</h3><button class="modal-close" aria-label="Close">&times;</button></div>
+    <div id="waitlist-entries" style="max-height:380px; overflow-y:auto;"></div>
+    <div class="modal-footer"><button class="btn btn-primary" id="notify-waitlist-btn">Notify Waitlist</button></div>
   </div>
 </div>
 
-<!-- Cancel Event Modal -->
 <div id="cancel-event-modal" class="modal">
-  <div class="modal-overlay"></div>
-  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="cancel-title">
-    <button class="modal-close" aria-label="Close cancel modal">&times;</button>
-    <h3 id="cancel-title">Cancel Event</h3>
-    <p id="cancel-reason"></p>
-    <div class="modal-actions">
-      <button class="btn-ghost" id="confirm-cancel">Confirm Cancel</button>
+  <div class="modal-backdrop"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:420px;">
+    <div class="modal-header"><h3 class="modal-title" id="cancel-title">Cancel Event?</h3><button class="modal-close" aria-label="Close">&times;</button></div>
+    <p id="cancel-reason" style="color:var(--dim); font-size:0.88rem; line-height:1.7; margin-bottom:1.25rem;"></p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="dismiss-cancel" style="flex:1;">Keep Event</button>
+      <button class="btn btn-danger" id="confirm-cancel" style="flex:1;">Yes, Cancel</button>
     </div>
   </div>
 </div>
 
-<!-- Payout Modal -->
 <div id="payout-modal" class="modal">
-  <div class="modal-overlay"></div>
-  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="payout-title">
-    <button class="modal-close" aria-label="Close payout modal">&times;</button>
-    <h3 id="payout-title">Request Payout</h3>
+  <div class="modal-backdrop"></div>
+  <div class="modal-box" role="dialog" aria-modal="true">
+    <div class="modal-header"><h3 class="modal-title" id="payout-title">Request Payout</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <form id="payout-form" class="form">
-      <div class="form-grid">
-        <input type="number" id="payout-amount" placeholder="Amount to Payout" min="10" class="input" required>
-        <select id="payout-method" class="input" required>
-          <option value="">Select Method</option>
-          <option value="bank">Bank Transfer</option>
-          <option value="momo">Mobile Money</option>
-          <option value="paypal">PayPal</option>
-        </select>
+      <div class="form-row">
+        <div class="form-field"><label class="form-label">Amount</label><input type="number" id="payout-amount" placeholder="0.00" min="10" class="input" required></div>
+        <div class="form-field"><label class="form-label">Method</label>
+          <select id="payout-method" class="input" required>
+            <option value="">Select method</option>
+            <option value="bank">Bank Transfer</option>
+            <option value="momo">Mobile Money</option>
+            <option value="paypal">PayPal</option>
+          </select>
+        </div>
       </div>
-      <div id="bank-details" class="form-grid" style="display:none;">
-        <input type="text" id="bank-name" placeholder="Bank Name" class="input">
-        <input type="text" id="account-number" placeholder="Account Number" class="input">
-        <input type="text" id="account-name" placeholder="Account Name" class="input">
+      <div id="bank-details" style="display:none;">
+        <div class="form-row">
+          <div class="form-field"><label class="form-label">Bank Name</label><input type="text" id="bank-name" class="input"></div>
+          <div class="form-field"><label class="form-label">Account Number</label><input type="text" id="account-number" class="input"></div>
+        </div>
+        <div class="form-field" style="margin-top:0.5rem;"><label class="form-label">Branch Name</label><input type="text" id="branch-name" class="input"></div>
+        <div class="form-field" style="margin-top:0.5rem;"><label class="form-label">Account Name</label><input type="text" id="account-name" class="input"></div>
       </div>
       <div id="momo-details" style="display:none;">
-        <input type="tel" id="momo-number" placeholder="Mobile Money Number" class="input" pattern="^\+233\d{9}$">
+        <div class="form-field"><label class="form-label">MoMo Number</label><input type="tel" id="momo-number" placeholder="+233xxxxxxxxx" class="input"></div>
       </div>
-      <input type="email" id="payout-email" placeholder="Email for Confirmation" class="input" pattern="[^@]+@[^@]+\.[^@]+" required>
-      <textarea id="payout-notes" placeholder="Additional Notes (optional)" class="input" rows="2"></textarea>
-      <button type="submit" class="btn-primary btn-block" id="submit-payout">Request Payout</button>
+      <div class="form-field"><label class="form-label">Confirmation Email</label><input type="email" id="payout-email" class="input" required></div>
+      <div class="form-field"><label class="form-label">Notes (optional)</label><textarea id="payout-notes" class="input" rows="2"></textarea></div>
+      <button type="submit" class="btn btn-primary btn-block">Submit Request</button>
     </form>
-    <div id="payout-status" class="payment-status"></div>
+    <div id="payout-status" class="status-msg" style="display:none; margin-top:0.75rem;"></div>
   </div>
 </div>
+
+<div id="settings-modal" class="modal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box" role="dialog" aria-modal="true">
+    <div class="modal-header"><h3 class="modal-title">Settings</h3><button class="modal-close" aria-label="Close">&times;</button></div>
+    <form id="settings-form" class="form">
+      <div class="form-field"><label class="form-label">Current Password</label><input type="password" id="current-password" placeholder="••••••••" class="input" required></div>
+      <div class="form-field">
+        <label class="form-label">New Password</label>
+        <input type="password" id="new-password-settings" placeholder="••••••••" class="input" required>
+        <div class="strength-track"><div class="strength-fill" id="settings-strength-bar"></div></div>
+        <div class="strength-hint" id="settings-strength-text"></div>
+      </div>
+      <div class="form-field"><label class="form-label">Confirm New Password</label><input type="password" id="confirm-new-password-settings" placeholder="••••••••" class="input" required></div>
+      <div class="form-field">
+        <label class="form-label">Notifications</label>
+        <label class="checkbox-row"><input type="checkbox" id="notify-email" checked> Email reminders</label>
+        <label class="checkbox-row"><input type="checkbox" id="notify-sms" checked> SMS reminders</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+    </form>
+    <div id="settings-status" class="status-msg" style="display:none;"></div>
+  </div>
+</div>
+
+<!--
+  Replace YOUR_MAPS_API_KEY with a real Google Maps API key that has
+  Maps JavaScript API + Places API enabled.
+-->
+<script>
+  window.initGlycrMaps = function() {
+    if (window.app && typeof window.app.initMaps === 'function') {
+      window.app.initMaps();
+    }
+  };
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_MAPS_API_KEY&libraries=places&callback=initGlycrMaps" async defer></script>
 
 <script src="js/app.js"></script>
 </body>

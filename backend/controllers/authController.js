@@ -1,134 +1,73 @@
-// ============================================
-// FILE: controllers/authController.js
-// ============================================
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const { sendEmail } = require('../utils/email');
+const userService = require('../services/userService');
 
-exports.register = async (req, res) => {
+exports.register = async (req, res, next) => {
   try {
-    const { name, email, phone, password, isOrganizer } = req.body;
-
-    if (!name || !email || !phone || !password) {
-      return res.status(400).json({ error: 'All fields are required' });
-    }
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = new User({
-      name,
-      email,
-      phone,
-      password: hashedPassword,
-      isOrganizer: isOrganizer || false
-    });
-
-    await user.save();
-
-    const token = jwt.sign(
-      { id: user._id, email: user.email, isOrganizer: user.isOrganizer, isAdmin: user.isAdmin },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    await sendEmail(
-      email,
-      'Welcome to Glycr!',
-      `<h2>Welcome ${name}!</h2><p>Your account has been created successfully.</p>`
-    );
-
-    res.status(201).json({
-      message: 'User registered successfully',
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        isOrganizer: user.isOrganizer
-      }
-    });
-  } catch (error) {
-    console.error('Register error:', error);
-    res.status(500).json({ error: 'Server error' });
+    const user = await userService.register(req.body);
+    // user already has virtuals? ensure service returns virtuals
+    res.status(201).json(user);
+  } catch (err) {
+    next(err);
   }
 };
 
-exports.login = async (req, res) => {
+exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    if (user.suspended) {
-      return res.status(403).json({ error: 'Account suspended' });
-    }
-
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    const token = jwt.sign(
-      { id: user._id, email: user.email, isOrganizer: user.isOrganizer, isAdmin: user.isAdmin },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      message: 'Login successful',
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        isOrganizer: user.isOrganizer,
-        isAdmin: user.isAdmin,
-        currency: user.currency
-      }
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Server error' });
+    const result = await userService.login(email, password);
+    res.json(result);
+  } catch (err) {
+    next(err);
   }
 };
 
-exports.getMe = async (req, res) => {
+exports.getProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    const user = await userService.getProfile(req.user.id);
     res.json(user);
-  } catch (error) {
-    console.error('Get user error:', error);
-    res.status(500).json({ error: 'Server error' });
+  } catch (err) {
+    next(err);
   }
 };
 
-exports.updateProfile = async (req, res) => {
+exports.updateProfile = async (req, res, next) => {
   try {
-    const { name, phone, currency } = req.body;
+    const user = await userService.updateProfile(req.user.id, req.body);
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+};
 
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { name, phone, currency },
-      { new: true }
-    ).select('-password');
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const { token, user } = await userService.generatePasswordResetToken(email);
+    // Send email (stub)
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:63342/Glycr/frontend/index.html'}?reset_token=${token}`;
+    console.log(`📧 Reset link for ${user.email}: ${resetLink}`);
+    // In production, send email via Nodemailer
+    res.json({ message: 'Password reset email sent' });
+  } catch (err) {
+    next(err);
+  }
+};
 
-    res.json({ message: 'Profile updated', user });
-  } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({ error: 'Server error' });
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    await userService.resetPassword(token, newPassword);
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    await userService.changePassword(req.user.id, currentPassword, newPassword);
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    next(err);
   }
 };

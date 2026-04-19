@@ -1,6 +1,3 @@
-// ============================================
-// FILE: models/Waitlist.js
-// ============================================
 const mongoose = require('mongoose');
 
 const waitlistSchema = new mongoose.Schema({
@@ -9,8 +6,12 @@ const waitlistSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true },
   phone: { type: String, required: true },
+  joinedAt: { type: Date, default: Date.now },
   notified: { type: Boolean, default: false },
-  joinedAt: { type: Date, default: Date.now }
 });
+
+waitlistSchema.virtual('id').get(function() { return this._id.toString(); });
+waitlistSchema.set('toJSON', { virtuals: true });
+waitlistSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('Waitlist', waitlistSchema);

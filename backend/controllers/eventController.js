@@ -1,192 +1,120 @@
-// ============================================
-// FILE: controllers/eventController.js
-// ============================================
-const Event = require('../models/Event');
-const Ticket = require('../models/Ticket');
-const Waitlist = require('../models/Waitlist');
-const { sendEmail } = require('../utils/email');
-const { sendSMS } = require('../utils/sms');
+const eventService = require('../services/eventService');
+const multer = require('multer');
+const path = require('path');
+const config = require('../config');
 
-exports.getAllEvents = async (req, res) => {
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, config.uploadDir),
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, unique + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
+
+// Helper to parse ticketTypes if it's a string
+const parseTicketTypes = (req) => {
+  if (req.body.ticketTypes && typeof req.body.ticketTypes === 'string') {
+    try {
+      req.body.ticketTypes = JSON.parse(req.body.ticketTypes);
+    } catch (err) {
+      throw new Error('Invalid ticketTypes JSON');
+    }
+  }
+};
+
+exports.createEvent = [
+  upload.single('image'),
+  async (req, res, next) => {
+    try {
+      parseTicketTypes(req);
+      const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+      const event = await eventService.createEvent(req.user.id, req.body, imageUrl);
+      res.status(201).json(event);
+    } catch (err) {
+      next(err);
+    }
+  }
+];
+
+exports.getEvents = async (req, res, next) => {
   try {
-    const { category, location, search, status } = req.query;
-
-    let query = { isCancelled: false, isPublished: true };
-
-    if (category) query.category = category;
-    if (location) query.location = location;
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
-    }
-    if (status === 'upcoming') {
-      query.date = { $gt: new Date() };
-    }
-
-    const events = await Event.find(query)
-      .populate('organizerId', 'name email')
-      .sort({ date: 1 });
-
+    const filters = req.query;
+    const events = await eventService.getEvents(filters);
     res.json(events);
-  } catch (error) {
-    console.error('Get events error:', error);
-    res.status(500).json({ error: 'Server error' });
+  } catch (err) {
+    next(err);
   }
 };
 
-exports.getEvent = async (req, res) => {
+exports.getEvent = async (req, res, next) => {
   try {
-    const event = await Event.findById(req.params.id)
-      .populate('organizerId', 'name email phone');
-
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-
+    const event = await eventService.getEventById(req.params.id);
     res.json(event);
-  } catch (error) {
-    console.error('Get event error:', error);
-    res.status(500).json({ error: 'Server error' });
+  } catch (err) {
+    next(err);
   }
 };
 
-exports.createEvent = async (req, res) => {
+exports.updateEvent = [
+  upload.single('image'),
+  async (req, res, next) => {
+    try {
+      parseTicketTypes(req);
+      const imageUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+      const event = await eventService.updateEvent(req.params.id, req.user.id, req.body, imageUrl);
+      res.json(event);
+    } catch (err) {
+      next(err);
+    }
+  }
+];
+
+
+
+exports.deleteEvent = async (req, res, next) => {
   try {
-    const {
-      title,
-      description,
-      date,
-      venue,
-      location,
-      category,
-      currency,
-      organizerEmail,
-      organizerPhone,
-      ticketTypes
-    } = req.body;
-
-    const parsedTicketTypes = new Map(Object.entries(JSON.parse(ticketTypes)));
-
-    const event = new Event({
-      title,
-      description,
-      date,
-      venue,
-      location,
-      category,
-      currency,
-      organizerEmail,
-      organizerPhone,
-      image: req.file ? `/uploads/${req.file.filename}` : null,
-      ticketTypes: parsedTicketTypes,
-      organizerId: req.user.id
-    });
-
-    await event.save();
-
-    res.status(201).json({ message: 'Event created successfully', event });
-  } catch (error) {
-    console.error('Create event error:', error);
-    res.status(500).json({ error: 'Server error' });
+    await eventService.deleteEvent(req.params.id, req.user.id);
+    res.status(204).send();
+  } catch (err) {
+    next(err);
   }
 };
 
-exports.updateEvent = async (req, res) => {
+exports.togglePublish = async (req, res, next) => {
   try {
-    const event = await Event.findById(req.params.id);
-
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-
-    if (event.organizerId.toString() !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    const updates = { ...req.body };
-    if (req.file) {
-      updates.image = `/uploads/${req.file.filename}`;
-    }
-    if (updates.ticketTypes) {
-      updates.ticketTypes = new Map(Object.entries(JSON.parse(updates.ticketTypes)));
-    }
-
-    const updatedEvent = await Event.findByIdAndUpdate(
-      req.params.id,
-      updates,
-      { new: true }
-    );
-
-    res.json({ message: 'Event updated', event: updatedEvent });
-  } catch (error) {
-    console.error('Update event error:', error);
-    res.status(500).json({ error: 'Server error' });
+    const event = await eventService.togglePublish(req.params.id, req.user.id);
+    res.json(event);
+  } catch (err) {
+    next(err);
   }
 };
 
-exports.deleteEvent = async (req, res) => {
+exports.cancelEvent = async (req, res, next) => {
   try {
-    const event = await Event.findById(req.params.id);
-
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-
-    if (event.organizerId.toString() !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    await Event.findByIdAndDelete(req.params.id);
-    await Ticket.deleteMany({ eventId: req.params.id });
-    await Waitlist.deleteMany({ eventId: req.params.id });
-
-    res.json({ message: 'Event deleted successfully' });
-  } catch (error) {
-    console.error('Delete event error:', error);
-    res.status(500).json({ error: 'Server error' });
+    const event = await eventService.cancelEvent(req.params.id, req.user.id);
+    res.json(event);
+  } catch (err) {
+    next(err);
   }
 };
 
-exports.cancelEvent = async (req, res) => {
+exports.flagEvent = async (req, res, next) => {
+  if (!req.user.isAdmin) return res.status(403).json({ error: 'Forbidden' });
   try {
-    const event = await Event.findById(req.params.id);
-
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-
-    if (event.organizerId.toString() !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    event.isCancelled = true;
-    await event.save();
-
-    const tickets = await Ticket.find({ eventId: req.params.id });
-    for (const ticket of tickets) {
-      await sendEmail(
-        ticket.userEmail,
-        `Event Cancelled: ${event.title}`,
-        `<p>Unfortunately, ${event.title} has been cancelled. A full refund will be processed.</p>`
-      );
-      await sendSMS(ticket.userPhone, `${event.title} has been cancelled. Full refund processed.`);
-    }
-
-    res.json({ message: 'Event cancelled and notifications sent' });
-  } catch (error) {
-    console.error('Cancel event error:', error);
-    res.status(500).json({ error: 'Server error' });
+    const event = await eventService.flagEvent(req.params.id);
+    res.json(event);
+  } catch (err) {
+    next(err);
   }
 };
 
-exports.shareEvent = async (req, res) => {
+exports.unflagEvent = async (req, res, next) => {
+  if (!req.user.isAdmin) return res.status(403).json({ error: 'Forbidden' });
   try {
-    await Event.findByIdAndUpdate(req.params.id, { $inc: { shareCount: 1 } });
-    res.json({ message: 'Share tracked' });
-  } catch (error) {
-    console.error('Share event error:', error);
-    res.status(500).json({ error: 'Server error' });
+    const event = await eventService.unflagEvent(req.params.id);
+    res.json(event);
+  } catch (err) {
+    next(err);
   }
 };

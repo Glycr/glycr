@@ -1,54 +1,48 @@
-// ============================================
-// FILE: controllers/payoutController.js
-// ============================================
-const Payout = require('../models/Payout');
-const User = require('../models/User');
+const payoutService = require('../services/payoutService');
 
-exports.requestPayout = async (req, res) => {
+exports.requestPayout = async (req, res, next) => {
   try {
-    const { amount, method, email, notes, details } = req.body;
-
-    const userEvents = await Event.find({ organizerId: req.user.id });
-    const eventIds = userEvents.map(e => e._id);
-    const tickets = await Ticket.find({ eventId: { $in: eventIds } });
-    const totalRevenue = tickets.reduce((sum, t) => sum + t.price, 0);
-
-    const completedPayouts = await Payout.find({
-      organizerId: req.user.id,
-      status: 'completed'
-    });
-    const totalPaidOut = completedPayouts.reduce((sum, p) => sum + p.amount, 0);
-
-    const available = totalRevenue - totalPaidOut;
-
-    if (amount > available) {
-      return res.status(400).json({ error: 'Amount exceeds available balance' });
+    const { amount, method, email, notes, bankDetails, momoDetails } = req.body;
+    let details = {};
+    if (method === 'bank') {
+      details = { bankName: bankDetails.bankName, accountNumber: bankDetails.accountNumber, accountName: bankDetails.accountName };
+    } else if (method === 'momo') {
+      details = { phone: momoDetails.phone };
     }
-
-    const payout = new Payout({
-      organizerId: req.user.id,
-      amount,
-      method,
-      email,
-      notes,
-      details
-    });
-
-    await payout.save();
-
-    res.status(201).json({ message: 'Payout requested', payout });
-  } catch (error) {
-    console.error('Payout request error:', error);
-    res.status(500).json({ error: 'Server error' });
+    const payout = await payoutService.requestPayout(req.user.id, amount, method, email, notes, details);
+    res.status(201).json(payout);
+  } catch (err) {
+    next(err);
   }
 };
 
-exports.getPayouts = async (req, res) => {
+exports.getMyPayouts = async (req, res, next) => {
   try {
-    const payouts = await Payout.find({ organizerId: req.user.id }).sort({ requestedAt: -1 });
+    const payouts = await payoutService.getMyPayouts(req.user.id);
     res.json(payouts);
-  } catch (error) {
-    console.error('Get payouts error:', error);
-    res.status(500).json({ error: 'Server error' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.approvePayout = async (req, res, next) => {
+  if (!req.user.isAdmin) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const payout = await payoutService.approvePayout(parseInt(req.params.id));
+    res.json(payout);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.rejectPayout = async (req, res, next) => {
+  if (!req.user.isAdmin) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const { reason } = req.body;
+    if (!reason) return res.status(400).json({ error: 'Reason required' });
+    const payout = await payoutService.rejectPayout(parseInt(req.params.id), reason);
+    res.json(payout);
+  } catch (err) {
+    next(err);
   }
 };

@@ -1,37 +1,16 @@
-// ============================================
-// FILE: middleware/auth.js
-// ============================================
 const jwt = require('jsonwebtoken');
+const config = require('../config');
 
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+module.exports = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No token provided' });
 
-  if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
-    }
-    req.user = user;
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, config.jwtSecret);
+    req.user = decoded; // includes id, email, role, isOrganizer, isAdmin
     next();
-  });
-};
-
-const requireOrganizer = (req, res, next) => {
-  if (!req.user.isOrganizer) {
-    return res.status(403).json({ error: 'Organizer access required' });
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid token' });
   }
-  next();
 };
-
-const requireAdmin = (req, res, next) => {
-  if (!req.user.isAdmin) {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  next();
-};
-
-module.exports = { authenticateToken, requireOrganizer, requireAdmin };

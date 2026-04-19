@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glycr Admin Panel</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+
+<!-- =============================================
+     GLOBAL TOAST CONTAINER
+============================================= -->
+<div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+<!-- LOGIN PAGE -->
+<div id="login-page">
+  <div class="login-card">
+    <div class="login-logo"><i class="fa-solid fa-shield-halved"></i> Glycr Admin</div>
+    <p class="login-subtitle">Sign in to access the admin panel</p>
+    <div class="login-error" id="login-error">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span id="login-error-msg">Invalid credentials. Please try again.</span>
+    </div>
+    <div class="login-field">
+      <label class="login-label" for="login-email">Email Address</label>
+      <div class="login-input-wrap">
+        <i class="fa-regular fa-envelope fa-icon-left"></i>
+        <input type="email" id="login-email" class="login-input" placeholder="admin@glycr.com" value="admin@glycr.com">
+      </div>
+    </div>
+    <div class="login-field">
+      <label class="login-label" for="login-password">Password</label>
+      <div class="login-input-wrap">
+        <i class="fa-solid fa-lock fa-icon-left"></i>
+        <input type="password" id="login-password" class="login-input" placeholder="Enter password" value="admin123">
+      </div>
+    </div>
+    <button class="login-btn" id="login-btn" onclick="handleLogin()">
+      <i class="fa-solid fa-right-to-bracket"></i> Sign In
+    </button>
+    <div class="login-hint">
+      <strong>Demo credentials:</strong><br>
+      Email: <strong>admin@glycr.com</strong> &nbsp;·&nbsp; Password: <strong>admin123</strong>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="admin-panel">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <div class="header-left">
+        <div>
+          <h1 class="logo"><i class="fa-solid fa-shield-halved"></i> Glycr Admin</h1>
+          <p class="subtitle">Platform Management</p>
+        </div>
+      </div>
+      <div class="profile-dropdown-wrap" id="profile-dropdown-wrap">
+        <button class="profile-icon-btn" onclick="toggleProfileDropdown()" title="Account">
+          <i class="fa-solid fa-user"></i>
+        </button>
+        <div class="profile-dropdown" id="profile-dropdown">
+          <div class="profile-dropdown-header">
+            <div class="profile-dropdown-name" id="admin-display-name">Admin User</div>
+            <div class="profile-dropdown-role" id="admin-display-role">Super Administrator</div>
+          </div>
+          <button class="profile-dropdown-item" onclick="openModal('profile-modal'); closeDropdown()">
+            <i class="fa-regular fa-user"></i> My Profile
+          </button>
+          <button class="profile-dropdown-item" onclick="openModal('settings-modal'); closeDropdown()">
+            <i class="fa-solid fa-gear"></i> Settings
+          </button>
+          <button class="profile-dropdown-item" onclick="loadData(); closeDropdown()">
+            <i class="fa-solid fa-rotate-right"></i> Refresh Data
+          </button>
+          <div class="dropdown-divider"></div>
+          <button class="profile-dropdown-item danger" onclick="handleLogout()">
+            <i class="fa-solid fa-right-from-bracket"></i> Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tabs-content">
+      <div class="tab active" id="tab-dashboard" onclick="showTab('dashboard', this)">
+        <i class="fa-solid fa-gauge-high"></i> Dashboard
+      </div>
+      <div class="tab" id="tab-users" onclick="showTab('users', this)">
+        <i class="fa-solid fa-users"></i> Users
+      </div>
+      <div class="tab" id="tab-events" onclick="showTab('events', this)">
+        <i class="fa-regular fa-calendar"></i> Events
+      </div>
+      <div class="tab" id="tab-tickets" onclick="showTab('tickets', this)">
+        <i class="fa-solid fa-ticket"></i> Tickets
+      </div>
+      <div class="tab" id="tab-payouts" onclick="showTab('payouts', this)">
+        <i class="fa-solid fa-money-bill-transfer"></i> Payouts
+      </div>
+      <div class="tab" id="tab-logs" onclick="showTab('logs', this)">
+        <i class="fa-solid fa-scroll"></i> Logs
+      </div>
+      <div class="tab" id="tab-reports" onclick="showTab('reports', this)">
+        <i class="fa-solid fa-chart-bar"></i> Reports
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- DASHBOARD -->
+    <section id="dashboard" class="section active">
+      <h2 style="font-size:2rem; font-weight:700; margin-bottom:1.5rem;">Platform Overview</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-header"><div class="stat-icon" style="background:rgba(99,102,241,0.1); color:#818cf8;"><i class="fa-solid fa-users"></i></div></div>
+          <div class="stat-value" id="stat-users">0</div>
+          <div class="stat-label">Total Users</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header"><div class="stat-icon" style="background:rgba(16,185,129,0.1); color:#34d399;"><i class="fa-regular fa-calendar-check"></i></div></div>
+          <div class="stat-value" id="stat-live-events">0</div>
+          <div class="stat-label">Live Events</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header"><div class="stat-icon" style="background:rgba(139,92,246,0.1); color:#c084fc;"><i class="fa-solid fa-coins"></i></div></div>
+          <div class="stat-value" id="stat-revenue">₵0.00</div>
+          <div class="stat-label">Total Revenue</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header"><div class="stat-icon" style="background:rgba(236,72,153,0.1); color:#f472b6;"><i class="fa-solid fa-ticket"></i></div></div>
+          <div class="stat-value" id="stat-tickets">0</div>
+          <div class="stat-label">Tickets Sold</div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(350px, 1fr)); gap:1.5rem;">
+        <div class="card">
+          <h3 class="card-title">Quick Actions</h3>
+          <div class="quick-action" onclick="showTab('users', document.getElementById('tab-users'))">
+            <span><i class="fa-solid fa-users" style="color:#6366f1; margin-right:0.5rem;"></i>Manage Users</span>
+            <span id="quick-users-count">0</span>
+          </div>
+          <div class="quick-action" onclick="showTab('payouts', document.getElementById('tab-payouts'))">
+            <span><i class="fa-solid fa-money-bill-transfer" style="color:#8b5cf6; margin-right:0.5rem;"></i>Pending Payouts</span>
+            <span id="quick-pending-payouts">₵0.00</span>
+          </div>
+          <div class="quick-action" onclick="showTab('events', document.getElementById('tab-events')); document.getElementById('event-filter').value='flagged'; filterEvents();">
+            <span><i class="fa-solid fa-flag" style="color:#ef4444; margin-right:0.5rem;"></i>Flagged Events</span>
+            <span id="quick-flagged-events">0</span>
+          </div>
+          <div class="quick-action" onclick="showTab('logs', document.getElementById('tab-logs'))">
+            <span><i class="fa-solid fa-scroll" style="color:#f59e0b; margin-right:0.5rem;"></i>Recent Logs</span>
+            <span id="quick-log-count">0</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">System Health</h3>
+          <div style="display:flex; justify-content:space-between; padding:0.75rem 0; border-bottom:1px solid #334155;">
+            <span style="color:#94a3b8;"><i class="fa-solid fa-circle-dot" style="color:#34d399; margin-right:0.4rem;"></i>Platform Status</span>
+            <span style="color:#34d399;">Operational</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:0.75rem 0; border-bottom:1px solid #334155;">
+            <span style="color:#94a3b8;"><i class="fa-solid fa-user-tie" style="margin-right:0.4rem;"></i>Total Organizers</span>
+            <span id="stat-organizers">0</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:0.75rem 0; border-bottom:1px solid #334155;">
+            <span style="color:#94a3b8;"><i class="fa-regular fa-calendar" style="margin-right:0.4rem;"></i>Total Events</span>
+            <span id="stat-total-events">0</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:0.75rem 0; border-bottom:1px solid #334155;">
+            <span style="color:#94a3b8;"><i class="fa-solid fa-chart-line" style="margin-right:0.4rem;"></i>Avg Revenue/Event</span>
+            <span id="stat-avg-revenue">₵0.00</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:0.75rem 0;">
+            <span style="color:#94a3b8;"><i class="fa-solid fa-percent" style="margin-right:0.4rem;"></i>Platform Fee</span>
+            <span id="stat-platform-fee" style="color:#10b981;">₵0.00 (10%)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- USERS -->
+    <section id="users" class="section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h2 style="font-size:2rem; font-weight:700;">User Management</h2>
+        <div style="display:flex; gap:0.75rem;">
+          <button class="btn btn-primary" onclick="openAddUserModal()"><i class="fa-solid fa-user-plus"></i> Add User</button>
+          <button class="btn btn-success" onclick="openExportModal('users')"><i class="fa-solid fa-file-export"></i> Export </button>
+        </div>
+      </div>
+      <div class="filters">
+        <input type="text" class="input" id="user-search" placeholder="Search users..." oninput="filterUsers()">
+        <select class="select" id="user-role-filter" onchange="filterUsers()">
+          <option value="all">All Roles</option>
+          <option value="customer">Customer</option>
+          <option value="organizer">Organizer</option>
+          <option value="moderator">Moderator</option>
+          <option value="admin">Admin</option>
+        </select>
+        <select class="select" id="user-status-filter" onchange="filterUsers()">
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="suspended">Suspended</option>
+        </select>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>User</th><th>Contact</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="users-table"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- EVENTS -->
+    <section id="events" class="section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h2 style="font-size:2rem; font-weight:700;">Event Management</h2>
+        <button class="btn btn-success" onclick="openExportModal('events')"><i class="fa-solid fa-file-export"></i> Export </button>
+      </div>
+      <div class="filters">
+        <input type="text" class="input" id="event-search" placeholder="Search events..." oninput="filterEvents()">
+        <select class="select" id="event-filter" onchange="filterEvents()">
+          <option value="all">All Events</option>
+          <option value="live">Live Events</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="flagged">Flagged</option>
+        </select>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Event Name</th><th>Organizer</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="events-table"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TICKETS -->
+    <section id="tickets" class="section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h2 style="font-size:2rem; font-weight:700;">Ticket Management</h2>
+        <button class="btn btn-success" onclick="openExportModal('tickets')"><i class="fa-solid fa-file-export"></i> Export </button>
+      </div>
+      <div class="filters">
+        <input type="text" class="input" id="ticket-search" placeholder="Search by ticket ID, event, or buyer..." oninput="filterTickets()">
+        <select class="select" id="ticket-status-filter" onchange="filterTickets()">
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="used">Used</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <select class="select" id="ticket-type-filter" onchange="filterTickets()">
+          <option value="all">All Types</option>
+          <option value="free">Free</option>
+          <option value="regular">Regular</option>
+          <option value="vip">VIP</option>
+          <option value="vvip">VVIP</option>
+        </select>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Ticket ID</th><th>Event Name</th><th>User (Customer)</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="tickets-table"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PAYOUTS -->
+    <section id="payouts" class="section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h2 style="font-size:2rem; font-weight:700;">Payout Management</h2>
+        <div style="display:flex; gap:0.75rem; align-items:center;">
+          <div style="text-align:right; margin-right:0.5rem;">
+            <p style="font-size:0.875rem; color:#94a3b8;">Pending Payouts</p>
+            <p style="font-size:1.5rem; font-weight:700; color:#6366f1;" id="pending-payout-amount">₵0.00</p>
+          </div>
+          <button class="btn btn-success" onclick="openExportModal('payouts')"><i class="fa-solid fa-file-export"></i> Export</button>
+        </div>
+      </div>
+      <div class="filters">
+        <input type="text" class="input" id="payout-search" placeholder="Search payouts..." oninput="filterPayouts()">
+        <select class="select" id="payout-status-filter" onchange="filterPayouts()">
+          <option value="all">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="completed">Completed</option>
+          <option value="rejected">Rejected</option>
+        </select>
+        <select class="select" id="payout-method-filter" onchange="filterPayouts()">
+          <option value="all">All Methods</option>
+          <option value="momo">MoMo</option>
+          <option value="bank">Bank</option>
+        </select>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>ID</th><th>Organizer</th><th>Amount &amp; Method</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="payouts-table"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- LOGS -->
+    <section id="logs" class="section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h2 style="font-size:2rem; font-weight:700;">Activity Logs</h2>
+        <div style="display:flex; gap:0.75rem;">
+          <button class="btn btn-primary" onclick="loadData()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+          <button class="btn btn-success" onclick="openExportModal('logs')"><i class="fa-solid fa-file-export"></i> Export</button>
+          <button class="btn btn-danger" onclick="clearLogs()"><i class="fa-solid fa-trash"></i> Clear</button>
+        </div>
+      </div>
+      <div class="log-filters-row">
+        <input type="text" class="input" id="log-search" placeholder="Search logs..." oninput="renderLogs()" style="max-width:320px;">
+        <select class="select" id="log-type-filter" onchange="renderLogs()">
+          <option value="all">All Types</option>
+          <option value="auth">Auth</option>
+          <option value="event">Events</option>
+          <option value="payout">Payouts</option>
+          <option value="user">Users</option>
+          <option value="system">System</option>
+          <option value="warning">Warnings</option>
+          <option value="danger">Errors</option>
+        </select>
+        <select class="select" id="log-sort" onchange="renderLogs()">
+          <option value="desc">Newest First</option>
+          <option value="asc">Oldest First</option>
+        </select>
+        <span class="log-count-badge" id="log-count-badge">0 entries</span>
+      </div>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div style="padding:1rem 1.25rem; border-bottom:1px solid #334155; display:flex; align-items:center; gap:0.5rem; background:#1e293b;">
+          <i class="fa-solid fa-circle-dot" style="color:#34d399; font-size:0.6rem;"></i>
+          <span style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">Live Activity Feed</span>
+        </div>
+        <div id="logs-list" style="padding:1rem; max-height:600px; overflow-y:auto;"></div>
+      </div>
+    </section>
+
+    <!-- REPORTS (updated — renamed buttons) -->
+    <section id="reports" class="section">
+      <h2 style="font-size:2rem; font-weight:700; margin-bottom:1.5rem;">Reports &amp; Analytics</h2>
+
+      <div class="report-grid">
+        <div class="card">
+          <h3 class="card-title"><i class="fa-solid fa-users" style="color:#6366f1; margin-right:0.5rem;"></i>User Reports</h3>
+          <button class="btn btn-primary" style="width:100%;" onclick="openExportModal('users')">
+            <i class="fa-solid fa-file-export"></i> Export Users
+          </button>
+          <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">Complete list of all users with contact details and status</p>
+        </div>
+        <div class="card">
+          <h3 class="card-title"><i class="fa-regular fa-calendar" style="color:#8b5cf6; margin-right:0.5rem;"></i>Event Reports</h3>
+          <button class="btn btn-primary" style="width:100%;" onclick="openExportModal('events')">
+            <i class="fa-solid fa-file-export"></i> Export Events
+          </button>
+          <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">All events with organizer info, status, and dates</p>
+        </div>
+        <div class="card">
+          <h3 class="card-title"><i class="fa-solid fa-coins" style="color:#10b981; margin-right:0.5rem;"></i>Revenue Reports</h3>
+          <button class="btn btn-success" style="width:100%;" onclick="openExportModal('revenue')">
+            <i class="fa-solid fa-file-export"></i> Export Revenue
+          </button>
+          <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">Detailed ticket sales and revenue breakdown</p>
+        </div>
+      </div>
+
+      <div class="report-grid">
+        <div class="card">
+          <h3 class="card-title"><i class="fa-solid fa-money-bill-transfer" style="color:#c084fc; margin-right:0.5rem;"></i>Payout Report</h3>
+          <button class="btn btn-primary" style="width:100%;" onclick="openExportModal('payouts')">
+            <i class="fa-solid fa-file-export"></i> Export Payouts
+          </button>
+          <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">All payout requests with status, method, and organizer details</p>
+        </div>
+        <div class="card">
+          <h3 class="card-title"><i class="fa-solid fa-ticket" style="color:#f472b6; margin-right:0.5rem;"></i>Ticket Report</h3>
+          <button class="btn btn-primary" style="width:100%;" onclick="openExportModal('tickets')">
+            <i class="fa-solid fa-file-export"></i> Export Tickets
+          </button>
+          <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">All issued tickets with buyer, event, type, and validation status</p>
+        </div>
+        <div class="card">
+          <h3 class="card-title"><i class="fa-solid fa-scroll" style="color:#fb923c; margin-right:0.5rem;"></i>Log Report</h3>
+          <button class="btn btn-warning" style="width:100%;" onclick="openExportModal('logs')">
+            <i class="fa-solid fa-file-export"></i> Export Logs
+          </button>
+          <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">System and user activity log history for auditing and compliance</p>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(350px, 1fr)); gap:1.5rem; margin-top:2rem;">
+        <div class="card">
+          <h3 class="card-title"><i class="fa-solid fa-chart-pie" style="color:#6366f1; margin-right:0.5rem;"></i>Revenue by Category</h3>
+          <div id="revenue-by-category"></div>
+        </div>
+        <div class="card">
+          <h3 class="card-title"><i class="fa-solid fa-trophy" style="color:#f59e0b; margin-right:0.5rem;"></i>Top Organizers</h3>
+          <div id="top-organizers"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:1.5rem;">
+        <h3 class="card-title"><i class="fa-solid fa-chart-bar" style="color:#8b5cf6; margin-right:0.5rem;"></i>Platform Statistics</h3>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1.5rem;">
+          <div>
+            <p style="color:#94a3b8; font-size:0.875rem; margin-bottom:0.25rem;">Avg. Ticket Price</p>
+            <p style="font-size:1.5rem; font-weight:700; color:#6366f1;" id="avg-ticket-price">₵0.00</p>
+          </div>
+          <div>
+            <p style="color:#94a3b8; font-size:0.875rem; margin-bottom:0.25rem;">Avg. Event Revenue</p>
+            <p style="font-size:1.5rem; font-weight:700; color:#8b5cf6;" id="avg-event-revenue">₵0.00</p>
+          </div>
+          <div>
+            <p style="color:#94a3b8; font-size:0.875rem; margin-bottom:0.25rem;">Total Cancelled</p>
+            <p style="font-size:1.5rem; font-weight:700; color:#fb923c;" id="total-cancelled">0</p>
+          </div>
+          <div>
+            <p style="color:#94a3b8; font-size:0.875rem; margin-bottom:0.25rem;">Platform Fee</p>
+            <p style="font-size:1.5rem; font-weight:700; color:#10b981;" id="platform-fee">₵0.00</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- =============================================
+     MODALS
+============================================= -->
+
+<!-- User Detail -->
+<div id="user-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-regular fa-user" style="color:#6366f1; margin-right:0.5rem;"></i>User Details</h3>
+      <button class="modal-close" onclick="closeModal('user-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="user-modal-body"></div>
+  </div>
+</div>
+
+<!-- Edit User -->
+<div id="edit-user-modal" class="modal">
+  <div class="modal-content" style="max-width:520px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-user-pen" style="color:#6366f1; margin-right:0.5rem;"></i>Edit User</h3>
+      <button class="modal-close" onclick="closeModal('edit-user-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-user-id">
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-regular fa-user" style="margin-right:0.5rem;"></i>Full Name</span>
+        <input type="text" class="settings-input" id="edit-user-name" style="width:220px;">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-regular fa-envelope" style="margin-right:0.5rem;"></i>Email</span>
+        <input type="email" class="settings-input" id="edit-user-email" style="width:220px;">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-mobile-screen-button" style="margin-right:0.5rem;"></i>Phone</span>
+        <input type="text" class="settings-input" id="edit-user-phone" style="width:220px;">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-id-badge" style="margin-right:0.5rem;"></i>Role</span>
+        <select class="settings-input" id="edit-user-role" style="width:220px;">
+          <option value="customer">Customer</option>
+          <option value="organizer">Organizer</option>
+          <option value="moderator">Moderator</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-circle-dot" style="margin-right:0.5rem;"></i>Status</span>
+        <select class="settings-input" id="edit-user-status" style="width:220px;">
+          <option value="false">Active</option>
+          <option value="true">Suspended</option>
+        </select>
+      </div>
+      <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+        <button class="btn btn-primary" style="flex:1;" onclick="saveEditUser()"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+        <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="closeModal('edit-user-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add User -->
+<div id="add-user-modal" class="modal">
+  <div class="modal-content" style="max-width:520px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-user-plus" style="color:#6366f1; margin-right:0.5rem;"></i>Add New User</h3>
+      <button class="modal-close" onclick="closeModal('add-user-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-regular fa-user" style="margin-right:0.5rem;"></i>Full Name</span>
+        <input type="text" class="settings-input" id="add-user-name" style="width:220px;">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-regular fa-envelope" style="margin-right:0.5rem;"></i>Email</span>
+        <input type="email" class="settings-input" id="add-user-email" style="width:220px;">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-mobile-screen-button" style="margin-right:0.5rem;"></i>Phone</span>
+        <input type="text" class="settings-input" id="add-user-phone" style="width:220px;">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-lock" style="margin-right:0.5rem;"></i>Password</span>
+        <input type="password" class="settings-input" id="add-user-password" style="width:220px;">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-id-badge" style="margin-right:0.5rem;"></i>Role</span>
+        <select class="settings-input" id="add-user-role" style="width:220px;">
+          <option value="customer">Customer</option>
+          <option value="organizer">Organizer</option>
+          <option value="moderator">Moderator</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div id="add-user-error" style="display:none; margin-top:1rem; padding:0.65rem 0.9rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:0.5rem; font-size:0.8rem;">
+        <i class="fa-solid fa-circle-exclamation" style="margin-right:0.4rem;"></i>
+        <span id="add-user-error-msg"></span>
+      </div>
+      <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+        <button class="btn btn-primary" style="flex:1;" onclick="submitAddUser()"><i class="fa-solid fa-user-plus"></i> Create User</button>
+        <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="closeModal('add-user-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Payout Detail -->
+<div id="payout-modal" class="modal">
+  <div class="modal-content" style="max-width:600px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-money-bill-transfer" style="color:#6366f1; margin-right:0.5rem;"></i>Payout Details</h3>
+      <button class="modal-close" onclick="closeModal('payout-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="payout-modal-body"></div>
+  </div>
+</div>
+
+<!-- Event Detail -->
+<div id="event-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-regular fa-calendar" style="color:#6366f1; margin-right:0.5rem;"></i>Event Details</h3>
+      <button class="modal-close" onclick="closeModal('event-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="event-modal-body"></div>
+  </div>
+</div>
+
+<!-- Ticket Detail -->
+<div id="ticket-modal" class="modal">
+  <div class="modal-content" style="max-width:620px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-ticket" style="color:#6366f1; margin-right:0.5rem;"></i>Ticket Details</h3>
+      <button class="modal-close" onclick="closeModal('ticket-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="ticket-modal-body"></div>
+  </div>
+</div>
+
+<!-- Resend Ticket Modal (NEW) -->
+<div id="resend-ticket-modal" class="modal">
+  <div class="modal-content" style="max-width:480px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-paper-plane" style="color:#6366f1; margin-right:0.5rem;"></i>Resend Ticket</h3>
+      <button class="modal-close" onclick="closeModal('resend-ticket-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="resend-ticket-id">
+      <div style="padding:1rem; background:#0f172a; border-radius:0.5rem; margin-bottom:1.25rem;">
+        <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.5rem;">Ticket</div>
+        <div id="resend-ticket-info" style="font-size:0.875rem; color:#f1f5f9;"></div>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-regular fa-envelope" style="margin-right:0.5rem;"></i>Email Address</span>
+        <input type="email" class="settings-input" id="resend-email" placeholder="user@example.com" style="width:220px;">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-mobile-screen-button" style="margin-right:0.5rem;"></i>Phone (SMS)</span>
+        <input type="tel" class="settings-input" id="resend-phone" placeholder="+233xxxxxxxxx" style="width:220px;">
+      </div>
+      <p style="font-size:0.75rem; color:#94a3b8; margin:0.5rem 0 1.25rem;">Fill in at least one field. Leave blank to skip that channel.</p>
+      <div style="display:flex; gap:0.75rem;">
+        <button class="btn btn-primary" style="flex:1;" onclick="submitResendTicket()">
+          <i class="fa-solid fa-paper-plane"></i> Send
+        </button>
+        <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="closeModal('resend-ticket-modal')">Cancel</button>
+      </div>
+      <div id="resend-status" style="display:none; margin-top:1rem;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Advanced Export Modal (NEW) -->
+<div id="export-modal" class="modal">
+  <div class="modal-content" style="max-width:520px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-file-export" style="color:#6366f1; margin-right:0.5rem;"></i>Export <span id="export-modal-label">Data</span></h3>
+      <button class="modal-close" onclick="closeModal('export-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="export-data-type">
+
+      <!-- File Format -->
+      <p style="font-size:0.72rem; color:#475569; text-transform:uppercase; letter-spacing:0.06em; font-weight:600; margin-bottom:0.75rem;">File Format</p>
+      <div class="export-format-grid">
+        <label class="export-format-option">
+          <input type="radio" name="export-format" value="csv" checked>
+          <span><i class="fa-solid fa-file-csv"></i> CSV</span>
+        </label>
+        <label class="export-format-option">
+          <input type="radio" name="export-format" value="json">
+          <span><i class="fa-solid fa-file-code"></i> JSON</span>
+        </label>
+        <label class="export-format-option">
+          <input type="radio" name="export-format" value="pdf">
+          <span><i class="fa-solid fa-file-pdf"></i> PDF</span>
+        </label>
+      </div>
+
+      <!-- Date Range -->
+      <p style="font-size:0.72rem; color:#475569; text-transform:uppercase; letter-spacing:0.06em; font-weight:600; margin:1.25rem 0 0.75rem;">Date Range</p>
+      <div class="export-range-grid">
+        <label class="export-range-option">
+          <input type="radio" name="export-range" value="24h" checked>
+          <span>Last 24 Hours</span>
+        </label>
+        <label class="export-range-option">
+          <input type="radio" name="export-range" value="30d">
+          <span>Last 30 Days</span>
+        </label>
+        <label class="export-range-option">
+          <input type="radio" name="export-range" value="90d">
+          <span>Last 90 Days</span>
+        </label>
+        <label class="export-range-option">
+          <input type="radio" name="export-range" value="custom">
+          <span>Custom Range</span>
+        </label>
+      </div>
+
+      <!-- Custom Date Range (shown only when custom is selected) -->
+      <div id="custom-date-range" style="display:none; margin-top:1rem;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+          <div>
+            <label style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:0.35rem;">From</label>
+            <input type="date" class="settings-input" id="export-date-from" style="width:100%;">
+          </div>
+          <div>
+            <label style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:0.35rem;">To</label>
+            <input type="date" class="settings-input" id="export-date-to" style="width:100%;">
+          </div>
+        </div>
+      </div>
+
+      <div id="export-preview" style="margin-top:1rem; padding:0.75rem 1rem; background:#0f172a; border-radius:0.5rem; font-size:0.8rem; color:#94a3b8; min-height:2.5rem;">
+        <i class="fa-solid fa-circle-info" style="margin-right:0.4rem; color:#6366f1;"></i>
+        <span id="export-preview-text">Exporting all records from the last 24 hours as CSV.</span>
+      </div>
+
+      <div style="display:flex; gap:0.75rem; margin-top:1.25rem;">
+        <button class="btn btn-primary" style="flex:1;" onclick="executeExport()">
+          <i class="fa-solid fa-download"></i> Export &amp; Download
+        </button>
+        <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="closeModal('export-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Profile -->
+<div id="profile-modal" class="modal">
+  <div class="modal-content" style="max-width:480px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-regular fa-user" style="color:#6366f1; margin-right:0.5rem;"></i>My Profile</h3>
+      <button class="modal-close" onclick="closeModal('profile-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem; padding:1rem; background:#0f172a; border-radius:0.75rem;">
+        <div style="width:3.5rem; height:3.5rem; border-radius:50%; background:linear-gradient(135deg,#6366f1,#8b5cf6); display:flex; align-items:center; justify-content:center; font-size:1.3rem; color:white; flex-shrink:0;">
+          <i class="fa-solid fa-user-shield"></i>
+        </div>
+        <div>
+          <div style="font-weight:700; font-size:1rem;" id="profile-modal-name">Admin User</div>
+          <div style="font-size:0.8rem; color:#94a3b8;" id="profile-modal-email">admin@glycr.com</div>
+          <span class="badge badge-organizer" style="margin-top:0.3rem;"><i class="fa-solid fa-shield-halved"></i> Super Admin</span>
+        </div>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-regular fa-user" style="margin-right:0.5rem;"></i>Display Name</span>
+        <input type="text" class="settings-input" id="profile-name-input" value="Admin User">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-regular fa-envelope" style="margin-right:0.5rem;"></i>Email</span>
+        <input type="email" class="settings-input" id="profile-email-input" value="admin@glycr.com">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-lock" style="margin-right:0.5rem;"></i>Role</span>
+        <span class="settings-value">Super Administrator</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-regular fa-calendar" style="margin-right:0.5rem;"></i>Last Login</span>
+        <span class="settings-value" id="last-login-display">—</span>
+      </div>
+      <button class="btn btn-primary" style="width:100%; margin-top:1.25rem;" onclick="saveProfile()">
+        <i class="fa-solid fa-floppy-disk"></i> Save Changes
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings -->
+<div id="settings-modal" class="modal">
+  <div class="modal-content" style="max-width:480px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-gear" style="color:#6366f1; margin-right:0.5rem;"></i>Settings</h3>
+      <button class="modal-close" onclick="closeModal('settings-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.78rem; color:#475569; text-transform:uppercase; letter-spacing:0.06em; font-weight:600; margin-bottom:0.75rem;">Notifications</p>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label" style="color:#f1f5f9; font-size:0.875rem;">Email Alerts</div>
+          <div class="settings-label" style="font-size:0.75rem; margin-top:0.1rem;">Receive alerts for new payout requests</div>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="setting-email-alerts" checked><span class="toggle-slider"></span></label>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label" style="color:#f1f5f9; font-size:0.875rem;">Flagged Event Alerts</div>
+          <div class="settings-label" style="font-size:0.75rem; margin-top:0.1rem;">Notify when events are auto-flagged</div>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="setting-flag-alerts" checked><span class="toggle-slider"></span></label>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label" style="color:#f1f5f9; font-size:0.875rem;">Login Activity Logs</div>
+          <div class="settings-label" style="font-size:0.75rem; margin-top:0.1rem;">Log all admin login events</div>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="setting-login-logs" checked><span class="toggle-slider"></span></label>
+      </div>
+      <p style="font-size:0.78rem; color:#475569; text-transform:uppercase; letter-spacing:0.06em; font-weight:600; margin:1.25rem 0 0.75rem;">Platform</p>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-percent" style="margin-right:0.5rem;"></i>Platform Fee (%)</span>
+        <input type="number" class="settings-input" id="platform-fee-setting" value="10" min="0" max="50" style="width:100px;">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-coins" style="margin-right:0.5rem;"></i>Default Currency</span>
+        <select class="settings-input" style="width:120px;">
+          <option value="GHC" selected>₵ GHC</option>
+          <option value="USD">$ USD</option>
+          <option value="EUR">€ EUR</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="width:100%; margin-top:1.25rem;" onclick="saveSettings()">
+        <i class="fa-solid fa-floppy-disk"></i> Save Settings
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="panel.js"></script>
+</body>
+</html>

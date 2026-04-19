@@ -1,26 +1,19 @@
-// ============================================
-// FILE: models/Ticket.js
-// ============================================
 const mongoose = require('mongoose');
 
 const ticketSchema = new mongoose.Schema({
-  ticketId: { type: String, required: true, unique: true },
+  id: { type: String, required: true, unique: true },
   eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  userEmail: { type: String, required: true },
-  userPhone: { type: String, required: true },
   ticketType: { type: String, required: true },
   price: { type: Number, required: true },
-  quantity: { type: Number, default: 1 },
-  companyName: String,
-  billingAddress: String,
-  poNumber: String,
-  paymentMethod: { type: String, required: true },
-  paymentStatus: { type: String, default: 'completed' },
-  qrCode: String,
+  purchasedAt: { type: Date, default: Date.now },
+  userEmail: { type: String, required: true },
+  userPhone: { type: String, required: true },
+  companyName: { type: String },
+  billingAddress: { type: String },
+  poNumber: { type: String },
   validated: { type: Boolean, default: false },
-  validatedAt: Date,
-  purchasedAt: { type: Date, default: Date.now }
+  status: { type: String, enum: ['active', 'used', 'cancelled'], default: 'active' }, // <-- new
 });
 
 module.exports = mongoose.model('Ticket', ticketSchema);
