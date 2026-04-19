@@ -9,10 +9,21 @@
 </head>
 <body>
 
-<!-- =============================================
-     GLOBAL TOAST CONTAINER
-============================================= -->
+<!-- GLOBAL TOAST CONTAINER -->
 <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+<!-- SESSION WARNING OVERLAY -->
+<div id="session-warning-overlay" style="display:none;">
+  <div class="session-warning-card">
+    <div class="session-warning-icon"><i class="fa-solid fa-clock"></i></div>
+    <h3>Session Expiring Soon</h3>
+    <p id="session-warning-msg">Your session will expire in <strong id="session-countdown">60</strong> seconds due to inactivity.</p>
+    <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+      <button class="btn btn-primary" style="flex:1;" onclick="extendSession()"><i class="fa-solid fa-rotate-right"></i> Stay Logged In</button>
+      <button class="btn btn-danger" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+    </div>
+  </div>
+</div>
 
 <!-- LOGIN PAGE -->
 <div id="login-page">
@@ -59,28 +70,35 @@
           <p class="subtitle">Platform Management</p>
         </div>
       </div>
-      <div class="profile-dropdown-wrap" id="profile-dropdown-wrap">
-        <button class="profile-icon-btn" onclick="toggleProfileDropdown()" title="Account">
-          <i class="fa-solid fa-user"></i>
-        </button>
-        <div class="profile-dropdown" id="profile-dropdown">
-          <div class="profile-dropdown-header">
-            <div class="profile-dropdown-name" id="admin-display-name">Admin User</div>
-            <div class="profile-dropdown-role" id="admin-display-role">Super Administrator</div>
+      <div style="display:flex; align-items:center; gap:1rem;">
+        <!-- Session Timer Display -->
+        <div class="session-timer-display" id="session-timer-display" title="Session time remaining">
+          <i class="fa-regular fa-clock"></i>
+          <span id="session-timer-text">30:00</span>
+        </div>
+        <div class="profile-dropdown-wrap" id="profile-dropdown-wrap">
+          <button class="profile-icon-btn" onclick="toggleProfileDropdown()" title="Account">
+            <i class="fa-solid fa-user"></i>
+          </button>
+          <div class="profile-dropdown" id="profile-dropdown">
+            <div class="profile-dropdown-header">
+              <div class="profile-dropdown-name" id="admin-display-name">Admin User</div>
+              <div class="profile-dropdown-role" id="admin-display-role">Super Administrator</div>
+            </div>
+            <button class="profile-dropdown-item" onclick="openModal('profile-modal'); closeDropdown()">
+              <i class="fa-regular fa-user"></i> My Profile
+            </button>
+            <button class="profile-dropdown-item" onclick="openModal('settings-modal'); closeDropdown()">
+              <i class="fa-solid fa-gear"></i> Settings
+            </button>
+            <button class="profile-dropdown-item" onclick="loadData(); closeDropdown()">
+              <i class="fa-solid fa-rotate-right"></i> Refresh Data
+            </button>
+            <div class="dropdown-divider"></div>
+            <button class="profile-dropdown-item danger" onclick="handleLogout()">
+              <i class="fa-solid fa-right-from-bracket"></i> Logout
+            </button>
           </div>
-          <button class="profile-dropdown-item" onclick="openModal('profile-modal'); closeDropdown()">
-            <i class="fa-regular fa-user"></i> My Profile
-          </button>
-          <button class="profile-dropdown-item" onclick="openModal('settings-modal'); closeDropdown()">
-            <i class="fa-solid fa-gear"></i> Settings
-          </button>
-          <button class="profile-dropdown-item" onclick="loadData(); closeDropdown()">
-            <i class="fa-solid fa-rotate-right"></i> Refresh Data
-          </button>
-          <div class="dropdown-divider"></div>
-          <button class="profile-dropdown-item danger" onclick="handleLogout()">
-            <i class="fa-solid fa-right-from-bracket"></i> Logout
-          </button>
         </div>
       </div>
     </div>
@@ -103,6 +121,9 @@
       </div>
       <div class="tab" id="tab-payouts" onclick="showTab('payouts', this)">
         <i class="fa-solid fa-money-bill-transfer"></i> Payouts
+      </div>
+      <div class="tab" id="tab-waitlist" onclick="showTab('waitlist', this)">
+        <i class="fa-solid fa-list-ol"></i> Waitlist
       </div>
       <div class="tab" id="tab-logs" onclick="showTab('logs', this)">
         <i class="fa-solid fa-scroll"></i> Logs
@@ -140,7 +161,6 @@
           <div class="stat-label">Tickets Sold</div>
         </div>
       </div>
-
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(350px, 1fr)); gap:1.5rem;">
         <div class="card">
           <h3 class="card-title">Quick Actions</h3>
@@ -156,12 +176,15 @@
             <span><i class="fa-solid fa-flag" style="color:#ef4444; margin-right:0.5rem;"></i>Flagged Events</span>
             <span id="quick-flagged-events">0</span>
           </div>
+          <div class="quick-action" onclick="showTab('waitlist', document.getElementById('tab-waitlist'))">
+            <span><i class="fa-solid fa-list-ol" style="color:#f59e0b; margin-right:0.5rem;"></i>Waitlist Entries</span>
+            <span id="quick-waitlist-count">0</span>
+          </div>
           <div class="quick-action" onclick="showTab('logs', document.getElementById('tab-logs'))">
             <span><i class="fa-solid fa-scroll" style="color:#f59e0b; margin-right:0.5rem;"></i>Recent Logs</span>
             <span id="quick-log-count">0</span>
           </div>
         </div>
-
         <div class="card">
           <h3 class="card-title">System Health</h3>
           <div style="display:flex; justify-content:space-between; padding:0.75rem 0; border-bottom:1px solid #334155;">
@@ -194,9 +217,10 @@
         <h2 style="font-size:2rem; font-weight:700;">User Management</h2>
         <div style="display:flex; gap:0.75rem;">
           <button class="btn btn-primary" onclick="openAddUserModal()"><i class="fa-solid fa-user-plus"></i> Add User</button>
-          <button class="btn btn-success" onclick="openExportModal('users')"><i class="fa-solid fa-file-export"></i> Export </button>
+          <button class="btn btn-success" onclick="openExportModal('users')"><i class="fa-solid fa-file-export"></i> Export</button>
         </div>
       </div>
+      <!-- Filters Row -->
       <div class="filters">
         <input type="text" class="input" id="user-search" placeholder="Search users..." oninput="filterUsers()">
         <select class="select" id="user-role-filter" onchange="filterUsers()">
@@ -211,20 +235,41 @@
           <option value="active">Active</option>
           <option value="suspended">Suspended</option>
         </select>
+        <input type="date" class="input" id="user-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterUsers()" placeholder="From">
+        <input type="date" class="input" id="user-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterUsers()" placeholder="To">
+      </div>
+      <!-- Bulk Action Bar -->
+      <div class="bulk-action-bar" id="users-bulk-bar" style="display:none;">
+        <span id="users-selected-count">0 selected</span>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-warning" onclick="bulkSuspendUsers()"><i class="fa-solid fa-user-slash"></i> Suspend</button>
+          <button class="btn btn-danger" onclick="bulkDeleteUsers()"><i class="fa-solid fa-trash"></i> Delete</button>
+          <button class="btn btn-success" onclick="openExportModal('users', true)"><i class="fa-solid fa-file-export"></i> Export Selected</button>
+        </div>
       </div>
       <div class="table-container">
         <table>
-          <thead><tr><th>User</th><th>Contact</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="users-select-all" onchange="toggleSelectAll('users')"></th>
+            <th class="sortable" onclick="sortTable('users','name')">User <i class="fa-solid fa-sort sort-icon" id="sort-users-name"></i></th>
+            <th class="sortable" onclick="sortTable('users','email')">Contact <i class="fa-solid fa-sort sort-icon" id="sort-users-email"></i></th>
+            <th class="sortable" onclick="sortTable('users','role')">Type <i class="fa-solid fa-sort sort-icon" id="sort-users-role"></i></th>
+            <th class="sortable" onclick="sortTable('users','suspended')">Status <i class="fa-solid fa-sort sort-icon" id="sort-users-suspended"></i></th>
+            <th>Actions</th>
+          </tr>
+          </thead>
           <tbody id="users-table"></tbody>
         </table>
       </div>
+      <div class="pagination-bar" id="users-pagination"></div>
     </section>
 
     <!-- EVENTS -->
     <section id="events" class="section">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
         <h2 style="font-size:2rem; font-weight:700;">Event Management</h2>
-        <button class="btn btn-success" onclick="openExportModal('events')"><i class="fa-solid fa-file-export"></i> Export </button>
+        <button class="btn btn-success" onclick="openExportModal('events')"><i class="fa-solid fa-file-export"></i> Export</button>
       </div>
       <div class="filters">
         <input type="text" class="input" id="event-search" placeholder="Search events..." oninput="filterEvents()">
@@ -233,21 +278,43 @@
           <option value="live">Live Events</option>
           <option value="cancelled">Cancelled</option>
           <option value="flagged">Flagged</option>
+          <option value="unpublished">Unpublished</option>
         </select>
+        <input type="date" class="input" id="event-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterEvents()">
+        <input type="date" class="input" id="event-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterEvents()">
+      </div>
+      <!-- Bulk Action Bar -->
+      <div class="bulk-action-bar" id="events-bulk-bar" style="display:none;">
+        <span id="events-selected-count">0 selected</span>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-warning" onclick="bulkFlagEvents()"><i class="fa-solid fa-flag"></i> Flag</button>
+          <button class="btn btn-danger" onclick="bulkDeleteEvents()"><i class="fa-solid fa-trash"></i> Delete</button>
+          <button class="btn btn-success" onclick="openExportModal('events', true)"><i class="fa-solid fa-file-export"></i> Export Selected</button>
+        </div>
       </div>
       <div class="table-container">
         <table>
-          <thead><tr><th>Event Name</th><th>Organizer</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="events-select-all" onchange="toggleSelectAll('events')"></th>
+            <th class="sortable" onclick="sortTable('events','title')">Event Name <i class="fa-solid fa-sort sort-icon" id="sort-events-title"></i></th>
+            <th>Organizer</th>
+            <th class="sortable" onclick="sortTable('events','date')">Date <i class="fa-solid fa-sort sort-icon" id="sort-events-date"></i></th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+          </thead>
           <tbody id="events-table"></tbody>
         </table>
       </div>
+      <div class="pagination-bar" id="events-pagination"></div>
     </section>
 
     <!-- TICKETS -->
     <section id="tickets" class="section">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
         <h2 style="font-size:2rem; font-weight:700;">Ticket Management</h2>
-        <button class="btn btn-success" onclick="openExportModal('tickets')"><i class="fa-solid fa-file-export"></i> Export </button>
+        <button class="btn btn-success" onclick="openExportModal('tickets')"><i class="fa-solid fa-file-export"></i> Export</button>
       </div>
       <div class="filters">
         <input type="text" class="input" id="ticket-search" placeholder="Search by ticket ID, event, or buyer..." oninput="filterTickets()">
@@ -264,13 +331,34 @@
           <option value="vip">VIP</option>
           <option value="vvip">VVIP</option>
         </select>
+        <input type="date" class="input" id="ticket-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterTickets()">
+        <input type="date" class="input" id="ticket-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterTickets()">
+      </div>
+      <!-- Bulk Action Bar -->
+      <div class="bulk-action-bar" id="tickets-bulk-bar" style="display:none;">
+        <span id="tickets-selected-count">0 selected</span>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-success" onclick="bulkValidateTickets()"><i class="fa-solid fa-circle-check"></i> Validate</button>
+          <button class="btn btn-danger" onclick="bulkCancelTickets()"><i class="fa-solid fa-ban"></i> Cancel</button>
+          <button class="btn btn-primary" onclick="openExportModal('tickets', true)"><i class="fa-solid fa-file-export"></i> Export Selected</button>
+        </div>
       </div>
       <div class="table-container">
         <table>
-          <thead><tr><th>Ticket ID</th><th>Event Name</th><th>User (Customer)</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="tickets-select-all" onchange="toggleSelectAll('tickets')"></th>
+            <th class="sortable" onclick="sortTable('tickets','id')">Ticket ID <i class="fa-solid fa-sort sort-icon" id="sort-tickets-id"></i></th>
+            <th class="sortable" onclick="sortTable('tickets','eventTitle')">Event Name <i class="fa-solid fa-sort sort-icon" id="sort-tickets-eventTitle"></i></th>
+            <th>User (Customer)</th>
+            <th class="sortable" onclick="sortTable('tickets','status')">Status <i class="fa-solid fa-sort sort-icon" id="sort-tickets-status"></i></th>
+            <th>Actions</th>
+          </tr>
+          </thead>
           <tbody id="tickets-table"></tbody>
         </table>
       </div>
+      <div class="pagination-bar" id="tickets-pagination"></div>
     </section>
 
     <!-- PAYOUTS -->
@@ -298,13 +386,76 @@
           <option value="momo">MoMo</option>
           <option value="bank">Bank</option>
         </select>
+        <input type="date" class="input" id="payout-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterPayouts()">
+        <input type="date" class="input" id="payout-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterPayouts()">
+      </div>
+      <!-- Bulk Action Bar -->
+      <div class="bulk-action-bar" id="payouts-bulk-bar" style="display:none;">
+        <span id="payouts-selected-count">0 selected</span>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-success" onclick="bulkApprovePayouts()"><i class="fa-solid fa-check"></i> Approve</button>
+          <button class="btn btn-danger" onclick="bulkRejectPayouts()"><i class="fa-solid fa-xmark"></i> Reject</button>
+          <button class="btn btn-primary" onclick="openExportModal('payouts', true)"><i class="fa-solid fa-file-export"></i> Export Selected</button>
+        </div>
       </div>
       <div class="table-container">
         <table>
-          <thead><tr><th>ID</th><th>Organizer</th><th>Amount &amp; Method</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="payouts-select-all" onchange="toggleSelectAll('payouts')"></th>
+            <th class="sortable" onclick="sortTable('payouts','id')">ID <i class="fa-solid fa-sort sort-icon" id="sort-payouts-id"></i></th>
+            <th class="sortable" onclick="sortTable('payouts','organizerName')">Organizer <i class="fa-solid fa-sort sort-icon" id="sort-payouts-organizerName"></i></th>
+            <th class="sortable" onclick="sortTable('payouts','amount')">Amount &amp; Method <i class="fa-solid fa-sort sort-icon" id="sort-payouts-amount"></i></th>
+            <th class="sortable" onclick="sortTable('payouts','status')">Status <i class="fa-solid fa-sort sort-icon" id="sort-payouts-status"></i></th>
+            <th>Actions</th>
+          </tr>
+          </thead>
           <tbody id="payouts-table"></tbody>
         </table>
       </div>
+      <div class="pagination-bar" id="payouts-pagination"></div>
+    </section>
+
+    <!-- WAITLIST -->
+    <section id="waitlist" class="section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h2 style="font-size:2rem; font-weight:700;">Waitlist Management</h2>
+        <button class="btn btn-success" onclick="openExportModal('waitlist')"><i class="fa-solid fa-file-export"></i> Export</button>
+      </div>
+      <div class="filters">
+        <input type="text" class="input" id="waitlist-search" placeholder="Search by name, email, or event..." oninput="filterWaitlist()">
+        <select class="select" id="waitlist-event-filter" onchange="filterWaitlist()">
+          <option value="all">All Events</option>
+        </select>
+        <input type="date" class="input" id="waitlist-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterWaitlist()">
+        <input type="date" class="input" id="waitlist-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterWaitlist()">
+      </div>
+      <!-- Bulk Action Bar -->
+      <div class="bulk-action-bar" id="waitlist-bulk-bar" style="display:none;">
+        <span id="waitlist-selected-count">0 selected</span>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-primary" onclick="bulkNotifyWaitlist()"><i class="fa-solid fa-bell"></i> Notify Selected</button>
+          <button class="btn btn-success" onclick="bulkConvertWaitlist()"><i class="fa-solid fa-ticket"></i> Convert to Ticket</button>
+          <button class="btn btn-danger" onclick="bulkRemoveWaitlist()"><i class="fa-solid fa-trash"></i> Remove</button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="waitlist-select-all" onchange="toggleSelectAll('waitlist')"></th>
+            <th class="sortable" onclick="sortTable('waitlist','userName')">User <i class="fa-solid fa-sort sort-icon" id="sort-waitlist-userName"></i></th>
+            <th>Contact</th>
+            <th class="sortable" onclick="sortTable('waitlist','eventTitle')">Event <i class="fa-solid fa-sort sort-icon" id="sort-waitlist-eventTitle"></i></th>
+            <th class="sortable" onclick="sortTable('waitlist','joinedAt')">Joined <i class="fa-solid fa-sort sort-icon" id="sort-waitlist-joinedAt"></i></th>
+            <th>Position</th>
+            <th>Actions</th>
+          </tr>
+          </thead>
+          <tbody id="waitlist-table"></tbody>
+        </table>
+      </div>
+      <div class="pagination-bar" id="waitlist-pagination"></div>
     </section>
 
     <!-- LOGS -->
@@ -344,10 +495,9 @@
       </div>
     </section>
 
-    <!-- REPORTS (updated — renamed buttons) -->
+    <!-- REPORTS -->
     <section id="reports" class="section">
       <h2 style="font-size:2rem; font-weight:700; margin-bottom:1.5rem;">Reports &amp; Analytics</h2>
-
       <div class="report-grid">
         <div class="card">
           <h3 class="card-title"><i class="fa-solid fa-users" style="color:#6366f1; margin-right:0.5rem;"></i>User Reports</h3>
@@ -371,7 +521,6 @@
           <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">Detailed ticket sales and revenue breakdown</p>
         </div>
       </div>
-
       <div class="report-grid">
         <div class="card">
           <h3 class="card-title"><i class="fa-solid fa-money-bill-transfer" style="color:#c084fc; margin-right:0.5rem;"></i>Payout Report</h3>
@@ -395,7 +544,6 @@
           <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">System and user activity log history for auditing and compliance</p>
         </div>
       </div>
-
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(350px, 1fr)); gap:1.5rem; margin-top:2rem;">
         <div class="card">
           <h3 class="card-title"><i class="fa-solid fa-chart-pie" style="color:#6366f1; margin-right:0.5rem;"></i>Revenue by Category</h3>
@@ -406,7 +554,6 @@
           <div id="top-organizers"></div>
         </div>
       </div>
-
       <div class="card" style="margin-top:1.5rem;">
         <h3 class="card-title"><i class="fa-solid fa-chart-bar" style="color:#8b5cf6; margin-right:0.5rem;"></i>Platform Statistics</h3>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1.5rem;">
@@ -433,9 +580,9 @@
   </div>
 </div>
 
-<!-- =============================================
+<!-- ============================================================
      MODALS
-============================================= -->
+============================================================ -->
 
 <!-- User Detail -->
 <div id="user-modal" class="modal">
@@ -538,6 +685,34 @@
   </div>
 </div>
 
+<!-- Reset Password Modal -->
+<div id="reset-password-modal" class="modal">
+  <div class="modal-content" style="max-width:480px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-key" style="color:#f59e0b; margin-right:0.5rem;"></i>Reset User Password</h3>
+      <button class="modal-close" onclick="closeModal('reset-password-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="reset-password-user-id">
+      <div style="padding:1rem; background:#0f172a; border-radius:0.5rem; margin-bottom:1.25rem;">
+        <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.5rem;">User</div>
+        <div id="reset-password-user-info" style="font-size:0.875rem; color:#f1f5f9;"></div>
+      </div>
+      <div style="padding:1rem; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3); border-radius:0.5rem; margin-bottom:1.25rem; font-size:0.8rem; color:#fbbf24;">
+        <i class="fa-solid fa-triangle-exclamation" style="margin-right:0.4rem;"></i>
+        A secure reset link will be generated and sent to the user's email. The link will expire in <strong>15 minutes</strong>.
+      </div>
+      <div id="reset-password-result" style="display:none; margin-bottom:1rem;"></div>
+      <div style="display:flex; gap:0.75rem;">
+        <button class="btn btn-warning" style="flex:1;" onclick="submitResetPassword()">
+          <i class="fa-solid fa-paper-plane"></i> Send Reset Link
+        </button>
+        <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="closeModal('reset-password-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Payout Detail -->
 <div id="payout-modal" class="modal">
   <div class="modal-content" style="max-width:600px;">
@@ -560,6 +735,48 @@
   </div>
 </div>
 
+<!-- Edit Event Modal -->
+<div id="edit-event-modal" class="modal">
+  <div class="modal-content" style="max-width:600px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-pen-to-square" style="color:#6366f1; margin-right:0.5rem;"></i>Edit Event</h3>
+      <button class="modal-close" onclick="closeModal('edit-event-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-event-id">
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-heading" style="margin-right:0.5rem;"></i>Title</span>
+        <input type="text" class="settings-input" id="edit-event-title" style="width:280px;">
+      </div>
+      <div class="settings-row" style="align-items:flex-start; padding-top:1rem;">
+        <span class="settings-label" style="padding-top:0.3rem;"><i class="fa-regular fa-file-lines" style="margin-right:0.5rem;"></i>Description</span>
+        <textarea class="settings-input" id="edit-event-description" rows="3" style="width:280px; resize:vertical;"></textarea>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-regular fa-calendar" style="margin-right:0.5rem;"></i>Date &amp; Time</span>
+        <input type="datetime-local" class="settings-input" id="edit-event-date" style="width:280px;">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-building" style="margin-right:0.5rem;"></i>Venue</span>
+        <input type="text" class="settings-input" id="edit-event-venue" style="width:280px;">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-location-dot" style="margin-right:0.5rem;"></i>Location</span>
+        <input type="text" class="settings-input" id="edit-event-location" style="width:280px;">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-tag" style="margin-right:0.5rem;"></i>Category</span>
+        <input type="text" class="settings-input" id="edit-event-category" style="width:280px;">
+      </div>
+      <div id="edit-event-error" style="display:none; margin-top:1rem; padding:0.65rem 0.9rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:0.5rem; font-size:0.8rem;"></div>
+      <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+        <button class="btn btn-primary" style="flex:1;" onclick="saveEditEvent()"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+        <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="closeModal('edit-event-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Ticket Detail -->
 <div id="ticket-modal" class="modal">
   <div class="modal-content" style="max-width:620px;">
@@ -571,7 +788,7 @@
   </div>
 </div>
 
-<!-- Resend Ticket Modal (NEW) -->
+<!-- Resend Ticket Modal -->
 <div id="resend-ticket-modal" class="modal">
   <div class="modal-content" style="max-width:480px;">
     <div class="modal-header">
@@ -604,7 +821,77 @@
   </div>
 </div>
 
-<!-- Advanced Export Modal (NEW) -->
+<!-- Waitlist Notify Modal -->
+<div id="waitlist-notify-modal" class="modal">
+  <div class="modal-content" style="max-width:480px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-bell" style="color:#f59e0b; margin-right:0.5rem;"></i>Notify Waitlisted User</h3>
+      <button class="modal-close" onclick="closeModal('waitlist-notify-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="waitlist-notify-id">
+      <div style="padding:1rem; background:#0f172a; border-radius:0.5rem; margin-bottom:1.25rem;">
+        <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.5rem;">Notifying</div>
+        <div id="waitlist-notify-info" style="font-size:0.875rem; color:#f1f5f9;"></div>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-regular fa-envelope" style="margin-right:0.5rem;"></i>Channel</span>
+        <select class="settings-input" id="waitlist-notify-channel" style="width:220px;">
+          <option value="email">Email</option>
+          <option value="sms">SMS</option>
+          <option value="both">Both</option>
+        </select>
+      </div>
+      <div class="settings-row" style="align-items:flex-start; padding-top:1rem;">
+        <span class="settings-label" style="padding-top:0.3rem;"><i class="fa-regular fa-comment" style="margin-right:0.5rem;"></i>Message</span>
+        <textarea class="settings-input" id="waitlist-notify-message" rows="3" style="width:220px; resize:vertical;">A spot has become available for your waitlisted event. Click here to claim your ticket.</textarea>
+      </div>
+      <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+        <button class="btn btn-warning" style="flex:1;" onclick="submitWaitlistNotify()">
+          <i class="fa-solid fa-bell"></i> Send Notification
+        </button>
+        <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="closeModal('waitlist-notify-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Convert Waitlist to Ticket Modal -->
+<div id="waitlist-convert-modal" class="modal">
+  <div class="modal-content" style="max-width:480px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-ticket" style="color:#10b981; margin-right:0.5rem;"></i>Convert to Ticket</h3>
+      <button class="modal-close" onclick="closeModal('waitlist-convert-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="waitlist-convert-id">
+      <div style="padding:1rem; background:#0f172a; border-radius:0.5rem; margin-bottom:1.25rem;">
+        <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.5rem;">Converting</div>
+        <div id="waitlist-convert-info" style="font-size:0.875rem; color:#f1f5f9;"></div>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-tag" style="margin-right:0.5rem;"></i>Ticket Type</span>
+        <select class="settings-input" id="waitlist-convert-type" style="width:220px;">
+          <option value="regular">Regular</option>
+          <option value="vip">VIP</option>
+          <option value="vvip">VVIP</option>
+          <option value="free">Free</option>
+        </select>
+      </div>
+      <div style="padding:0.75rem 1rem; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:0.5rem; margin-top:1rem; font-size:0.8rem; color:#34d399;">
+        <i class="fa-solid fa-circle-info" style="margin-right:0.4rem;"></i>This will remove the user from the waitlist and create an active ticket.
+      </div>
+      <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+        <button class="btn btn-success" style="flex:1;" onclick="submitWaitlistConvert()">
+          <i class="fa-solid fa-ticket"></i> Convert to Ticket
+        </button>
+        <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="closeModal('waitlist-convert-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Advanced Export Modal -->
 <div id="export-modal" class="modal">
   <div class="modal-content" style="max-width:520px;">
     <div class="modal-header">
@@ -613,8 +900,11 @@
     </div>
     <div class="modal-body">
       <input type="hidden" id="export-data-type">
-
-      <!-- File Format -->
+      <input type="hidden" id="export-selected-only" value="false">
+      <div id="export-selected-notice" style="display:none; margin-bottom:1rem; padding:0.65rem 0.9rem; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.3); color:#818cf8; border-radius:0.5rem; font-size:0.8rem;">
+        <i class="fa-solid fa-filter" style="margin-right:0.4rem;"></i>
+        <span id="export-selected-msg">Exporting selected records only.</span>
+      </div>
       <p style="font-size:0.72rem; color:#475569; text-transform:uppercase; letter-spacing:0.06em; font-weight:600; margin-bottom:0.75rem;">File Format</p>
       <div class="export-format-grid">
         <label class="export-format-option">
@@ -630,8 +920,6 @@
           <span><i class="fa-solid fa-file-pdf"></i> PDF</span>
         </label>
       </div>
-
-      <!-- Date Range -->
       <p style="font-size:0.72rem; color:#475569; text-transform:uppercase; letter-spacing:0.06em; font-weight:600; margin:1.25rem 0 0.75rem;">Date Range</p>
       <div class="export-range-grid">
         <label class="export-range-option">
@@ -651,8 +939,6 @@
           <span>Custom Range</span>
         </label>
       </div>
-
-      <!-- Custom Date Range (shown only when custom is selected) -->
       <div id="custom-date-range" style="display:none; margin-top:1rem;">
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
           <div>
@@ -665,12 +951,10 @@
           </div>
         </div>
       </div>
-
       <div id="export-preview" style="margin-top:1rem; padding:0.75rem 1rem; background:#0f172a; border-radius:0.5rem; font-size:0.8rem; color:#94a3b8; min-height:2.5rem;">
         <i class="fa-solid fa-circle-info" style="margin-right:0.4rem; color:#6366f1;"></i>
         <span id="export-preview-text">Exporting all records from the last 24 hours as CSV.</span>
       </div>
-
       <div style="display:flex; gap:0.75rem; margin-top:1.25rem;">
         <button class="btn btn-primary" style="flex:1;" onclick="executeExport()">
           <i class="fa-solid fa-download"></i> Export &amp; Download
@@ -681,9 +965,26 @@
   </div>
 </div>
 
+<!-- Bulk Confirm Modal -->
+<div id="bulk-confirm-modal" class="modal">
+  <div class="modal-content" style="max-width:440px;">
+    <div class="modal-header">
+      <h3 class="modal-title" id="bulk-confirm-title"><i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b; margin-right:0.5rem;"></i>Confirm Action</h3>
+      <button class="modal-close" onclick="closeModal('bulk-confirm-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p id="bulk-confirm-message" style="color:#94a3b8; margin-bottom:1.5rem; line-height:1.6;"></p>
+      <div style="display:flex; gap:0.75rem;">
+        <button class="btn btn-danger" style="flex:1;" id="bulk-confirm-btn" onclick="">Confirm</button>
+        <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="closeModal('bulk-confirm-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Profile -->
 <div id="profile-modal" class="modal">
-  <div class="modal-content" style="max-width:480px;">
+  <div class="modal-content" style="max-width:500px;">
     <div class="modal-header">
       <h3 class="modal-title"><i class="fa-regular fa-user" style="color:#6366f1; margin-right:0.5rem;"></i>My Profile</h3>
       <button class="modal-close" onclick="closeModal('profile-modal')"><i class="fa-solid fa-xmark"></i></button>
@@ -699,6 +1000,7 @@
           <span class="badge badge-organizer" style="margin-top:0.3rem;"><i class="fa-solid fa-shield-halved"></i> Super Admin</span>
         </div>
       </div>
+      <!-- Profile Info -->
       <div class="settings-row">
         <span class="settings-label"><i class="fa-regular fa-user" style="margin-right:0.5rem;"></i>Display Name</span>
         <input type="text" class="settings-input" id="profile-name-input" value="Admin User">
@@ -716,8 +1018,44 @@
         <span class="settings-value" id="last-login-display">—</span>
       </div>
       <button class="btn btn-primary" style="width:100%; margin-top:1.25rem;" onclick="saveProfile()">
-        <i class="fa-solid fa-floppy-disk"></i> Save Changes
+        <i class="fa-solid fa-floppy-disk"></i> Save Profile
       </button>
+      <!-- Change Password Section -->
+      <div style="margin-top:1.75rem; padding-top:1.5rem; border-top:1px solid #334155;">
+        <h4 style="font-weight:700; font-size:0.95rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">
+          <i class="fa-solid fa-key" style="color:#f59e0b;"></i> Change Password
+        </h4>
+        <div class="settings-row">
+          <span class="settings-label"><i class="fa-solid fa-lock" style="margin-right:0.5rem;"></i>Current</span>
+          <div style="position:relative; width:220px;">
+            <input type="password" class="settings-input" id="current-password" placeholder="Current password" style="width:100%; padding-right:2.5rem;">
+            <button type="button" onclick="togglePasswordVisibility('current-password', this)" style="position:absolute; right:0.5rem; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#475569; font-size:0.8rem;"><i class="fa-regular fa-eye"></i></button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label"><i class="fa-solid fa-key" style="margin-right:0.5rem;"></i>New Password</span>
+          <div style="position:relative; width:220px;">
+            <input type="password" class="settings-input" id="new-password" placeholder="New password" style="width:100%; padding-right:2.5rem;">
+            <button type="button" onclick="togglePasswordVisibility('new-password', this)" style="position:absolute; right:0.5rem; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#475569; font-size:0.8rem;"><i class="fa-regular fa-eye"></i></button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label"><i class="fa-solid fa-shield-halved" style="margin-right:0.5rem;"></i>Confirm</span>
+          <div style="position:relative; width:220px;">
+            <input type="password" class="settings-input" id="confirm-password" placeholder="Confirm new password" style="width:100%; padding-right:2.5rem;">
+            <button type="button" onclick="togglePasswordVisibility('confirm-password', this)" style="position:absolute; right:0.5rem; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#475569; font-size:0.8rem;"><i class="fa-regular fa-eye"></i></button>
+          </div>
+        </div>
+        <!-- Password strength -->
+        <div id="password-strength-bar" style="display:none; margin:0.75rem 0 0.25rem; height:4px; border-radius:2px; background:#334155; overflow:hidden;">
+          <div id="password-strength-fill" style="height:100%; width:0; transition:width 0.3s, background 0.3s;"></div>
+        </div>
+        <div id="password-strength-label" style="display:none; font-size:0.72rem; color:#94a3b8; margin-bottom:0.5rem;"></div>
+        <div id="change-password-error" style="display:none; padding:0.65rem 0.9rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:0.5rem; font-size:0.8rem; margin-bottom:0.75rem;"></div>
+        <button class="btn btn-warning" style="width:100%;" onclick="changeAdminPassword()">
+          <i class="fa-solid fa-key"></i> Update Password
+        </button>
+      </div>
     </div>
   </div>
 </div>
