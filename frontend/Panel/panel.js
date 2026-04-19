@@ -6,7 +6,7 @@
 // ---------- CONFIGURATION ----------
 const API_BASE = 'http://localhost:5001/api';
 let authToken = null;
-let currentAdmin = { name: 'Admin', email: '', role: '' };
+let currentAdmin = { name: '', email: '', role: '' };
 
 // ---------- GLOBAL DATA ----------
 let users    = [];
@@ -235,6 +235,7 @@ function canSuspendUser(user)   { return currentAdmin.role === 'admin' || (curre
 function canDeleteUser(user)    { return currentAdmin.role === 'admin' || (currentAdmin.role === 'moderator' && user.role !== 'admin' && user.role !== 'moderator'); }
 function canEditUser(user)      { return currentAdmin.role === 'admin' || (currentAdmin.role === 'moderator' && user.role !== 'admin' && user.role !== 'moderator'); }
 function canResetPassword(user) { return currentAdmin.role === 'admin' || (currentAdmin.role === 'moderator' && (user.role === 'customer' || user.role === 'organizer')); }
+function canClearLogs() { return currentAdmin.role === 'admin'; }
 function canEditSettings()      { return currentAdmin.role === 'admin'; }
 
 /* =============================================
@@ -639,6 +640,7 @@ function renderLogs() {
 
 async function clearLogs() {
   if (!confirm('Clear all log entries? This cannot be undone.')) return;
+  if (!canClearLogs()) { toast.error('Permission denied', 'You cannot clear logs'); return; }
   try { await apiRequest('/admin/logs', { method: 'DELETE' }); } catch {}
   logs = [];
   localStorage.removeItem('glycr_admin_logs');
