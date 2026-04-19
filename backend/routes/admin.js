@@ -48,7 +48,7 @@ router.patch('/admin/payouts/:id/reject', adminController.rejectPayout);
 // Logs
 router.get('/admin/logs', logController.getLogs);
 router.post('/admin/logs', logController.addLog);
-router.delete('/admin/logs', roleMiddleware(['admin']), logController.clearLogs);
+router.delete('/admin/logs', auth, roleMiddleware(['admin']), logController.clearLogs);
 
 // Settings
 router.get('/admin/settings', auth, roleMiddleware(['admin', 'moderator']), settingsController.getSettings);
