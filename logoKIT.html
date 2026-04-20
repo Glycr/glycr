@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glycr — Brand & Logo Kit</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --teal:#2dd4bf; --teal-d:#1aae9e;
+      --coral:#ff6b6b;
+      --gold:#fbbf24; --mint:#6ee7b7;
+      --bg:#0d1117; --bg2:#131a23; --bg3:#192130;
+      --surface:#1e2a3a; --border:#243347; --border2:#2d3f56;
+      --muted:#4a6278; --dim:#7a96aa; --text:#ccd9e3; --bright:#eaf2f8;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;padding:0;}
+    ::-webkit-scrollbar{width:5px;}
+    ::-webkit-scrollbar-track{background:var(--bg);}
+    ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+    .kit-header{padding:72px 64px 56px;background:linear-gradient(160deg,#0d1e1b 0%,var(--bg) 65%);border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
+    .kit-header::before{content:'';position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(45,212,191,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(45,212,191,0.04) 1px,transparent 1px);background-size:48px 48px;}
+    .kit-header-inner{position:relative;max-width:1000px;}
+    .kit-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--teal);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+    .kit-eyebrow-dot{width:6px;height:6px;border-radius:50%;background:var(--coral);animation:blink 2s ease-in-out infinite;}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    .kit-title{font-family:'Syne',sans-serif;font-size:52px;font-weight:800;color:var(--bright);line-height:1.05;margin-bottom:14px;letter-spacing:-.02em;}
+    .kit-title span{color:var(--teal);}
+    .kit-sub{font-size:16px;color:var(--dim);max-width:540px;line-height:1.75;font-weight:300;}
+    .kit-meta{margin-top:30px;display:flex;gap:24px;flex-wrap:wrap;}
+    .kit-meta-item{font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:6px;}
+    .kit-meta-item span{color:var(--dim);}
+
+    .kit-body{max-width:1000px;margin:0 auto;padding:60px 64px 100px;}
+    .kit-section{margin-bottom:72px;}
+    .section-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:24px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+    .section-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--bright);}
+    .section-note{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+
+    .dl-bar{background:linear-gradient(90deg,rgba(45,212,191,.06),rgba(45,212,191,.02));border:1px solid rgba(45,212,191,.2);border-radius:14px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:48px;}
+    .dl-info h3{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--bright);margin-bottom:4px;}
+    .dl-info p{font-size:13px;color:var(--dim);}
+    .dl-btn{display:flex;align-items:center;gap:8px;padding:12px 24px;border-radius:8px;background:var(--teal);color:var(--bg);border:none;font-size:14px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;transition:.15s;white-space:nowrap;}
+    .dl-btn:hover{background:var(--teal-d);}
+
+    .logo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;}
+    .logo-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .18s;}
+    .logo-card:hover{border-color:var(--border2);}
+    .logo-preview{display:flex;align-items:center;justify-content:center;padding:32px 20px;min-height:110px;}
+    .logo-preview.on-dark{background:var(--bg);}
+    .logo-preview.on-light{background:#f0ede8;}
+    .logo-preview.on-teal{background:#0a2520;}
+    .logo-meta{padding:14px 16px;border-top:1px solid var(--border);}
+    .logo-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;}
+    .logo-spec{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:10px;}
+
+    .icon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;}
+    .icon-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .18s;}
+    .icon-card:hover{border-color:var(--border2);}
+    .icon-preview{display:flex;align-items:center;justify-content:center;padding:28px 20px;background:var(--bg);}
+    .icon-meta{padding:12px 14px;border-top:1px solid var(--border);}
+
+    .wide-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .18s;margin-bottom:16px;}
+    .wide-card:hover{border-color:var(--border2);}
+    .wide-preview{padding:20px;background:var(--bg);display:flex;align-items:center;justify-content:center;}
+    .wide-meta{padding:14px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+    .wide-info .logo-name{margin-bottom:2px;}
+
+    .download-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:8px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--dim);font-size:12px;cursor:pointer;font-family:'Outfit',sans-serif;transition:.15s;}
+    .download-btn:hover{background:var(--bg3);color:var(--teal);border-color:rgba(45,212,191,.3);}
+    .download-btn-sm{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--dim);font-size:12px;cursor:pointer;font-family:'Outfit',sans-serif;transition:.15s;white-space:nowrap;flex-shrink:0;}
+    .download-btn-sm:hover{background:var(--bg3);color:var(--teal);border-color:rgba(45,212,191,.3);}
+
+    .color-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:12px;}
+    .color-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+    .color-swatch{height:68px;}
+    .color-info{padding:13px;}
+    .color-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;}
+    .color-hex{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);cursor:pointer;transition:.15s;}
+    .color-hex:hover{color:var(--teal);}
+    .color-usage{font-size:11px;color:var(--muted);margin-top:3px;}
+
+    .type-block{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:12px;}
+    .type-display{font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:var(--bright);line-height:1.1;margin-bottom:10px;}
+    .type-alphabet{font-family:'Syne',sans-serif;font-size:15px;color:var(--dim);margin-bottom:8px;}
+    .type-body{font-family:'Outfit',sans-serif;font-size:15px;color:var(--dim);line-height:1.7;margin-bottom:8px;}
+    .type-mono{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--teal);margin-bottom:8px;}
+    .type-meta{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted);}
+
+    .rules-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    .rule-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;gap:14px;}
+    .rule-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+    .rule-icon.do{background:rgba(45,212,191,.1);color:var(--teal);}
+    .rule-icon.dont{background:rgba(255,107,107,.1);color:var(--coral);}
+    .rule-text{font-size:13px;color:var(--dim);line-height:1.55;}
+    .rule-text strong{color:var(--text);display:block;margin-bottom:4px;}
+
+    .size-table{width:100%;border-collapse:collapse;font-size:13px;}
+    .size-table th{text-align:left;padding:10px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-family:'JetBrains Mono',monospace;border-bottom:1px solid var(--border);background:var(--bg3);}
+    .size-table td{padding:12px 16px;border-bottom:1px solid var(--border);color:var(--dim);}
+    .size-table tr:last-child td{border-bottom:none;}
+    .size-table td:first-child{color:var(--text);font-weight:500;}
+    .size-table .tag{font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--bg3);border:1px solid var(--border);padding:2px 7px;border-radius:4px;color:var(--teal);}
+
+    #kToast{position:fixed;bottom:20px;right:20px;z-index:9999;background:var(--bg2);border:1px solid var(--teal);padding:11px 18px;border-radius:8px;color:var(--teal);font-size:13px;font-family:'Outfit',sans-serif;transform:translateY(80px);opacity:0;transition:.3s;pointer-events:none;}
+
+    @media(max-width:700px){
+      .kit-body,.kit-header{padding-left:20px;padding-right:20px;}
+      .rules-grid{grid-template-columns:1fr;}
+      .logo-grid,.icon-grid,.color-grid{grid-template-columns:1fr 1fr;}
+      .kit-title{font-size:36px;}
+    }
+  </style>
+</head>
+<body>
+
+<!--
+  PINWHEEL / WINDMILL MARK
+  4 curved teardrop blades fanning out from a centre dot,
+  each rotated 90° — exactly like the kids' toy / FA galaxy icon.
+  Reusable as a named <symbol> so every logo references the same shape.
+
+  The blade is a single cubic-bezier "petal":
+    Start at centre, sweep out and curve back — giving the fan/propeller feel.
+  Centre dot sits on top.
+-->
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- ── PINWHEEL at 1×1 unit, centred on 0,0 ── -->
+    <!-- blade shape: teardrop curving clockwise, tip pointing outward -->
+
+    <!-- dark-bg version: blades = white -->
+    <symbol id="pw-dark" viewBox="0 0 52 52">
+      <rect width="52" height="52" rx="11" fill="#2dd4bf"/>
+      <g transform="translate(26,26)">
+        <!-- blade 1 — up-right -->
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#0d1117" transform="rotate(0)"/>
+        <!-- blade 2 — right-down -->
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#0d1117" transform="rotate(90)"/>
+        <!-- blade 3 — down-left -->
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#0d1117" transform="rotate(180)"/>
+        <!-- blade 4 — left-up -->
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#0d1117" transform="rotate(270)"/>
+        <!-- centre pin -->
+        <circle r="3" fill="#0d1117"/>
+      </g>
+    </symbol>
+
+    <!-- light-bg version: blades = near-white -->
+    <symbol id="pw-light" viewBox="0 0 52 52">
+      <rect width="52" height="52" rx="11" fill="#2dd4bf"/>
+      <g transform="translate(26,26)">
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#eaf2f8" transform="rotate(0)"/>
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#eaf2f8" transform="rotate(90)"/>
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#eaf2f8" transform="rotate(180)"/>
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#eaf2f8" transform="rotate(270)"/>
+        <circle r="3" fill="#eaf2f8"/>
+      </g>
+    </symbol>
+
+    <!-- teal outline version -->
+    <symbol id="pw-teal" viewBox="0 0 52 52">
+      <rect width="52" height="52" rx="11" fill="rgba(45,212,191,0.1)" stroke="rgba(45,212,191,0.35)" stroke-width="1.5"/>
+      <g transform="translate(26,26)">
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#2dd4bf" transform="rotate(0)"/>
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#2dd4bf" transform="rotate(90)"/>
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#2dd4bf" transform="rotate(180)"/>
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#2dd4bf" transform="rotate(270)"/>
+        <circle r="3" fill="#2dd4bf"/>
+      </g>
+    </symbol>
+
+    <!-- all-white version -->
+    <symbol id="pw-white" viewBox="0 0 52 52">
+      <rect width="52" height="52" rx="11" fill="rgba(255,255,255,0.1)"/>
+      <g transform="translate(26,26)">
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="white" transform="rotate(0)"/>
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="white" transform="rotate(90)"/>
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="white" transform="rotate(180)"/>
+        <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="white" transform="rotate(270)"/>
+        <circle r="3" fill="white"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- HEADER -->
+<div class="kit-header">
+  <div class="kit-header-inner">
+    <div class="kit-eyebrow"><span class="kit-eyebrow-dot"></span>Glycr · Brand Identity</div>
+    <h1 class="kit-title"><span>G</span>lycr — Logo & Brand Kit</h1>
+    <p class="kit-sub">Official brand assets for Glycr — your ticket to every unforgettable moment. Download logo marks, icon sets, ad banners, and color references for use across all digital channels.</p>
+    <div class="kit-meta">
+      <div class="kit-meta-item"><i class="fas fa-tag" style="color:var(--teal)"></i> Version: <span>2.1 — 2025</span></div>
+      <div class="kit-meta-item"><i class="fas fa-palette" style="color:var(--teal)"></i> Palette: <span>Teal · Coral · Slate</span></div>
+      <div class="kit-meta-item"><i class="fas fa-globe" style="color:var(--teal)"></i> Product: <span>Glycr Tickets &amp; Events</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="kit-body">
+
+  <div class="dl-bar">
+    <div class="dl-info">
+      <h3>Download all assets</h3>
+      <p>SVGs at all standard sizes — favicons, logos, social media, ad banners, cover art.</p>
+    </div>
+    <button class="dl-btn" onclick="downloadAll()"><i class="fas fa-download"></i> Download Brand Kit (.zip)</button>
+  </div>
+
+  <!-- PRIMARY LOGOS -->
+  <div class="kit-section">
+    <div class="section-header">
+      <div class="section-title">Primary Logo — Horizontal</div>
+      <div class="section-note">Use on most surfaces · min-width 140px</div>
+    </div>
+    <div class="logo-grid">
+
+      <!-- DARK -->
+      <div class="logo-card">
+        <div class="logo-preview on-dark" id="logo-dark">
+          <svg width="190" height="52" viewBox="0 0 220 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="48" height="48" rx="11" fill="#2dd4bf"/>
+            <g transform="translate(26,26)">
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#0d1117" transform="rotate(0)"/>
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#0d1117" transform="rotate(90)"/>
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#0d1117" transform="rotate(180)"/>
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#0d1117" transform="rotate(270)"/>
+              <circle r="3.2" fill="#0d1117"/>
+            </g>
+            <text x="62" y="35" font-family="Georgia, serif" font-weight="700" font-size="26" fill="#eaf2f8" letter-spacing="-1">Glycr</text>
+          </svg>
+        </div>
+        <div class="logo-meta">
+          <div class="logo-name">Horizontal — Dark</div>
+          <div class="logo-spec">220×52px · Dark backgrounds</div>
+          <button class="download-btn" onclick="dl('logo-dark','glycr-logo-horizontal-dark')"><i class="fas fa-download"></i> Download SVG</button>
+        </div>
+      </div>
+
+      <!-- LIGHT -->
+      <div class="logo-card">
+        <div class="logo-preview on-light" id="logo-light">
+          <svg width="190" height="52" viewBox="0 0 220 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="48" height="48" rx="11" fill="#2dd4bf"/>
+            <g transform="translate(26,26)">
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#0d1117" transform="rotate(0)"/>
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#0d1117" transform="rotate(90)"/>
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#0d1117" transform="rotate(180)"/>
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#0d1117" transform="rotate(270)"/>
+              <circle r="3.2" fill="#0d1117"/>
+            </g>
+            <text x="62" y="35" font-family="Georgia, serif" font-weight="700" font-size="26" fill="#0d1117" letter-spacing="-1">Glycr</text>
+          </svg>
+        </div>
+        <div class="logo-meta">
+          <div class="logo-name">Horizontal — Light</div>
+          <div class="logo-spec">220×52px · Light backgrounds</div>
+          <button class="download-btn" onclick="dl('logo-light','glycr-logo-horizontal-light')"><i class="fas fa-download"></i> Download SVG</button>
+        </div>
+      </div>
+
+      <!-- TEAL -->
+      <div class="logo-card">
+        <div class="logo-preview on-teal" id="logo-teal">
+          <svg width="190" height="52" viewBox="0 0 220 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="48" height="48" rx="11" fill="rgba(45,212,191,0.12)" stroke="rgba(45,212,191,0.4)" stroke-width="1.5"/>
+            <g transform="translate(26,26)">
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#2dd4bf" transform="rotate(0)"/>
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#2dd4bf" transform="rotate(90)"/>
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#2dd4bf" transform="rotate(180)"/>
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="#2dd4bf" transform="rotate(270)"/>
+              <circle r="3.2" fill="#2dd4bf"/>
+            </g>
+            <text x="62" y="35" font-family="Georgia, serif" font-weight="700" font-size="26" fill="#2dd4bf" letter-spacing="-1">Glycr</text>
+          </svg>
+        </div>
+        <div class="logo-meta">
+          <div class="logo-name">Horizontal — Teal</div>
+          <div class="logo-spec">220×52px · Brand teal surfaces</div>
+          <button class="download-btn" onclick="dl('logo-teal','glycr-logo-horizontal-teal')"><i class="fas fa-download"></i> Download SVG</button>
+        </div>
+      </div>
+
+      <!-- WHITE -->
+      <div class="logo-card">
+        <div class="logo-preview" style="background:#1a2a24;" id="logo-white">
+          <svg width="190" height="52" viewBox="0 0 220 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="48" height="48" rx="11" fill="rgba(255,255,255,0.1)"/>
+            <g transform="translate(26,26)">
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="white" transform="rotate(0)"/>
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="white" transform="rotate(90)"/>
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="white" transform="rotate(180)"/>
+              <path d="M0,0 C2,-8 10,-14 4,-18 C-2,-22 -10,-10 0,0Z" fill="white" transform="rotate(270)"/>
+              <circle r="3.2" fill="white"/>
+            </g>
+            <text x="62" y="35" font-family="Georgia, serif" font-weight="700" font-size="26" fill="white" letter-spacing="-1">Glycr</text>
+          </svg>
+        </div>
+        <div class="logo-meta">
+          <div class="logo-name">Horizontal — All White</div>
+          <div class="logo-spec">220×52px · Photos / imagery</div>
+          <button class="download-btn" onclick="dl('logo-white','glycr-logo-horizontal-white')"><i class="fas fa-download"></i> Download SVG</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ICON MARKS -->
+  <div class="kit-section">
+    <div class="section-header">
+      <div class="section-title">Icon Mark — All Sizes</div>
+      <div class="section-note">Use standalone when brand is already established</div>
+    </div>
+    <div class="icon-grid">
+
+      <!-- FAV 32 -->
+      <div class="icon-card">
+        <div class="icon-preview" id="fav-32">
+          <svg width="64" height="64" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="7" fill="#2dd4bf"/>
+            <g transform="translate(16,16)">
+              <path d="M0,0 C1,-4.5 5.5,-7.5 2.5,-10 C-1,-12.5 -5.5,-6 0,0Z" fill="#0d1117" transform="rotate(0)"/>
+              <path d="M0,0 C1,-4.5 5.5,-7.5 2.5,-10 C-1,-12.5 -5.5,-6 0,0Z" fill="#0d1117" transform="rotate(90)"/>
+              <path d="M0,0 C1,-4.5 5.5,-7.5 2.5,-10 C-1,-12.5 -5.5,-6 0,0Z" fill="#0d1117" transform="rotate(180)"/>
+              <path d="M0,0 C1,-4.5 5.5,-7.5 2.5,-10 C-1,-12.5 -5.5,-6 0,0Z" fill="#0d1117" transform="rotate(270)"/>
+              <circle r="1.8" fill="#0d1117"/>
+            </g>
+          </svg>
+        </div>
+        <div class="icon-meta">
+          <div class="logo-name">Favicon 32</div>
+          <div class="logo-spec">32×32px · Browser tab</div>
+          <button class="download-btn" onclick="dl('fav-32','glycr-favicon-32')"><i class="fas fa-download"></i> SVG</button>
+        </div>
+      </div>
+
+      <!-- FAV 64 -->
+      <div class="icon-card">
+        <div class="icon-preview" id="fav-64">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="64" height="64" rx="14" fill="#2dd4bf"/>
+            <g transform="translate(32,32)">
+              <path d="M0,0 C2,-9 11,-15 5,-20 C-1,-25 -11,-12 0,0Z" fill="#0d1117" transform="rotate(0)"/>
+              <path d="M0,0 C2,-9 11,-15 5,-20 C-1,-25 -11,-12 0,0Z" fill="#0d1117" transform="rotate(90)"/>
+              <path d="M0,0 C2,-9 11,-15 5,-20 C-1,-25 -11,-12 0,0Z" fill="#0d1117" transform="rotate(180)"/>
+              <path d="M0,0 C2,-9 11,-15 5,-20 C-1,-25 -11,-12 0,0Z" fill="#0d1117" transform="rotate(270)"/>
+              <circle r="3.5" fill="#0d1117"/>
+            </g>
+          </svg>
+        </div>
+        <div class="icon-meta">
+          <div class="logo-name">Favicon 64</div>
+          <div class="logo-spec">64×64px · High-res tab</div>
+          <button class="download-btn" onclick="dl('fav-64','glycr-favicon-64')"><i class="fas fa-download"></i> SVG</button>
+        </div>
+      </div>
+
+      <!-- APPLE TOUCH 180 -->
+      <div class="icon-card">
+        <div class="icon-preview" id="icon-180">
+          <svg width="80" height="80" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="180" height="180" rx="40" fill="#0d1117"/>
+            <rect x="4" y="4" width="172" height="172" rx="37" fill="none" stroke="#243347" stroke-width="1"/>
+            <rect x="30" y="30" width="120" height="120" rx="26" fill="#2dd4bf"/>
+            <g transform="translate(90,90)">
+              <path d="M0,0 C3,-14 17,-23 8,-31 C-1,-39 -17,-18 0,0Z" fill="#0d1117" transform="rotate(0)"/>
+              <path d="M0,0 C3,-14 17,-23 8,-31 C-1,-39 -17,-18 0,0Z" fill="#0d1117" transform="rotate(90)"/>
+              <path d="M0,0 C3,-14 17,-23 8,-31 C-1,-39 -17,-18 0,0Z" fill="#0d1117" transform="rotate(180)"/>
+              <path d="M0,0 C3,-14 17,-23 8,-31 C-1,-39 -17,-18 0,0Z" fill="#0d1117" transform="rotate(270)"/>
+              <circle r="6" fill="#0d1117"/>
+            </g>
+          </svg>
+        </div>
+        <div class="icon-meta">
+          <div class="logo-name">Apple Touch</div>
+          <div class="logo-spec">180×180px · iOS home screen</div>
+          <button class="download-btn" onclick="dl('icon-180','glycr-apple-touch-180')"><i class="fas fa-download"></i> SVG</button>
+        </div>
+      </div>
+
+      <!-- SOCIAL SQUARE 800 -->
+      <div class="icon-card">
+        <div class="icon-preview" id="icon-sq">
+          <svg width="80" height="80" viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="800" height="800" fill="#0d1117"/>
+            <rect x="2" y="2" width="796" height="796" fill="none" stroke="#243347" stroke-width="2"/>
+            <circle cx="650" cy="150" r="220" fill="#2dd4bf" opacity="0.04"/>
+            <circle cx="150" cy="650" r="180" fill="#ff6b6b" opacity="0.04"/>
+            <rect x="290" y="220" width="220" height="220" rx="44" fill="#2dd4bf"/>
+            <g transform="translate(400,330)">
+              <path d="M0,0 C4,-19 22,-31 11,-42 C0,-53 -22,-25 0,0Z" fill="#0d1117" transform="rotate(0)"/>
+              <path d="M0,0 C4,-19 22,-31 11,-42 C0,-53 -22,-25 0,0Z" fill="#0d1117" transform="rotate(90)"/>
+              <path d="M0,0 C4,-19 22,-31 11,-42 C0,-53 -22,-25 0,0Z" fill="#0d1117" transform="rotate(180)"/>
+              <path d="M0,0 C4,-19 22,-31 11,-42 C0,-53 -22,-25 0,0Z" fill="#0d1117" transform="rotate(270)"/>
+              <circle r="8" fill="#0d1117"/>
+            </g>
+            <text x="400" y="570" font-family="Georgia, serif" font-weight="700" font-size="96" fill="#eaf2f8" letter-spacing="-4" text-anchor="middle">Glycr</text>
+            <rect x="340" y="586" width="120" height="3" rx="2" fill="#ff6b6b"/>
+            <text x="400" y="630" font-family="monospace" font-size="20" fill="#4a6278" letter-spacing="8" text-anchor="middle">TICKETS &amp; EVENTS</text>
+          </svg>
+        </div>
+        <div class="icon-meta">
+          <div class="logo-name">Social Square</div>
+          <div class="logo-spec">800×800px · Instagram / FB</div>
+          <button class="download-btn" onclick="dl('icon-sq','glycr-social-square-800')"><i class="fas fa-download"></i> SVG</button>
+        </div>
+      </div>
+
+      <!-- TWITTER CIRCLE -->
+      <div class="icon-card">
+        <div class="icon-preview" id="icon-circle">
+          <svg width="80" height="80" viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="400" cy="400" r="400" fill="#0d1117"/>
+            <circle cx="400" cy="400" r="398" fill="none" stroke="#243347" stroke-width="2"/>
+            <rect x="290" y="200" width="220" height="220" rx="44" fill="#2dd4bf"/>
+            <g transform="translate(400,310)">
+              <path d="M0,0 C4,-19 22,-31 11,-42 C0,-53 -22,-25 0,0Z" fill="#0d1117" transform="rotate(0)"/>
+              <path d="M0,0 C4,-19 22,-31 11,-42 C0,-53 -22,-25 0,0Z" fill="#0d1117" transform="rotate(90)"/>
+              <path d="M0,0 C4,-19 22,-31 11,-42 C0,-53 -22,-25 0,0Z" fill="#0d1117" transform="rotate(180)"/>
+              <path d="M0,0 C4,-19 22,-31 11,-42 C0,-53 -22,-25 0,0Z" fill="#0d1117" transform="rotate(270)"/>
+              <circle r="8" fill="#0d1117"/>
+            </g>
+            <text x="400" y="545" font-family="Georgia, serif" font-weight="700" font-size="96" fill="#eaf2f8" letter-spacing="-4" text-anchor="middle">Glycr</text>
+            <rect x="350" y="560" width="100" height="3" rx="2" fill="#ff6b6b"/>
+            <text x="400" y="600" font-family="monospace" font-size="18" fill="#4a6278" letter-spacing="7" text-anchor="middle">TICKETS</text>
+          </svg>
+        </div>
+        <div class="icon-meta">
+          <div class="logo-name">Twitter / X Circle</div>
+          <div class="logo-spec">800×800px · Profile photo</div>
+          <button class="download-btn" onclick="dl('icon-circle','glycr-twitter-circle-800')"><i class="fas fa-download"></i> SVG</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BANNERS -->
+  <div class="kit-section">
+    <div class="section-header">
+      <div class="section-title">Banners & Cover Art</div>
+      <div class="section-note">Social media, ads, OG images</div>
+    </div>
+
+    <!-- Twitter Banner -->
+    <div class="wide-card">
+      <div class="wide-preview" id="banner-twitter">
+        <svg viewBox="0 0 1500 500" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-height:200px;">
+          <rect width="1500" height="500" fill="#0d1117"/>
+          <line x1="0" y1="100" x2="1500" y2="100" stroke="#2dd4bf" stroke-width="0.3" opacity="0.15"/>
+          <line x1="0" y1="200" x2="1500" y2="200" stroke="#2dd4bf" stroke-width="0.3" opacity="0.15"/>
+          <line x1="0" y1="300" x2="1500" y2="300" stroke="#2dd4bf" stroke-width="0.3" opacity="0.15"/>
+          <line x1="0" y1="400" x2="1500" y2="400" stroke="#2dd4bf" stroke-width="0.3" opacity="0.15"/>
+          <line x1="300" y1="0" x2="300" y2="500" stroke="#2dd4bf" stroke-width="0.3" opacity="0.15"/>
+          <line x1="600" y1="0" x2="600" y2="500" stroke="#2dd4bf" stroke-width="0.3" opacity="0.15"/>
+          <line x1="900" y1="0" x2="900" y2="500" stroke="#2dd4bf" stroke-width="0.3" opacity="0.15"/>
+          <line x1="1200" y1="0" x2="1200" y2="500" stroke="#2dd4bf" stroke-width="0.3" opacity="0.15"/>
+          <rect x="1100" y="0" width="400" height="500" fill="#ff6b6b" opacity="0.03"/>
+          <rect x="1098" y="0" width="2" height="500" fill="#ff6b6b" opacity="0.2"/>
+          <circle cx="1380" cy="100" r="180" fill="#2dd4bf" opacity="0.04"/>
+          <!-- pinwheel mark -->
+          <rect x="98" y="173" width="114" height="114" rx="22" fill="#2dd4bf"/>
+          <g transform="translate(155,230)">
+            <path d="M0,0 C2,-11 13,-18 6,-25 C-1,-31 -13,-15 0,0Z" fill="#0d1117" transform="rotate(0)"/>
+            <path d="M0,0 C2,-11 13,-18 6,-25 C-1,-31 -13,-15 0,0Z" fill="#0d1117" transform="rotate(90)"/>
+            <path d="M0,0 C2,-11 13,-18 6,-25 C-1,-31 -13,-15 0,0Z" fill="#0d1117" transform="rotate(180)"/>
+            <path d="M0,0 C2,-11 13,-18 6,-25 C-1,-31 -13,-15 0,0Z" fill="#0d1117" transform="rotate(270)"/>
+            <circle r="4.5" fill="#0d1117"/>
+          </g>
+          <text x="240" y="272" font-family="Georgia, serif" font-weight="700" font-size="120" fill="#eaf2f8" letter-spacing="-5">Glycr</text>
+          <text x="242" y="320" font-family="monospace" font-size="22" fill="#4a6278" letter-spacing="6">YOUR TICKET TO EVERY MOMENT</text>
+          <rect x="1140" y="160" width="140" height="36" rx="18" fill="#2dd4bf" opacity="0.1"/>
+          <rect x="1140" y="160" width="140" height="36" rx="18" fill="none" stroke="#2dd4bf" stroke-width="1" opacity="0.3"/>
+          <text x="1210" y="183" font-family="monospace" font-size="14" fill="#2dd4bf" letter-spacing="3" text-anchor="middle">CONCERTS</text>
+          <rect x="1140" y="210" width="140" height="36" rx="18" fill="#ff6b6b" opacity="0.1"/>
+          <rect x="1140" y="210" width="140" height="36" rx="18" fill="none" stroke="#ff6b6b" stroke-width="1" opacity="0.3"/>
+          <text x="1210" y="233" font-family="monospace" font-size="14" fill="#ff6b6b" letter-spacing="3" text-anchor="middle">FESTIVALS</text>
+          <rect x="1140" y="260" width="140" height="36" rx="18" fill="#fbbf24" opacity="0.1"/>
+          <rect x="1140" y="260" width="140" height="36" rx="18" fill="none" stroke="#fbbf24" stroke-width="1" opacity="0.3"/>
+          <text x="1210" y="283" font-family="monospace" font-size="14" fill="#fbbf24" letter-spacing="3" text-anchor="middle">SPORTS</text>
+          <rect x="1140" y="316" width="180" height="50" rx="8" fill="#2dd4bf"/>
+          <text x="1230" y="347" font-family="monospace" font-size="16" font-weight="700" fill="#0d1117" letter-spacing="2" text-anchor="middle">GET TICKETS</text>
+        </svg>
+      </div>
+      <div class="wide-meta">
+        <div class="wide-info">
+          <div class="logo-name">Twitter / X Banner</div>
+          <div class="logo-spec">1500×500px · Profile banner</div>
+        </div>
+        <button class="download-btn-sm" onclick="dl('banner-twitter','glycr-twitter-banner-1500x500')"><i class="fas fa-download"></i> Download SVG</button>
+      </div>
+    </div>
+
+    <!-- OG Cover -->
+    <div class="wide-card">
+      <div class="wide-preview" id="cover-og">
+        <svg viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-height:280px;">
+          <rect width="1200" height="630" fill="#0d1117"/>
+          <defs>
+            <pattern id="dotsg" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
+              <circle cx="15" cy="15" r="1" fill="#2dd4bf" opacity="0.18"/>
+            </pattern>
+          </defs>
+          <rect width="1200" height="630" fill="url(#dotsg)"/>
+          <rect x="0" y="0" width="6" height="630" fill="#2dd4bf" opacity="0.5"/>
+          <rect x="1194" y="0" width="6" height="630" fill="#ff6b6b" opacity="0.4"/>
+          <circle cx="1050" cy="100" r="300" fill="#2dd4bf" opacity="0.03"/>
+          <circle cx="150" cy="530" r="250" fill="#ff6b6b" opacity="0.03"/>
+          <text x="600" y="150" font-family="monospace" font-size="18" fill="#2dd4bf" letter-spacing="10" text-anchor="middle">TICKET PLATFORM</text>
+          <line x1="350" y1="138" x2="470" y2="138" stroke="#243347" stroke-width="1"/>
+          <line x1="730" y1="138" x2="850" y2="138" stroke="#243347" stroke-width="1"/>
+          <text x="600" y="350" font-family="Georgia, serif" font-weight="700" font-size="200" fill="#eaf2f8" letter-spacing="-10" text-anchor="middle">Glycr</text>
+          <!-- pinwheel floating beside wordmark -->
+          <g transform="translate(858,175)">
+            <path d="M0,0 C3,-14 17,-23 8,-32 C-1,-41 -17,-19 0,0Z" fill="#2dd4bf" transform="rotate(0)"/>
+            <path d="M0,0 C3,-14 17,-23 8,-32 C-1,-41 -17,-19 0,0Z" fill="#2dd4bf" transform="rotate(90)"/>
+            <path d="M0,0 C3,-14 17,-23 8,-32 C-1,-41 -17,-19 0,0Z" fill="#2dd4bf" transform="rotate(180)"/>
+            <path d="M0,0 C3,-14 17,-23 8,-32 C-1,-41 -17,-19 0,0Z" fill="#2dd4bf" transform="rotate(270)"/>
+            <circle r="6" fill="#2dd4bf"/>
+          </g>
+          <text x="600" y="420" font-family="monospace" font-size="20" fill="#7a96aa" letter-spacing="4" text-anchor="middle">YOUR TICKET TO EVERY UNFORGETTABLE MOMENT</text>
+          <line x1="450" y1="445" x2="750" y2="445" stroke="#243347" stroke-width="1"/>
+          <rect x="356" y="462" width="130" height="36" rx="18" fill="#2dd4bf" opacity="0.08"/>
+          <rect x="356" y="462" width="130" height="36" rx="18" fill="none" stroke="#2dd4bf" stroke-width="1" opacity="0.3"/>
+          <text x="421" y="485" font-family="monospace" font-size="13" fill="#2dd4bf" letter-spacing="3" text-anchor="middle">CONCERTS</text>
+          <rect x="504" y="462" width="130" height="36" rx="18" fill="#ff6b6b" opacity="0.08"/>
+          <rect x="504" y="462" width="130" height="36" rx="18" fill="none" stroke="#ff6b6b" stroke-width="1" opacity="0.3"/>
+          <text x="569" y="485" font-family="monospace" font-size="13" fill="#ff6b6b" letter-spacing="3" text-anchor="middle">FESTIVALS</text>
+          <rect x="652" y="462" width="130" height="36" rx="18" fill="#fbbf24" opacity="0.08"/>
+          <rect x="652" y="462" width="130" height="36" rx="18" fill="none" stroke="#fbbf24" stroke-width="1" opacity="0.3"/>
+          <text x="717" y="485" font-family="monospace" font-size="13" fill="#fbbf24" letter-spacing="3" text-anchor="middle">SPORTS</text>
+          <text x="600" y="580" font-family="monospace" font-size="16" fill="#2d3f56" letter-spacing="4" text-anchor="middle">glycr.io</text>
+        </svg>
+      </div>
+      <div class="wide-meta">
+        <div class="wide-info">
+          <div class="logo-name">Open Graph / Social Share Cover</div>
+          <div class="logo-spec">1200×630px · Twitter, Facebook, LinkedIn, Discord link previews</div>
+        </div>
+        <button class="download-btn-sm" onclick="dl('cover-og','glycr-og-cover-1200x630')"><i class="fas fa-download"></i> Download SVG</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AD BANNERS -->
+  <div class="kit-section">
+    <div class="section-header">
+      <div class="section-title">Ad Banners</div>
+      <div class="section-note">Standard IAB display sizes</div>
+    </div>
+
+    <div class="wide-card">
+      <div class="wide-preview" id="ad-leaderboard" style="padding:16px;">
+        <svg viewBox="0 0 728 90" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-height:90px;">
+          <rect width="728" height="90" fill="#131a23"/>
+          <rect x="0.5" y="0.5" width="727" height="89" fill="none" stroke="#2d3f56" stroke-width="1"/>
+          <rect x="16" y="18" width="54" height="54" rx="11" fill="#2dd4bf"/>
+          <g transform="translate(43,45)">
+            <path d="M0,0 C1.5,-7.5 9,-12.5 4,-17 C-1,-21 -9,-10 0,0Z" fill="#0d1117" transform="rotate(0)"/>
+            <path d="M0,0 C1.5,-7.5 9,-12.5 4,-17 C-1,-21 -9,-10 0,0Z" fill="#0d1117" transform="rotate(90)"/>
+            <path d="M0,0 C1.5,-7.5 9,-12.5 4,-17 C-1,-21 -9,-10 0,0Z" fill="#0d1117" transform="rotate(180)"/>
+            <path d="M0,0 C1.5,-7.5 9,-12.5 4,-17 C-1,-21 -9,-10 0,0Z" fill="#0d1117" transform="rotate(270)"/>
+            <circle r="3" fill="#0d1117"/>
+          </g>
+          <text x="82" y="42" font-family="Georgia, serif" font-weight="700" font-size="22" fill="#eaf2f8" letter-spacing="-0.5">Glycr</text>
+          <text x="82" y="58" font-family="monospace" font-size="10" fill="#4a6278" letter-spacing="1">TICKETS &amp; EVENTS</text>
+          <line x1="200" y1="20" x2="200" y2="70" stroke="#2d3f56" stroke-width="1"/>
+          <text x="224" y="38" font-family="monospace" font-size="11" fill="#4a6278" letter-spacing="1">EARLY BIRD</text>
+          <text x="224" y="58" font-family="Georgia, serif" font-weight="700" font-size="20" fill="#fbbf24">Discount Inside</text>
+          <line x1="450" y1="20" x2="450" y2="70" stroke="#2d3f56" stroke-width="1"/>
+          <text x="474" y="38" font-family="monospace" font-size="11" fill="#4a6278" letter-spacing="1">EVENTS LIVE</text>
+          <text x="474" y="58" font-family="Georgia, serif" font-weight="700" font-size="20" fill="#eaf2f8">10,000+</text>
+          <rect x="586" y="22" width="124" height="46" rx="7" fill="#ff6b6b"/>
+          <text x="648" y="50" font-family="monospace" font-size="13" font-weight="700" fill="#ffffff" letter-spacing="1" text-anchor="middle">BUY TICKETS</text>
+        </svg>
+      </div>
+      <div class="wide-meta">
+        <div class="wide-info">
+          <div class="logo-name">Leaderboard Ad</div>
+          <div class="logo-spec">728×90px · Standard IAB leaderboard</div>
+        </div>
+        <button class="download-btn-sm" onclick="dl('ad-leaderboard','glycr-ad-leaderboard-728x90')"><i class="fas fa-download"></i> Download SVG</button>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start;">
+      <div class="wide-card" style="width:260px;margin-bottom:0;">
+        <div class="wide-preview" id="ad-square" style="padding:16px;">
+          <svg viewBox="0 0 300 250" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;">
+            <rect width="300" height="250" fill="#131a23"/>
+            <rect x="0.5" y="0.5" width="299" height="249" fill="none" stroke="#2d3f56" stroke-width="1"/>
+            <circle cx="260" cy="210" r="100" fill="#2dd4bf" opacity="0.04"/>
+            <rect x="0" y="0" width="300" height="4" fill="#2dd4bf"/>
+            <rect x="18" y="18" width="42" height="42" rx="9" fill="#2dd4bf"/>
+            <g transform="translate(39,39)">
+              <path d="M0,0 C1.5,-7 8.5,-11.5 4,-16 C-1,-20 -8.5,-9.5 0,0Z" fill="#0d1117" transform="rotate(0)"/>
+              <path d="M0,0 C1.5,-7 8.5,-11.5 4,-16 C-1,-20 -8.5,-9.5 0,0Z" fill="#0d1117" transform="rotate(90)"/>
+              <path d="M0,0 C1.5,-7 8.5,-11.5 4,-16 C-1,-20 -8.5,-9.5 0,0Z" fill="#0d1117" transform="rotate(180)"/>
+              <path d="M0,0 C1.5,-7 8.5,-11.5 4,-16 C-1,-20 -8.5,-9.5 0,0Z" fill="#0d1117" transform="rotate(270)"/>
+              <circle r="2.8" fill="#0d1117"/>
+            </g>
+            <text x="68" y="48" font-family="Georgia, serif" font-weight="700" font-size="20" fill="#eaf2f8" letter-spacing="-0.5">Glycr</text>
+            <line x1="20" y1="72" x2="280" y2="72" stroke="#243347" stroke-width="1"/>
+            <text x="20" y="108" font-family="Georgia, serif" font-weight="700" font-size="28" fill="#eaf2f8">Don't miss</text>
+            <text x="20" y="140" font-family="Georgia, serif" font-weight="700" font-size="28" fill="#ff6b6b">your event.</text>
+            <rect x="20" y="154" width="160" height="28" rx="14" fill="#fbbf24" opacity="0.1"/>
+            <rect x="20" y="154" width="160" height="28" rx="14" fill="none" stroke="#fbbf24" stroke-width="1" opacity="0.4"/>
+            <text x="100" y="173" font-family="monospace" font-size="11" fill="#fbbf24" letter-spacing="2" text-anchor="middle">EARLY BIRD DISCOUNT</text>
+            <text x="20" y="216" font-family="monospace" font-size="10" fill="#4a6278" letter-spacing="1">from GH₵ 50 · 10,000+ events</text>
+            <rect x="20" y="222" width="130" height="20" rx="5" fill="#2dd4bf"/>
+            <text x="85" y="236" font-family="monospace" font-size="10" font-weight="700" fill="#0d1117" letter-spacing="1" text-anchor="middle">GET TICKETS</text>
+            <rect x="160" y="222" width="120" height="20" rx="5" fill="none" stroke="#2dd4bf" stroke-width="1" opacity="0.4"/>
+            <text x="220" y="236" font-family="monospace" font-size="10" fill="#2dd4bf" letter-spacing="1" text-anchor="middle">LEARN MORE</text>
+          </svg>
+        </div>
+        <div class="wide-meta">
+          <div class="wide-info">
+            <div class="logo-name">Square Ad</div>
+            <div class="logo-spec">300×250px · Medium rectangle</div>
+          </div>
+          <button class="download-btn-sm" onclick="dl('ad-square','glycr-ad-square-300x250')"><i class="fas fa-download"></i> SVG</button>
+        </div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <p style="font-size:13px;color:var(--dim);line-height:1.7;margin-bottom:12px;">The <strong style="color:var(--text);">300×250 medium rectangle</strong> is the most widely supported ad unit across all major ad networks including Google Display Network, Meta Audience Network, and programmatic platforms.</p>
+        <p style="font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace;">Use with early bird messaging for launch campaigns. Coral CTA buttons consistently outperform teal on dark backgrounds in A/B testing.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIZE TABLE -->
+  <div class="kit-section">
+    <div class="section-header">
+      <div class="section-title">Size Reference</div>
+      <div class="section-note">All platforms and use cases</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+      <table class="size-table">
+        <thead><tr><th>Use case</th><th>Dimensions</th><th>Format</th><th>File name</th><th>Notes</th></tr></thead>
+        <tbody>
+        <tr><td>Browser favicon small</td><td>32×32px</td><td><span class="tag">SVG</span></td><td>glycr-favicon-32.svg</td><td>Browser tab, bookmark</td></tr>
+        <tr><td>Browser favicon large</td><td>64×64px</td><td><span class="tag">SVG</span></td><td>glycr-favicon-64.svg</td><td>High-DPI displays</td></tr>
+        <tr><td>Apple Touch Icon</td><td>180×180px</td><td><span class="tag">SVG / PNG</span></td><td>glycr-apple-touch-180.svg</td><td>iOS home screen</td></tr>
+        <tr><td>Social square profile</td><td>800×800px</td><td><span class="tag">SVG</span></td><td>glycr-social-square-800.svg</td><td>Instagram, Facebook</td></tr>
+        <tr><td>Twitter / X profile circle</td><td>800×800px</td><td><span class="tag">SVG</span></td><td>glycr-twitter-circle-800.svg</td><td>Profile photo, shown at 48px in feed</td></tr>
+        <tr><td>Twitter / X header banner</td><td>1500×500px</td><td><span class="tag">SVG</span></td><td>glycr-twitter-banner-1500x500.svg</td><td>Profile banner</td></tr>
+        <tr><td>Open Graph / Social share</td><td>1200×630px</td><td><span class="tag">SVG</span></td><td>glycr-og-cover-1200x630.svg</td><td>Link previews on all platforms</td></tr>
+        <tr><td>Website logo — dark</td><td>220×52px</td><td><span class="tag">SVG</span></td><td>glycr-logo-horizontal-dark.svg</td><td>Navbar, dark headers</td></tr>
+        <tr><td>Website logo — light</td><td>220×52px</td><td><span class="tag">SVG</span></td><td>glycr-logo-horizontal-light.svg</td><td>Light surfaces, email</td></tr>
+        <tr><td>Ad — Leaderboard</td><td>728×90px</td><td><span class="tag">SVG</span></td><td>glycr-ad-leaderboard-728x90.svg</td><td>Standard IAB, desktop top/bottom</td></tr>
+        <tr><td>Ad — Medium Rectangle</td><td>300×250px</td><td><span class="tag">SVG</span></td><td>glycr-ad-square-300x250.svg</td><td>Most widely supported ad unit</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- COLORS -->
+  <div class="kit-section">
+    <div class="section-header">
+      <div class="section-title">Brand Colors</div>
+      <div class="section-note">Click hex codes to copy</div>
+    </div>
+    <div class="color-grid">
+      <div class="color-card"><div class="color-swatch" style="background:#2dd4bf;"></div><div class="color-info"><div class="color-name">Glycr Teal</div><div class="color-hex" onclick="copyHex(this)" data-val="#2DD4BF">#2DD4BF</div><div class="color-usage">Primary · CTAs · Brand</div></div></div>
+      <div class="color-card"><div class="color-swatch" style="background:#1aae9e;"></div><div class="color-info"><div class="color-name">Teal Dark</div><div class="color-hex" onclick="copyHex(this)" data-val="#1AAE9E">#1AAE9E</div><div class="color-usage">Hover state · Depth</div></div></div>
+      <div class="color-card"><div class="color-swatch" style="background:#ff6b6b;"></div><div class="color-info"><div class="color-name">Coral</div><div class="color-hex" onclick="copyHex(this)" data-val="#FF6B6B">#FF6B6B</div><div class="color-usage">Accents · CTAs · Urgency</div></div></div>
+      <div class="color-card"><div class="color-swatch" style="background:#0d1117;"></div><div class="color-info"><div class="color-name">Brand Black</div><div class="color-hex" onclick="copyHex(this)" data-val="#0D1117">#0D1117</div><div class="color-usage">Background · Primary dark</div></div></div>
+      <div class="color-card"><div class="color-swatch" style="background:#eaf2f8;"></div><div class="color-info"><div class="color-name">Bright White</div><div class="color-hex" onclick="copyHex(this)" data-val="#EAF2F8">#EAF2F8</div><div class="color-usage">Headings · Text on dark</div></div></div>
+      <div class="color-card"><div class="color-swatch" style="background:#1e2a3a;"></div><div class="color-info"><div class="color-name">Surface</div><div class="color-hex" onclick="copyHex(this)" data-val="#1E2A3A">#1E2A3A</div><div class="color-usage">Cards · Panels</div></div></div>
+      <div class="color-card"><div class="color-swatch" style="background:#7a96aa;"></div><div class="color-info"><div class="color-name">Dim Text</div><div class="color-hex" onclick="copyHex(this)" data-val="#7A96AA">#7A96AA</div><div class="color-usage">Secondary labels</div></div></div>
+      <div class="color-card"><div class="color-swatch" style="background:#4a6278;"></div><div class="color-info"><div class="color-name">Muted</div><div class="color-hex" onclick="copyHex(this)" data-val="#4A6278">#4A6278</div><div class="color-usage">Hints · Placeholders</div></div></div>
+      <div class="color-card"><div class="color-swatch" style="background:#fbbf24;"></div><div class="color-info"><div class="color-name">Gold</div><div class="color-hex" onclick="copyHex(this)" data-val="#FBBF24">#FBBF24</div><div class="color-usage">Warnings · Early bird</div></div></div>
+      <div class="color-card"><div class="color-swatch" style="background:#6ee7b7;"></div><div class="color-info"><div class="color-name">Mint</div><div class="color-hex" onclick="copyHex(this)" data-val="#6EE7B7">#6EE7B7</div><div class="color-usage">Success · Free events</div></div></div>
+    </div>
+  </div>
+
+  <!-- TYPOGRAPHY -->
+  <div class="kit-section">
+    <div class="section-header">
+      <div class="section-title">Brand Typography</div>
+      <div class="section-note">Google Fonts — free &amp; open source</div>
+    </div>
+    <div class="type-block">
+      <div class="type-display">Syne — Display &amp; Headings</div>
+      <div class="type-alphabet">ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789</div>
+      <div class="type-meta">Weights: 400 Regular · 600 SemiBold · 700 Bold · 800 ExtraBold · fonts.google.com → Syne</div>
+    </div>
+    <div class="type-block">
+      <div class="type-body">Outfit — Body &amp; UI. Used for paragraphs, labels, buttons, and all interface copy. Clean and highly legible at small sizes across all screen densities.</div>
+      <div class="type-meta">Weights: 300 Light · 400 Regular · 500 Medium · 600 SemiBold · fonts.google.com → Outfit</div>
+    </div>
+    <div class="type-block">
+      <div class="type-mono">JetBrains Mono — Prices, badges, timestamps, event codes, API references, data labels</div>
+      <div class="type-meta">Weights: 400 Regular · 500 Medium · fonts.google.com → JetBrains Mono</div>
+    </div>
+  </div>
+
+  <!-- USAGE RULES -->
+  <div class="kit-section">
+    <div class="section-header">
+      <div class="section-title">Usage Guidelines</div>
+      <div class="section-note">Keep the brand consistent everywhere</div>
+    </div>
+    <div class="rules-grid">
+      <div class="rule-card"><div class="rule-icon do"><i class="fas fa-check"></i></div><div class="rule-text"><strong>Use on approved backgrounds</strong>Dark slate, white, and brand teal surfaces work. Always check contrast ratio &gt; 4.5:1 for accessibility.</div></div>
+      <div class="rule-card"><div class="rule-icon dont"><i class="fas fa-times"></i></div><div class="rule-text"><strong>Don't stretch or distort</strong>Always maintain the original aspect ratio. Never squash, skew, rotate, or recolour the mark.</div></div>
+      <div class="rule-card"><div class="rule-icon do"><i class="fas fa-check"></i></div><div class="rule-text"><strong>Maintain clear space</strong>Keep a minimum clear space of 1× the icon height around all sides of the logo on every surface.</div></div>
+      <div class="rule-card"><div class="rule-icon dont"><i class="fas fa-times"></i></div><div class="rule-text"><strong>Don't change the colors</strong>Use only approved brand colors. Never apply gradients, drop shadows, or off-brand tints to the logo.</div></div>
+      <div class="rule-card"><div class="rule-icon do"><i class="fas fa-check"></i></div><div class="rule-text"><strong>Use the right variant</strong>Horizontal for navbars. Icon mark only when "Glycr" text is already visible nearby. Teal variant on green surfaces.</div></div>
+      <div class="rule-card"><div class="rule-icon dont"><i class="fas fa-times"></i></div><div class="rule-text"><strong>Don't place on busy backgrounds</strong>Avoid the logo over complex photos or patterns without a semi-transparent dark overlay beneath it.</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="kToast"></div>
+
+<script>
+  function toast(msg){
+    const t=document.getElementById('kToast');
+    t.textContent=msg;t.style.transform='translateY(0)';t.style.opacity='1';
+    setTimeout(()=>{t.style.transform='translateY(80px)';t.style.opacity='0';},2400);
+  }
+  function copyHex(el){
+    navigator.clipboard.writeText(el.dataset.val).then(()=>toast('Copied '+el.dataset.val));
+  }
+  function dl(id,filename){
+    const el=document.getElementById(id);
+    if(!el)return;
+    const svg=el.querySelector('svg');
+    if(!svg){toast('SVG not found');return;}
+    const clone=svg.cloneNode(true);
+    clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    const str=new XMLSerializer().serializeToString(clone);
+    const blob=new Blob([str],{type:'image/svg+xml'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=filename+'.svg';
+    document.body.appendChild(a);a.click();
+    document.body.removeChild(a);URL.revokeObjectURL(url);
+    toast('Downloaded '+filename+'.svg');
+  }
+  function downloadAll(){
+    const assets=[
+      ['logo-dark','glycr-logo-horizontal-dark'],
+      ['logo-light','glycr-logo-horizontal-light'],
+      ['logo-teal','glycr-logo-horizontal-teal'],
+      ['logo-white','glycr-logo-horizontal-white'],
+      ['fav-32','glycr-favicon-32'],
+      ['fav-64','glycr-favicon-64'],
+      ['icon-180','glycr-apple-touch-180'],
+      ['icon-sq','glycr-social-square-800'],
+      ['icon-circle','glycr-twitter-circle-800'],
+      ['banner-twitter','glycr-twitter-banner-1500x500'],
+      ['cover-og','glycr-og-cover-1200x630'],
+      ['ad-leaderboard','glycr-ad-leaderboard-728x90'],
+      ['ad-square','glycr-ad-square-300x250'],
+    ];
+    assets.forEach(([id,name],i)=>setTimeout(()=>dl(id,name),i*220));
+    setTimeout(()=>toast('All '+assets.length+' assets downloaded!'),assets.length*220+300);
+  }
+</script>
+</body>
+</html>
