@@ -1,0 +1,40 @@
+[
+  {
+    "id": 1774719793141,
+    "title": "Home Coming",
+    "description": "dfdsv",
+    "date": "2026-03-28T07:00",
+    "venue": "Crisberry",
+    "location": "Spintex",
+    "category": "music",
+    "currency": "GHC",
+    "organizerEmail": "faiselali@protonmail.com",
+    "organizerPhone": "+233503343435",
+    "ticketTypes": "{\"free\":{\"price\":20,\"capacity\":100,\"sold\":0,\"earlyBirdPrice\":10,\"groupDiscount\":10},\"regular\":{\"price\":50,\"capacity\":200,\"sold\":0,\"earlyBirdPrice\":40,\"groupDiscount\":10,\"earlyBirdEnd\":\"2025-11-15T00:00\"},\"vip\":{\"price\":150,\"capacity\":50,\"sold\":0,\"earlyBirdPrice\":120,\"groupDiscount\":10,\"earlyBirdEnd\":\"2025-11-15T00:00\"},\"vvip\":{\"price\":300,\"capacity\":20,\"sold\":0,\"earlyBirdPrice\":250,\"groupDiscount\":10,\"earlyBirdEnd\":\"2025-11-15T00:00\"}}",
+    "organizerId": 1774697696695,
+    "image": "/uploads/1774719793129-52229654.jpeg",
+    "isPublished": true,
+    "isCancelled": false,
+    "flagged": false,
+    "createdAt": "2026-03-28T17:43:13.141Z"
+  },
+  {
+    "id": 1774720254654,
+    "title": "Home Coming",
+    "description": "scad",
+    "date": "2026-03-28T07:00",
+    "venue": "Crisberry",
+    "location": "Spintex",
+    "category": "arts",
+    "currency": "GHC",
+    "organizerEmail": "faiselali@protonmail.com",
+    "organizerPhone": "+233503343435",
+    "ticketTypes": "{\"free\":{\"price\":90,\"capacity\":100,\"sold\":0,\"earlyBirdPrice\":5,\"groupDiscount\":10},\"regular\":{\"price\":50,\"capacity\":200,\"sold\":0,\"earlyBirdPrice\":40,\"groupDiscount\":10,\"earlyBirdEnd\":\"2025-11-15T00:00\"},\"vip\":{\"price\":150,\"capacity\":50,\"sold\":0,\"earlyBirdPrice\":120,\"groupDiscount\":10,\"earlyBirdEnd\":\"2025-11-15T00:00\"},\"vvip\":{\"price\":300,\"capacity\":20,\"sold\":0,\"earlyBirdPrice\":250,\"groupDiscount\":10,\"earlyBirdEnd\":\"2025-11-15T00:00\"}}",
+    "organizerId": 1774697696695,
+    "image": "/uploads/1774720254650-883274225.jpeg",
+    "isPublished": true,
+    "isCancelled": false,
+    "flagged": false,
+    "createdAt": "2026-03-28T17:50:54.654Z"
+  }
+]
