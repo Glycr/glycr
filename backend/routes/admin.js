@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const waitlistController = require('../controllers/waitlistController');
 const settingsController = require('../controllers/settingsController');
 const ticketController = require('../controllers/ticketController');
 const logController = require('../controllers/logController');
@@ -20,6 +21,9 @@ router.delete('/admin/users/:id', adminController.deleteUser);
 router.post('/admin/users', auth, roleMiddleware(['admin']), adminController.createUser);
 router.put('/admin/users/:id', auth, roleMiddleware(['admin', 'moderator']), adminController.updateUser);
 
+// Base path: /waitlists
+router.get('/admin/waitlists', auth, roleMiddleware(['admin', 'moderator']), waitlistController.getWaitlist);
+router.post('/admin/waitlists/notify', auth, roleMiddleware(['admin', 'moderator']), waitlistController.notifyWaitlist);
 
 // All admin routes require authentication and at least moderator role
 router.use(auth);

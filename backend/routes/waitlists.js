@@ -7,6 +7,7 @@ const { validate, waitlistSchema } = require('../middleware/validation');
 // Base path: /waitlists
 router.post('/waitlists', validate(waitlistSchema), waitlistController.joinWaitlist); // public
 router.get('/events/:eventId/waitlists/:ticketType', auth, waitlistController.getWaitlist);
+router.get('/waitlists', auth, waitlistController.getWaitlist);
 router.post('/events/:eventId/waitlists/notify', auth, waitlistController.notifyWaitlist);
 
 module.exports = router;

@@ -4,7 +4,7 @@
    =============================================== */
 
 // ---------- CONFIGURATION ----------
-const API_BASE = 'http://localhost:5001/api';
+const API_BASE = 'http://localhost:5010/api';
 let authToken = null;
 let currentAdmin = { name: '', email: '', role: '' };
 
@@ -658,7 +658,7 @@ async function loadData() {
     events  = await apiRequest('/admin/events');
     tickets = await apiRequest('/admin/tickets');
     payouts = await apiRequest('/admin/payouts');
-    try { waitlist = await apiRequest('/admin/waitlist'); } catch { waitlist = _generateDemoWaitlist(); }
+    try { waitlist = await apiRequest('/admin/waitlists'); } catch { waitlist = _generateDemoWaitlist(); }
     await loadLogs();
     calculateStats();
     renderDashboard();
