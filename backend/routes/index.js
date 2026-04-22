@@ -8,6 +8,9 @@ const payoutRoutes = require('./payouts');
 const adminRoutes = require('./admin');
 const userSettingsRoutes = require('./settings');
 const notificationRoutes = require('./notifications');
+const analyticsRoutes = require('./analytics');
+const refundRoutes = require('./refunds');
+
 
 
 
@@ -20,8 +23,11 @@ router.use(eventRoutes);
 router.use(ticketRoutes);
 router.use(waitlistRoutes);
 router.use(payoutRoutes);
-router.use(adminRoutes);
 router.use( userSettingsRoutes);
 router.use(notificationRoutes);
+router.use(analyticsRoutes);
+router.use(refundRoutes);
+router.use(adminRoutes);
+
 
 module.exports = router;
