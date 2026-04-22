@@ -1,8 +1,8 @@
 require('dotenv').config();
 
 module.exports = {
-  port: process.env.PORT || 5010,
-  jwtSecret: process.env.JWT_SECRET || 'your-secret-key',
+  port: process.env.PORT,
+  jwtSecret: process.env.JWT_SECRET,
   uploadDir: process.env.UPLOAD_DIR || 'uploads/',
   dataDir: process.env.DATA_DIR || 'data/',
 };
