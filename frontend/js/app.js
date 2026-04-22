@@ -1,7 +1,7 @@
 // Glycr App — Complete Version
 class GlycrApp {
   constructor() {
-    this.apiBase = 'http://localhost:5001/api';
+    this.apiBase = 'http://localhost:5020/api';
     this.currentUser = null;
     this.events = [];
     this.tickets = [];
@@ -766,51 +766,45 @@ class GlycrApp {
     safeSet('pending-payouts',     `${sym}${Math.max(0, netPayout).toFixed(0)}`);
     safeSet('platform-fee-display', `${this.platformFeePercent}%`);
 
-    this._renderDashChart(myEvents);
+    await this._renderDashChart(); // <-- no parameter, async
   }
 
-  _renderDashChart(myEvents) {
-    const labels = [], data = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      labels.push(d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }));
-      const total = myEvents.reduce((a, e) => {
-        const tt = this.parseTicketTypes(e.ticketTypes);
-        return a + Object.values(tt).reduce((s, t) => s + (t.sold || 0), 0);
-      }, 0);
-      data.push(Math.max(0, Math.round(total * (0.04 + Math.random() * 0.18))));
+  async _renderDashChart() {
+    try {
+      const data = await this.fetchApi('/analytics/sales-trend?days=7');
+      const ctx = document.getElementById('dash-sales-chart');
+      if (!ctx) return;
+      if (this.dashChart) this.dashChart.destroy();
+      this.dashChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.labels,
+          datasets: [{
+            label: 'Tickets Sold',
+            data: data.tickets,
+            borderColor: '#2dd4bf',
+            backgroundColor: 'rgba(45,212,191,0.08)',
+            pointBackgroundColor: '#2dd4bf',
+            pointRadius: 4,
+            tension: 0.4,
+            fill: true,
+          }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { backgroundColor: '#1e2a3a', titleColor: '#eaf2f8', bodyColor: '#7a96aa', borderColor: '#243347', borderWidth: 1 },
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { color: '#4a6278', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: '#192130' } },
+            x: { ticks: { color: '#4a6278', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: '#192130' } },
+          },
+        },
+      });
+    } catch (err) {
+      console.warn('Failed to load sales trend', err);
     }
-    const ctx = document.getElementById('dash-sales-chart');
-    if (!ctx) return;
-    if (this.dashChart) this.dashChart.destroy();
-    this.dashChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Tickets',
-          data,
-          borderColor: '#2dd4bf',
-          backgroundColor: 'rgba(45,212,191,0.08)',
-          pointBackgroundColor: '#2dd4bf',
-          pointRadius: 4,
-          tension: 0.4,
-          fill: true,
-        }],
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: { backgroundColor: '#1e2a3a', titleColor: '#eaf2f8', bodyColor: '#7a96aa', borderColor: '#243347', borderWidth: 1 },
-        },
-        scales: {
-          y: { beginAtZero: true, ticks: { color: '#4a6278', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: '#192130' } },
-          x: { ticks: { color: '#4a6278', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: '#192130' } },
-        },
-      },
-    });
   }
 
   // ─── Payout Page ──────────────────────────────────────────
@@ -974,33 +968,44 @@ class GlycrApp {
     }
 
     // Charts
-    const labels = [], revData = [], tixData = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      labels.push(d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }));
-      revData.push(Math.max(0, Math.round(gross  * (0.04 + Math.random() * 0.18))));
-      tixData.push(Math.max(0, Math.round(tickets * (0.04 + Math.random() * 0.18))));
+
+    // Fetch real sales trend
+    let salesData = { labels: [], tickets: [], revenue: [] };
+    try {
+      salesData = await this.fetchApi('/analytics/sales-trend?days=7');
+    } catch (err) {
+      console.warn('Could not load sales trend', err);
     }
-    const chartBase = {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { backgroundColor: '#1e2a3a', titleColor: '#eaf2f8', bodyColor: '#7a96aa', borderColor: '#243347', borderWidth: 1 },
-      },
-      scales: {
-        y: { beginAtZero: true, ticks: { color: '#4a6278', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: '#192130' } },
-        x: { ticks: { color: '#4a6278', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: '#192130' } },
-      },
-    };
+
+// Revenue chart (bar)
     const rCtx = document.getElementById('report-revenue-chart');
     if (rCtx) {
       if (this.reportRevenueChart) this.reportRevenueChart.destroy();
       this.reportRevenueChart = new Chart(rCtx, {
         type: 'bar',
-        data: { labels, datasets: [{ label: 'Revenue', data: revData, backgroundColor: 'rgba(45,212,191,0.3)', borderColor: '#2dd4bf', borderWidth: 1 }] },
-        options: chartBase,
+        data: {
+          labels: salesData.labels,
+          datasets: [{
+            label: 'Revenue (₵)',
+            data: salesData.revenue,
+            backgroundColor: 'rgba(45,212,191,0.3)',
+            borderColor: '#2dd4bf',
+            borderWidth: 1,
+          }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { color: '#4a6278', font: { size: 10 } }, grid: { color: '#192130' } },
+            x: { ticks: { color: '#4a6278', font: { size: 10 } }, grid: { color: '#192130' } },
+          },
+        },
       });
     }
+
+
+
     const typeTotals = {};
     myEvents.forEach(e => {
       const tt = this.parseTicketTypes(e.ticketTypes);
