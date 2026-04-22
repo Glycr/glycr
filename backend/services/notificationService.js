@@ -1,93 +1,74 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const twilio = require('twilio');
 
-class NotificationService {
-  constructor() {
-    // Email transporter (lazy init)
-    this.transporter = null;
-    // Twilio client (lazy init)
-    this.twilioClient = null;
+let resend = null;
+let twilioClient = null;
+
+// Initialize Resend if API key exists
+if (process.env.RESEND_API_KEY) {
+  resend = new Resend(process.env.RESEND_API_KEY);
+} else {
+  console.warn('⚠️ RESEND_API_KEY not set – email sending will fail');
+}
+
+// Initialize Twilio if credentials exist
+if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+  twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+} else {
+  console.warn('⚠️ Twilio credentials missing – SMS sending will fail');
+}
+
+/**
+ * Send an email using Resend
+ * @param {string} to - recipient email
+ * @param {string} subject - email subject
+ * @param {string} html - HTML content
+ * @param {string} text - plain text alternative (optional)
+ */
+async function sendEmail(to, subject, html, text = null) {
+  if (!resend) {
+    throw new Error('Resend not configured. Set RESEND_API_KEY.');
   }
 
-  // Get or create email transporter
-  getTransporter() {
-    if (!this.transporter && process.env.SMTP_HOST) {
-      this.transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: process.env.SMTP_PORT == '465',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      });
-    }
-    return this.transporter;
-  }
-
-  // Get or create Twilio client
-  getTwilioClient() {
-    if (!this.twilioClient && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-      this.twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-    }
-    return this.twilioClient;
-  }
-
-  /**
-   * Send an email
-   * @param {string} to - recipient email
-   * @param {string} subject - email subject
-   * @param {string} html - HTML content
-   * @param {string} text - plain text alternative (optional)
-   */
-  async sendEmail({ to, subject, html, text }) {
-    const transporter = this.getTransporter();
-    if (!transporter) {
-      console.log(`📧 Email to ${to}: ${subject} - ${html?.substring(0, 100)}...`);
-      return;
-    }
-
-    try {
-      const info = await transporter.sendMail({
-        from: process.env.EMAIL_FROM || `"Glycr" <${process.env.SMTP_USER}>`,
-        to,
-        subject,
-        text: text || html.replace(/<[^>]*>/g, ''),
-        html,
-      });
-      console.log(`✅ Email sent to ${to}, messageId: ${info.messageId}`);
-      return info;
-    } catch (err) {
-      console.error(`❌ Failed to send email to ${to}:`, err.message);
-      throw err; // re-throw if you want calling code to handle
-    }
-  }
-
-  /**
-   * Send an SMS
-   * @param {string} to - phone number (E.164 format, e.g., +233XXXXXXXXX)
-   * @param {string} body - SMS message
-   */
-  async sendSMS({ to, body }) {
-    const client = this.getTwilioClient();
-    if (!client) {
-      console.log(`📱 SMS to ${to}: ${body}`);
-      return;
-    }
-
-    try {
-      const message = await client.messages.create({
-        body,
-        to,
-        from: process.env.TWILIO_PHONE_NUMBER,
-      });
-      console.log(`✅ SMS sent to ${to}, sid: ${message.sid}`);
-      return message;
-    } catch (err) {
-      console.error(`❌ Failed to send SMS to ${to}:`, err.message);
-      throw err;
-    }
+  try {
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'Glycr <noreply@glycr.com>',
+      to,
+      subject,
+      html,
+      text: text || html.replace(/<[^>]*>/g, ''), // simple plain text fallback
+    });
+    if (error) throw new Error(error.message);
+    console.log(`✅ Email sent to ${to}, id: ${data?.id}`);
+    return data;
+  } catch (err) {
+    console.error(`❌ Failed to send email to ${to}:`, err.message);
+    throw err; // re‑throw so caller can handle
   }
 }
 
-module.exports = new NotificationService();
+/**
+ * Send an SMS using Twilio
+ * @param {string} to - phone number in E.164 format (+233XXXXXXXXX)
+ * @param {string} body - SMS message
+ */
+async function sendSMS(to, body) {
+  if (!twilioClient) {
+    throw new Error('Twilio not configured. Check TWILIO_ACCOUNT_SID / AUTH_TOKEN.');
+  }
+
+  try {
+    const message = await twilioClient.messages.create({
+      body,
+      to,
+      from: process.env.TWILIO_PHONE_NUMBER,
+    });
+    console.log(`✅ SMS sent to ${to}, sid: ${message.sid}`);
+    return message;
+  } catch (err) {
+    console.error(`❌ Failed to send SMS to ${to}:`, err.message);
+    throw err;
+  }
+}
+
+module.exports = { sendEmail, sendSMS };

@@ -2,7 +2,8 @@ const Payout = require('../models/Payout');
 const User = require('../models/User');
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
-const Settings = require('../models/Settings');  // <-- ADD
+const Settings = require('../models/Settings');
+const { sendEmail } = require('./notificationService');   // <-- ADD
 
 class PayoutService {
   async getPlatformFee() {
@@ -31,6 +32,16 @@ class PayoutService {
       status: 'pending',
     });
     await payout.save();
+
+    // Optional: send confirmation email to organizer that request was received
+    const confirmationHtml = `
+      <h2>Payout Request Received</h2>
+      <p>Your request for ₵${amount} via ${method.toUpperCase()} has been received and is pending approval.</p>
+      <p>We will notify you once it is processed.</p>
+      <p>– Glycr Team</p>
+    `;
+    await sendEmail(email, 'Payout Request Received', confirmationHtml).catch(err => console.error('Email send failed', err));
+
     return payout;
   }
 
@@ -63,6 +74,16 @@ class PayoutService {
     payout.status = 'completed';
     payout.completedAt = new Date();
     await payout.save();
+
+    // Send approval email to the organizer
+    const approvalHtml = `
+      <h2>Payout Approved</h2>
+      <p>Your payout request of ₵${payout.amount} via ${payout.method.toUpperCase()} has been approved.</p>
+      <p>Funds will be transferred within 3‑5 business days.</p>
+      <p>Thank you for using Glycr!</p>
+    `;
+    await sendEmail(payout.email, 'Payout Approved – Glycr', approvalHtml).catch(err => console.error('Email send failed', err));
+
     return payout;
   }
 
@@ -75,6 +96,17 @@ class PayoutService {
     payout.rejectionReason = reason;
     payout.completedAt = new Date();
     await payout.save();
+
+    // Send rejection email to the organizer
+    const rejectionHtml = `
+      <h2>Payout Request Rejected</h2>
+      <p>Your payout request of ₵${payout.amount} via ${payout.method.toUpperCase()} has been rejected.</p>
+      <p><strong>Reason:</strong> ${reason}</p>
+      <p>Please update your payout details and submit a new request.</p>
+      <p>– Glycr Team</p>
+    `;
+    await sendEmail(payout.email, 'Payout Request Rejected – Glycr', rejectionHtml).catch(err => console.error('Email send failed', err));
+
     return payout;
   }
 

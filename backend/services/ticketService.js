@@ -2,7 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
 const User = require('../models/User');
-const notificationService = require('./notificationService');   // combined service
+const { sendEmail, sendSMS } = require('./notificationService');
 
 class TicketService {
   async purchaseTicket(userId, eventId, ticketType, quantity, paymentDetails, groupBooking = {}) {
@@ -66,17 +66,8 @@ class TicketService {
       const emailText = `Your Glycr Ticket for ${event.title}. Ticket ID: ${ticket.id}. Price: ₵${ticket.price}. Date: ${new Date(event.date).toLocaleString()}. Venue: ${event.venue}, ${event.location}.`;
       const smsText = `Glycr: Your ticket for ${event.title} (${ticket.ticketType}) is confirmed. Ticket ID: ${ticket.id}. Show this QR code at the entrance.`;
 
-      await notificationService.sendEmail({
-        to: ticket.userEmail,
-        subject: `Your Ticket for ${event.title}`,
-        html: emailHtml,
-        text: emailText,
-      }).catch(err => console.error('Email send failed', err));
-
-      await notificationService.sendSMS({
-        to: ticket.userPhone,
-        body: smsText,
-      }).catch(err => console.error('SMS send failed', err));
+      await sendEmail(ticket.userEmail, `Your Ticket for ${event.title}`, emailHtml, emailText).catch(err => console.error('Email send failed', err));
+      await sendSMS(ticket.userPhone, smsText).catch(err => console.error('SMS send failed', err));
     }
 
     return purchasedTickets;

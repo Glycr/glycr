@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const config = require('../config');
 const crypto = require('crypto');
-
+const { sendEmail } = require('./notificationService');
 
 
 class UserService {
@@ -19,6 +19,15 @@ class UserService {
       role,
     });
     await user.save();
+
+    // Send welcome email
+    const welcomeHtml = `
+  <h1>Welcome to Glycr, ${user.name}!</h1>
+  <p>You've successfully created an account on Ghana's premier event ticketing platform.</p>
+  <p>Start exploring events and discover amazing experiences.</p>
+  <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}">Get started</a></p>
+`;
+    await sendEmail(user.email, 'Welcome to Glycr!', welcomeHtml);
 
     const { password, ...userWithoutPassword } = user.toObject();
     return userWithoutPassword;
@@ -140,6 +149,15 @@ class UserService {
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       user.password = hashedPassword;
       await user.save();
+
+      // Send confirmation email
+      const confirmHtml = `
+      <h2>Password changed successfully</h2>
+      <p>Your Glycr account password has been changed.</p>
+      <p>If you did not perform this action, please contact support immediately.</p>
+    `;
+      await sendEmail(user.email, 'Your Glycr password has been reset', confirmHtml);
+
       return user;
     } catch (err) {
       throw new Error('Invalid or expired token');

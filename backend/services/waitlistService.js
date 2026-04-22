@@ -1,5 +1,6 @@
 const Waitlist = require('../models/Waitlist');
 const Event = require('../models/Event');
+const { sendSMS, sendEmail } = require('./notificationService'); // <-- ADD
 
 class WaitlistService {
   async joinWaitlist(eventId, ticketType, name, email, phone) {
@@ -20,6 +21,14 @@ class WaitlistService {
       notified: false,
     });
     await entry.save();
+
+    // ─── Send SMS confirmation to the user ──────────────────
+    const smsText = `You've joined the waitlist for ${ticketType.toUpperCase()} tickets at ${event.title}. We'll notify you when tickets become available.`;
+    await sendSMS(phone, smsText).catch(err => console.error('Waitlist SMS failed', err));
+
+    // send email confirmation
+    await sendEmail(email, `Waitlist confirmed for ${event.title}`, `<p>You are now on the waitlist for ${ticketType.toUpperCase()} tickets.</p>`);
+
     return entry;
   }
 
@@ -40,12 +49,17 @@ class WaitlistService {
     const entries = await Waitlist.find({ eventId, ticketType });
     if (entries.length === 0) return { message: 'No waitlist entries' };
 
-    // Mark as notified (optional)
+    // Send SMS to every entry
     for (const entry of entries) {
       entry.notified = true;
       await entry.save();
-      // TODO: Send SMS/Email
-      console.log(`Notify ${entry.phone} about ${ticketType} tickets for ${event.title}`);
+
+      const smsText = `Good news! ${ticketType.toUpperCase()} tickets for ${event.title} are now available. Purchase quickly at ${process.env.FRONTEND_URL}/event/${event._id}.`;
+      await sendSMS(entry.phone, smsText).catch(err => console.error('Waitlist notify SMS failed', err));
+
+      // send email as well
+       const emailHtml = `<h2>${event.title} tickets are now available!</h2><p>Your ${ticketType.toUpperCase()} waitlist spot is ready. <a href="${process.env.FRONTEND_URL}/event/${event._id}">Book now</a> before they sell out.</p>`;
+       await sendEmail(entry.email, `Tickets now available: ${event.title}`, emailHtml).catch(err => console.error('Waitlist notify email failed', err));
     }
 
     return { notified: entries.length };
