@@ -5,6 +5,7 @@ const waitlistController = require('../controllers/waitlistController');
 const settingsController = require('../controllers/settingsController');
 const ticketController = require('../controllers/ticketController');
 const logController = require('../controllers/logController');
+const refundController = require('../controllers/refundController');
 const auth = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
 
@@ -58,5 +59,7 @@ router.delete('/admin/logs', auth, roleMiddleware(['admin']), logController.clea
 router.get('/admin/settings', auth, roleMiddleware(['admin', 'moderator']), settingsController.getSettings);
 router.put('/admin/settings', auth, roleMiddleware(['admin']), settingsController.updateSettings);
 
+// Refund
+router.get('/admin/refunds/all', auth, roleMiddleware(['admin']), refundController.getAllRefunds);
 
 module.exports = router;

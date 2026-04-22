@@ -4,7 +4,7 @@
    =============================================== */
 
 // ---------- CONFIGURATION ----------
-const API_BASE = 'http://localhost:5010/api';
+const API_BASE = 'http://localhost:5020/api';
 let authToken = null;
 let currentAdmin = { name: '', email: '', role: '' };
 

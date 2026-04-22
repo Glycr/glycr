@@ -13,7 +13,10 @@ const ticketSchema = new mongoose.Schema({
   billingAddress: { type: String },
   poNumber: { type: String },
   validated: { type: Boolean, default: false },
+  refunded: { type: Boolean, default: false },
+  refundId: { type: mongoose.Schema.Types.ObjectId, ref: 'Refund' },
   status: { type: String, enum: ['active', 'used', 'cancelled'], default: 'active' }, // <-- new
+
 });
 
 module.exports = mongoose.model('Ticket', ticketSchema);

@@ -71,7 +71,6 @@
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:1rem;">
-        <!-- Session Timer Display -->
         <div class="session-timer-display" id="session-timer-display" title="Session time remaining">
           <i class="fa-regular fa-clock"></i>
           <span id="session-timer-text">30:00</span>
@@ -121,6 +120,9 @@
       </div>
       <div class="tab" id="tab-payouts" onclick="showTab('payouts', this)">
         <i class="fa-solid fa-money-bill-transfer"></i> Payouts
+      </div>
+      <div class="tab" id="tab-refunds" onclick="showTab('refunds', this)">
+        <i class="fa-solid fa-rotate-left"></i> Refunds
       </div>
       <div class="tab" id="tab-waitlist" onclick="showTab('waitlist', this)">
         <i class="fa-solid fa-list-ol"></i> Waitlist
@@ -172,6 +174,11 @@
             <span><i class="fa-solid fa-money-bill-transfer" style="color:#8b5cf6; margin-right:0.5rem;"></i>Pending Payouts</span>
             <span id="quick-pending-payouts">₵0.00</span>
           </div>
+          <!-- NEW: Pending Refunds quick action -->
+          <div class="quick-action" onclick="showTab('refunds', document.getElementById('tab-refunds')); document.getElementById('refund-status-filter').value='pending'; filterRefunds();">
+            <span><i class="fa-solid fa-rotate-left" style="color:#ef4444; margin-right:0.5rem;"></i>Pending Refunds</span>
+            <span id="quick-pending-refunds">₵0.00</span>
+          </div>
           <div class="quick-action" onclick="showTab('events', document.getElementById('tab-events')); document.getElementById('event-filter').value='flagged'; filterEvents();">
             <span><i class="fa-solid fa-flag" style="color:#ef4444; margin-right:0.5rem;"></i>Flagged Events</span>
             <span id="quick-flagged-events">0</span>
@@ -220,7 +227,6 @@
           <button class="btn btn-success" onclick="openExportModal('users')"><i class="fa-solid fa-file-export"></i> Export</button>
         </div>
       </div>
-      <!-- Filters Row -->
       <div class="filters">
         <input type="text" class="input" id="user-search" placeholder="Search users..." oninput="filterUsers()">
         <select class="select" id="user-role-filter" onchange="filterUsers()">
@@ -238,7 +244,6 @@
         <input type="date" class="input" id="user-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterUsers()" placeholder="From">
         <input type="date" class="input" id="user-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterUsers()" placeholder="To">
       </div>
-      <!-- Bulk Action Bar -->
       <div class="bulk-action-bar" id="users-bulk-bar" style="display:none;">
         <span id="users-selected-count">0 selected</span>
         <div style="display:flex; gap:0.5rem;">
@@ -283,7 +288,6 @@
         <input type="date" class="input" id="event-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterEvents()">
         <input type="date" class="input" id="event-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterEvents()">
       </div>
-      <!-- Bulk Action Bar -->
       <div class="bulk-action-bar" id="events-bulk-bar" style="display:none;">
         <span id="events-selected-count">0 selected</span>
         <div style="display:flex; gap:0.5rem;">
@@ -334,7 +338,6 @@
         <input type="date" class="input" id="ticket-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterTickets()">
         <input type="date" class="input" id="ticket-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterTickets()">
       </div>
-      <!-- Bulk Action Bar -->
       <div class="bulk-action-bar" id="tickets-bulk-bar" style="display:none;">
         <span id="tickets-selected-count">0 selected</span>
         <div style="display:flex; gap:0.5rem;">
@@ -389,7 +392,6 @@
         <input type="date" class="input" id="payout-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterPayouts()">
         <input type="date" class="input" id="payout-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterPayouts()">
       </div>
-      <!-- Bulk Action Bar -->
       <div class="bulk-action-bar" id="payouts-bulk-bar" style="display:none;">
         <span id="payouts-selected-count">0 selected</span>
         <div style="display:flex; gap:0.5rem;">
@@ -416,6 +418,65 @@
       <div class="pagination-bar" id="payouts-pagination"></div>
     </section>
 
+    <!-- =============================================
+         REFUNDS (NEW)
+    ============================================= -->
+    <section id="refunds" class="section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h2 style="font-size:2rem; font-weight:700;">Refund Management</h2>
+        <div style="display:flex; gap:0.75rem; align-items:center;">
+          <div style="text-align:right; margin-right:0.5rem;">
+            <p style="font-size:0.875rem; color:#94a3b8;">Pending Refunds</p>
+            <p style="font-size:1.5rem; font-weight:700; color:#ef4444;" id="pending-refund-amount">₵0.00</p>
+          </div>
+          <button class="btn btn-success" onclick="openExportModal('refunds')"><i class="fa-solid fa-file-export"></i> Export</button>
+        </div>
+      </div>
+      <div class="filters">
+        <input type="text" class="input" id="refund-search" placeholder="Search refunds by ID, user, or event..." oninput="filterRefunds()">
+        <select class="select" id="refund-status-filter" onchange="filterRefunds()">
+          <option value="all">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+        <select class="select" id="refund-reason-filter" onchange="filterRefunds()">
+          <option value="all">All Reasons</option>
+          <option value="event_cancelled">Event Cancelled</option>
+          <option value="duplicate">Duplicate Purchase</option>
+          <option value="other">Other</option>
+        </select>
+        <input type="date" class="input" id="refund-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterRefunds()">
+        <input type="date" class="input" id="refund-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterRefunds()">
+      </div>
+      <!-- Bulk Action Bar -->
+      <div class="bulk-action-bar" id="refunds-bulk-bar" style="display:none;">
+        <span id="refunds-selected-count">0 selected</span>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-success" onclick="bulkApproveRefunds()"><i class="fa-solid fa-check"></i> Approve</button>
+          <button class="btn btn-danger" onclick="bulkRejectRefunds()"><i class="fa-solid fa-xmark"></i> Reject</button>
+          <button class="btn btn-primary" onclick="openExportModal('refunds', true)"><i class="fa-solid fa-file-export"></i> Export Selected</button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="refunds-select-all" onchange="toggleSelectAll('refunds')"></th>
+            <th class="sortable" onclick="sortTable('refunds','id')">ID <i class="fa-solid fa-sort sort-icon" id="sort-refunds-id"></i></th>
+            <th class="sortable" onclick="sortTable('refunds','userName')">Customer <i class="fa-solid fa-sort sort-icon" id="sort-refunds-userName"></i></th>
+            <th class="sortable" onclick="sortTable('refunds','amount')">Amount &amp; Reason <i class="fa-solid fa-sort sort-icon" id="sort-refunds-amount"></i></th>
+            <th>Ticket / Event</th>
+            <th class="sortable" onclick="sortTable('refunds','status')">Status <i class="fa-solid fa-sort sort-icon" id="sort-refunds-status"></i></th>
+            <th>Actions</th>
+          </tr>
+          </thead>
+          <tbody id="refunds-table"></tbody>
+        </table>
+      </div>
+      <div class="pagination-bar" id="refunds-pagination"></div>
+    </section>
+
     <!-- WAITLIST -->
     <section id="waitlist" class="section">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
@@ -430,7 +491,6 @@
         <input type="date" class="input" id="waitlist-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterWaitlist()">
         <input type="date" class="input" id="waitlist-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterWaitlist()">
       </div>
-      <!-- Bulk Action Bar -->
       <div class="bulk-action-bar" id="waitlist-bulk-bar" style="display:none;">
         <span id="waitlist-selected-count">0 selected</span>
         <div style="display:flex; gap:0.5rem;">
@@ -536,6 +596,16 @@
           </button>
           <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">All issued tickets with buyer, event, type, and validation status</p>
         </div>
+        <!-- NEW: Refund Report card -->
+        <div class="card">
+          <h3 class="card-title"><i class="fa-solid fa-rotate-left" style="color:#ef4444; margin-right:0.5rem;"></i>Refund Report</h3>
+          <button class="btn btn-danger" style="width:100%;" onclick="openExportModal('refunds')">
+            <i class="fa-solid fa-file-export"></i> Export Refunds
+          </button>
+          <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">All refund requests with status, reason, and customer details</p>
+        </div>
+      </div>
+      <div class="report-grid">
         <div class="card">
           <h3 class="card-title"><i class="fa-solid fa-scroll" style="color:#fb923c; margin-right:0.5rem;"></i>Log Report</h3>
           <button class="btn btn-warning" style="width:100%;" onclick="openExportModal('logs')">
@@ -552,6 +622,17 @@
         <div class="card">
           <h3 class="card-title"><i class="fa-solid fa-trophy" style="color:#f59e0b; margin-right:0.5rem;"></i>Top Organizers</h3>
           <div id="top-organizers"></div>
+        </div>
+      </div>
+      <!-- NEW: Refund Analytics card -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(350px, 1fr)); gap:1.5rem; margin-top:1.5rem;">
+        <div class="card">
+          <h3 class="card-title"><i class="fa-solid fa-rotate-left" style="color:#ef4444; margin-right:0.5rem;"></i>Refunds by Status</h3>
+          <div id="refunds-by-status"></div>
+        </div>
+        <div class="card">
+          <h3 class="card-title"><i class="fa-solid fa-circle-info" style="color:#f59e0b; margin-right:0.5rem;"></i>Refunds by Reason</h3>
+          <div id="refunds-by-reason"></div>
         </div>
       </div>
       <div class="card" style="margin-top:1.5rem;">
@@ -572,6 +653,11 @@
           <div>
             <p style="color:#94a3b8; font-size:0.875rem; margin-bottom:0.25rem;">Platform Fee</p>
             <p style="font-size:1.5rem; font-weight:700; color:#10b981;" id="platform-fee">₵0.00</p>
+          </div>
+          <!-- NEW: Total Refunded stat -->
+          <div>
+            <p style="color:#94a3b8; font-size:0.875rem; margin-bottom:0.25rem;">Total Refunded</p>
+            <p style="font-size:1.5rem; font-weight:700; color:#ef4444;" id="total-refunded">₵0.00</p>
           </div>
         </div>
       </div>
@@ -891,6 +977,48 @@
   </div>
 </div>
 
+<!-- =============================================
+     REFUND DETAIL MODAL (NEW)
+============================================= -->
+<div id="refund-modal" class="modal">
+  <div class="modal-content" style="max-width:620px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-rotate-left" style="color:#ef4444; margin-right:0.5rem;"></i>Refund Details</h3>
+      <button class="modal-close" onclick="closeModal('refund-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="refund-modal-body"></div>
+  </div>
+</div>
+
+<!-- =============================================
+     REFUND REJECT REASON MODAL (NEW)
+============================================= -->
+<div id="refund-reject-modal" class="modal">
+  <div class="modal-content" style="max-width:480px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-xmark" style="color:#ef4444; margin-right:0.5rem;"></i>Reject Refund</h3>
+      <button class="modal-close" onclick="closeModal('refund-reject-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="reject-refund-id">
+      <div style="padding:1rem; background:#0f172a; border-radius:0.5rem; margin-bottom:1.25rem;">
+        <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.5rem;">Refund</div>
+        <div id="reject-refund-info" style="font-size:0.875rem; color:#f1f5f9;"></div>
+      </div>
+      <div class="settings-row" style="align-items:flex-start; padding-top:1rem;">
+        <span class="settings-label" style="padding-top:0.3rem;"><i class="fa-regular fa-comment" style="margin-right:0.5rem;"></i>Rejection Reason</span>
+        <textarea class="settings-input" id="refund-reject-reason" rows="3" style="width:260px; resize:vertical;" placeholder="Explain why this refund is being rejected..."></textarea>
+      </div>
+      <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+        <button class="btn btn-danger" style="flex:1;" onclick="submitRefundReject()">
+          <i class="fa-solid fa-xmark"></i> Reject Refund
+        </button>
+        <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="closeModal('refund-reject-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Advanced Export Modal -->
 <div id="export-modal" class="modal">
   <div class="modal-content" style="max-width:520px;">
@@ -1000,7 +1128,6 @@
           <span class="badge badge-organizer" style="margin-top:0.3rem;"><i class="fa-solid fa-shield-halved"></i> Super Admin</span>
         </div>
       </div>
-      <!-- Profile Info -->
       <div class="settings-row">
         <span class="settings-label"><i class="fa-regular fa-user" style="margin-right:0.5rem;"></i>Display Name</span>
         <input type="text" class="settings-input" id="profile-name-input" value="Admin User">
@@ -1046,7 +1173,6 @@
             <button type="button" onclick="togglePasswordVisibility('confirm-password', this)" style="position:absolute; right:0.5rem; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#475569; font-size:0.8rem;"><i class="fa-regular fa-eye"></i></button>
           </div>
         </div>
-        <!-- Password strength -->
         <div id="password-strength-bar" style="display:none; margin:0.75rem 0 0.25rem; height:4px; border-radius:2px; background:#334155; overflow:hidden;">
           <div id="password-strength-fill" style="height:100%; width:0; transition:width 0.3s, background 0.3s;"></div>
         </div>
