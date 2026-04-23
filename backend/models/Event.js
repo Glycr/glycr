@@ -6,7 +6,7 @@ const ticketTypeSchema = new mongoose.Schema({
   sold: { type: Number, default: 0 },
   earlyBirdPrice: { type: Number },
   earlyBirdEnd: { type: Date },
-  groupDiscount: { type: Number, default: 10 },
+  groupDiscount: { type: Number, default: 0 },
 });
 
 const eventSchema = new mongoose.Schema({
