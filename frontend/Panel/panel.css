@@ -158,6 +158,11 @@ body {
   border-radius: 0 0 0.625rem 0.625rem;
   animation: toast-progress linear forwards;
   animation-duration: var(--toast-duration, 4s);
+  animation-play-state: running;
+}
+
+.toast:hover::after {
+  animation-play-state: paused;
 }
 
 @keyframes toast-progress {
@@ -261,6 +266,34 @@ body {
 
 .export-range-option input:checked + span { border-color: #6366f1; background: rgba(99,102,241,0.1); color: #818cf8; }
 .export-range-option:hover span { border-color: #475569; color: #f1f5f9; }
+
+/* =============================================
+   CHART PERIOD CONTROLS
+============================================= */
+.chart-period-group {
+  display: flex;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.chart-period-btn {
+  padding: 0.4rem 0.9rem;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.18s;
+  border-right: 1px solid #334155;
+}
+
+.chart-period-btn:last-child { border-right: none; }
+.chart-period-btn:hover { background: #334155; color: #f1f5f9; }
+.chart-period-btn.active { background: #6366f1; color: white; }
 
 /* =============================================
    LOGIN PAGE
@@ -498,6 +531,8 @@ body {
 .btn-warning:hover { background: #d97706; }
 .btn-danger { background: #ef4444; color: white; }
 .btn-danger:hover { background: #dc2626; }
+.btn-cyan { background: #0891b2; color: white; }
+.btn-cyan:hover { background: #0e7490; }
 
 /* =============================================
    TABS
@@ -667,7 +702,6 @@ th.sort-active .sort-icon { color: #818cf8; }
 
 td { padding: 1rem; border-top: 1px solid #334155; }
 
-/* Row checkbox */
 td:first-child input[type="checkbox"],
 th:first-child input[type="checkbox"] {
   width: 1rem;
@@ -681,7 +715,6 @@ th:first-child input[type="checkbox"] {
 tbody tr { transition: background 0.2s; }
 tbody tr:hover { background: #1e293b; }
 
-/* Event table cells */
 .event-table-name { font-weight: 600; color: #f1f5f9; margin-bottom: 0.2rem; }
 .event-table-meta { font-size: 0.75rem; color: #94a3b8; display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-top: 0.25rem; }
 .event-table-meta span { display: inline-flex; align-items: center; gap: 0.3rem; }
@@ -689,14 +722,12 @@ tbody tr:hover { background: #1e293b; }
 .event-table-organizer-sub { font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 0.3rem; }
 .event-status-cell { display: flex; flex-direction: column; gap: 0.35rem; align-items: flex-start; }
 
-/* Payout table cells */
 .payout-table-id { font-size: 0.75rem; color: #94a3b8; font-family: monospace; }
 .payout-table-organizer { font-size: 0.875rem; font-weight: 600; color: #f1f5f9; margin-bottom: 0.15rem; }
 .payout-table-organizer-sub { font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 0.3rem; }
 .payout-table-amount { font-weight: 700; font-size: 1rem; color: #f1f5f9; margin-bottom: 0.2rem; }
 .payout-table-method { font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 0.3rem; }
 
-/* Ticket table cells */
 .ticket-table-id { font-family: monospace; font-size: 0.78rem; color: #94a3b8; margin-bottom: 0.2rem; }
 .ticket-table-type { font-size: 0.7rem; color: #6366f1; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
 .ticket-table-event { font-weight: 600; color: #f1f5f9; font-size: 0.875rem; margin-bottom: 0.15rem; }
@@ -716,10 +747,7 @@ tbody tr:hover { background: #1e293b; }
   flex-wrap: wrap;
 }
 
-.pagination-info {
-  font-size: 0.8rem;
-  color: #94a3b8;
-}
+.pagination-info { font-size: 0.8rem; color: #94a3b8; }
 
 .pagination-controls {
   display: flex;
@@ -783,12 +811,18 @@ tbody tr:hover { background: #1e293b; }
 .badge-pending    { background: rgba(251,191,36,0.2);   color: #fbbf24; }
 .badge-completed  { background: rgba(16,185,129,0.2);   color: #34d399; }
 .badge-rejected   { background: rgba(239,68,68,0.2);    color: #f87171; }
+.badge-approved   { background: rgba(16,185,129,0.2);   color: #34d399; }
 .badge-info       { background: rgba(99,102,241,0.2);   color: #818cf8; }
 .badge-warning    { background: rgba(251,191,36,0.2);   color: #fbbf24; }
 .badge-unpublished { background: rgba(148,163,184,0.15); color: #94a3b8; }
 .badge-used       { background: rgba(99,102,241,0.2);   color: #818cf8; }
 .badge-validated  { background: rgba(16,185,129,0.2);   color: #34d399; }
 .badge-waitlist   { background: rgba(245,158,11,0.15);  color: #fbbf24; }
+.badge-refund-pending { background: rgba(239,68,68,0.15); color: #f87171; }
+
+.badge-sr-pending     { background: rgba(251,191,36,0.2);   color: #fbbf24; }
+.badge-sr-in_progress { background: rgba(6,182,212,0.2);    color: #22d3ee; }
+.badge-sr-resolved    { background: rgba(16,185,129,0.2);   color: #34d399; }
 
 /* =============================================
    ACTIONS / BTN-ICON
@@ -880,7 +914,6 @@ tbody tr:hover { background: #1e293b; }
 ============================================= */
 .empty-state { text-align: center; padding: 3rem; color: #94a3b8; }
 
-/* Legacy card remnants */
 .event-item { background: #0f172a; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; }
 .event-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem; }
 .payout-item { background: #0f172a; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; }
@@ -983,7 +1016,6 @@ tbody tr:hover { background: #1e293b; }
   color: #94a3b8;
 }
 
-/* Admin identity pill in logs */
 .log-admin-pill {
   display: inline-flex;
   align-items: center;
@@ -1024,7 +1056,6 @@ tbody tr:hover { background: #1e293b; }
 }
 
 .settings-input:focus { outline: none; border-color: #6366f1; }
-
 textarea.settings-input { vertical-align: top; }
 
 .toggle-switch { position: relative; width: 2.5rem; height: 1.4rem; cursor: pointer; }
@@ -1075,6 +1106,140 @@ textarea.settings-input { vertical-align: top; }
 }
 
 /* =============================================
+   REFUND MANAGEMENT
+============================================= */
+.refund-table-id      { font-size: 0.75rem; color: #94a3b8; font-family: monospace; }
+.refund-table-user    { font-size: 0.875rem; font-weight: 600; color: #f1f5f9; margin-bottom: 0.15rem; }
+.refund-table-sub     { font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 0.3rem; }
+.refund-table-amount  { font-weight: 700; font-size: 1rem; color: #f87171; margin-bottom: 0.2rem; }
+.refund-table-reason  { font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 0.3rem; }
+.refund-table-ticket  { font-size: 0.875rem; font-weight: 600; color: #f1f5f9; margin-bottom: 0.15rem; }
+.refund-table-event   { font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 0.3rem; }
+
+.refund-reason-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(148,163,184,0.1);
+  color: #94a3b8;
+  text-transform: capitalize;
+}
+.refund-reason-pill.event_cancelled { background: rgba(239,68,68,0.12); color: #f87171; }
+.refund-reason-pill.duplicate       { background: rgba(251,191,36,0.12); color: #fbbf24; }
+.refund-reason-pill.other           { background: rgba(99,102,241,0.12); color: #818cf8; }
+
+/* =============================================
+   SERVICE REQUEST TABLE
+============================================= */
+.sr-table-id       { font-size: 0.75rem; color: #94a3b8; font-family: monospace; }
+.sr-table-user     { font-size: 0.875rem; font-weight: 600; color: #f1f5f9; margin-bottom: 0.15rem; }
+.sr-table-sub      { font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 0.3rem; }
+.sr-table-subject  { font-size: 0.875rem; font-weight: 600; color: #f1f5f9; margin-bottom: 0.2rem; max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sr-table-preview  { font-size: 0.72rem; color: #94a3b8; max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.sr-row-resolved { opacity: 0.65; }
+.sr-row-resolved:hover { opacity: 1 !important; }
+
+.sr-category-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(148,163,184,0.1);
+  color: #94a3b8;
+  text-transform: capitalize;
+}
+.sr-category-pill.ticket_issue      { background: rgba(99,102,241,0.12);  color: #818cf8; }
+.sr-category-pill.payment_problem   { background: rgba(16,185,129,0.12);  color: #34d399; }
+.sr-category-pill.refund_request    { background: rgba(239,68,68,0.12);   color: #f87171; }
+.sr-category-pill.organizer_support { background: rgba(139,92,246,0.12);  color: #c084fc; }
+.sr-category-pill.account_issue     { background: rgba(251,191,36,0.12);  color: #fbbf24; }
+.sr-category-pill.bug_report        { background: rgba(251,146,60,0.12);  color: #fb923c; }
+.sr-category-pill.other             { background: rgba(148,163,184,0.1);  color: #94a3b8; }
+
+.sr-message-box {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: #cbd5e1;
+  line-height: 1.7;
+  margin-top: 0.5rem;
+}
+
+.sr-resolution-box {
+  background: rgba(16,185,129,0.05);
+  border: 1px solid rgba(16,185,129,0.2);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: #94a3b8;
+  line-height: 1.7;
+  margin-top: 0.5rem;
+}
+
+/* =============================================
+   MESSAGE MANAGEMENT
+============================================= */
+.msg-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.msg-type-direct    { background: rgba(99,102,241,0.15);  color: #818cf8; }
+.msg-type-broadcast { background: rgba(139,92,246,0.15);  color: #c084fc; }
+
+.msg-channel-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(148,163,184,0.1);
+  color: #94a3b8;
+}
+
+.msg-channel-email { background: rgba(16,185,129,0.1);  color: #34d399; }
+.msg-channel-sms   { background: rgba(245,158,11,0.1);  color: #fbbf24; }
+.msg-channel-both  { background: rgba(99,102,241,0.1);  color: #818cf8; }
+
+.msg-audience-badge {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.msg-recipient-option {
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: #f1f5f9;
+  border-bottom: 1px solid #334155;
+  transition: background 0.15s;
+}
+
+.msg-recipient-option:hover { background: #334155; }
+.msg-recipient-option:last-child { border-bottom: none; }
+.msg-recipient-option .option-sub { font-size: 0.72rem; color: #94a3b8; }
+
+/* =============================================
    RESPONSIVE
 ============================================= */
 @media (max-width: 768px) {
@@ -1094,46 +1259,5 @@ textarea.settings-input { vertical-align: top; }
   .pagination-bar { justify-content: center; }
   .header-content { padding: 1rem; }
   .session-timer-display { display: none; }
+  .chart-period-group { flex-wrap: wrap; }
 }
-
-/* =============================================
-   REFUND MANAGEMENT (NEW)
-============================================= */
-.badge-approved  { background: rgba(16,185,129,0.2);  color: #34d399; }
-.badge-refund-pending { background: rgba(239,68,68,0.15); color: #f87171; }
-
-/* Refund table cells */
-.refund-table-id      { font-size: 0.75rem; color: #94a3b8; font-family: monospace; }
-.refund-table-user    { font-size: 0.875rem; font-weight: 600; color: #f1f5f9; margin-bottom: 0.15rem; }
-.refund-table-sub     { font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 0.3rem; }
-.refund-table-amount  { font-weight: 700; font-size: 1rem; color: #f87171; margin-bottom: 0.2rem; }
-.refund-table-reason  { font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 0.3rem; }
-.refund-table-ticket  { font-size: 0.875rem; font-weight: 600; color: #f1f5f9; margin-bottom: 0.15rem; }
-.refund-table-event   { font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 0.3rem; }
-
-/* Refund analytics rows */
-.refund-stat-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid #334155;
-}
-.refund-stat-row:last-child { border-bottom: none; }
-
-/* Refund reason label pill */
-.refund-reason-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.2rem 0.6rem;
-  border-radius: 9999px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  background: rgba(148,163,184,0.1);
-  color: #94a3b8;
-  text-transform: capitalize;
-}
-.refund-reason-pill.event_cancelled { background: rgba(239,68,68,0.12); color: #f87171; }
-.refund-reason-pill.duplicate       { background: rgba(251,191,36,0.12); color: #fbbf24; }
-.refund-reason-pill.other           { background: rgba(99,102,241,0.12); color: #818cf8; }

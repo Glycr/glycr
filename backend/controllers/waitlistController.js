@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');   // <-- ADD THIS
 const waitlistService = require('../services/waitlistService');
 
 exports.joinWaitlist = async (req, res, next) => {
@@ -12,9 +13,18 @@ exports.joinWaitlist = async (req, res, next) => {
 
 exports.getWaitlist = async (req, res, next) => {
   try {
-    const eventId = parseInt(req.params.eventId);
-    const ticketType = req.params.ticketType;
-    const entries = await waitlistService.getWaitlist(eventId, ticketType, req.user.id);
+    const { eventId: eventIdParam, ticketType } = req.params;
+
+    if (!eventIdParam) {
+      const entries = await waitlistService.getAllWaitlists();
+      return res.json(entries);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(eventIdParam)) {
+      return res.status(400).json({ error: 'Invalid event ID' });
+    }
+
+    const entries = await waitlistService.getWaitlist(eventIdParam, ticketType, req.user.id);
     res.json(entries);
   } catch (err) {
     next(err);
@@ -23,8 +33,7 @@ exports.getWaitlist = async (req, res, next) => {
 
 exports.notifyWaitlist = async (req, res, next) => {
   try {
-    const eventId = parseInt(req.params.eventId);
-    const ticketType = req.params.ticketType;
+    const { eventId, ticketType } = req.params;   // both are string IDs
     const result = await waitlistService.notifyWaitlist(eventId, ticketType, req.user.id);
     res.json(result);
   } catch (err) {

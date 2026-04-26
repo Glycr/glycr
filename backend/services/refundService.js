@@ -5,7 +5,6 @@ const User = require('../models/User');
 const { sendEmail, sendSMS } = require('./notificationService');
 
 class RefundService {
-  // Customer requests a refund
   async requestRefund(userId, ticketId, reason, isPartial = false, partialAmount = null) {
     const ticket = await Ticket.findOne({ id: ticketId }).populate('eventId');
     if (!ticket) throw new Error('Ticket not found');
@@ -16,7 +15,6 @@ class RefundService {
     const event = ticket.eventId;
     const now = new Date();
     const eventDate = new Date(event.date);
-    // Example: allow refund up to 7 days before event
     const refundDeadline = new Date(eventDate.getTime() - 7 * 24 * 60 * 60 * 1000);
     if (now > refundDeadline) throw new Error('Refund window has passed (must be at least 7 days before event)');
 
@@ -40,7 +38,6 @@ class RefundService {
     });
     await refund.save();
 
-    // Notify organizer
     const organizer = await User.findById(event.organizerId);
     if (organizer && organizer.email) {
       await sendEmail(
@@ -49,18 +46,18 @@ class RefundService {
         `<p>${ticket.userEmail} requested a refund of ${amount} for ticket ${ticket.id}.</p><p>Reason: ${reason}</p><p>Please approve or reject in the admin panel.</p>`
       );
     }
-
     return refund;
   }
 
-  // Organizer or admin approves refund
   async approveRefund(refundId, processedById) {
     const refund = await Refund.findById(refundId).populate('ticketId').populate('eventId');
     if (!refund) throw new Error('Refund not found');
     if (refund.status !== 'pending') throw new Error('Refund already processed');
 
     const ticket = refund.ticketId;
-    if (ticket.refunded) throw new Error('Ticket already refunded');
+    if (ticket.status !== 'active' && ticket.status !== 'refund_pending') {
+      throw new Error('Ticket not eligible for refund');
+    }
 
     // Update ticket
     ticket.status = 'refunded';
@@ -68,13 +65,25 @@ class RefundService {
     ticket.refundId = refund._id;
     await ticket.save();
 
-    // Update refund
+    // Restore event capacity
+    const event = refund.eventId;
+    if (event) {
+      const ticketTypes = event.ticketTypes;
+      const typeData = ticketTypes.get(ticket.ticketType);
+      if (typeData && typeData.sold > 0) {
+        typeData.sold -= 1;
+        event.markModified('ticketTypes');
+        await event.save();
+      }
+    }
+
+    // Mark refund as approved
     refund.status = 'approved';
     refund.processedAt = new Date();
     refund.processedBy = processedById;
     await refund.save();
 
-    // Simulate payment reversal (in production, call payment gateway API)
+    // Simulate payment reversal
     console.log(`💰 Refund of ${refund.amount} processed for ticket ${ticket.id}`);
 
     // Notify customer
@@ -83,22 +92,23 @@ class RefundService {
       await sendEmail(
         customer.email,
         'Refund approved – Glycr',
-        `<h2>Your refund of ${refund.amount} for ${refund.eventId.title} has been approved.</h2><p>Funds will be returned to your original payment method within 5‑7 business days.</p>`
+        `<h2>Your refund of ${refund.amount} for ${event.title} has been approved.</h2><p>Funds will be returned to your original payment method within 5‑7 business days.</p>`
       );
-      await sendSMS(customer.phone, `Glycr: Refund of ${refund.amount} approved for ${refund.eventId.title}.`);
+      await sendSMS(customer.phone, `Glycr: Refund of ${refund.amount} approved for ${event.title}.`);
     }
-
-    // Adjust event ticket sold count? Only if you want to free up capacity.
-    // For now, we keep sold count unchanged; event organizer can manually adjust.
-
     return refund;
   }
 
-  // Organizer or admin rejects refund
   async rejectRefund(refundId, processedById, rejectionReason) {
     const refund = await Refund.findById(refundId).populate('ticketId').populate('eventId');
     if (!refund) throw new Error('Refund not found');
     if (refund.status !== 'pending') throw new Error('Refund already processed');
+
+    const ticket = refund.ticketId;
+    if (ticket.status === 'refund_pending') {
+      ticket.status = 'active';
+      await ticket.save();
+    }
 
     refund.status = 'rejected';
     refund.processedAt = new Date();
@@ -106,7 +116,6 @@ class RefundService {
     refund.rejectionReason = rejectionReason;
     await refund.save();
 
-    // Notify customer
     const customer = await User.findById(refund.userId);
     if (customer) {
       await sendEmail(
@@ -115,16 +124,13 @@ class RefundService {
         `<h2>Your refund request for ${refund.eventId.title} has been rejected.</h2><p>Reason: ${rejectionReason}</p><p>Please contact support if you have questions.</p>`
       );
     }
-
     return refund;
   }
 
-  // Get refunds for a user
   async getUserRefunds(userId) {
     return Refund.find({ userId }).populate('eventId', 'title date').sort('-requestedAt');
   }
 
-  // Get refunds for an organizer (for their events)
   async getOrganizerRefunds(organizerId) {
     const events = await Event.find({ organizerId }).select('_id');
     const eventIds = events.map(e => e._id);
@@ -134,7 +140,6 @@ class RefundService {
       .sort('-requestedAt');
   }
 
-  // Admin gets all refunds
   async getAllRefunds() {
     return Refund.find()
       .populate('userId', 'name email')

@@ -127,6 +127,12 @@
       <div class="tab" id="tab-waitlist" onclick="showTab('waitlist', this)">
         <i class="fa-solid fa-list-ol"></i> Waitlist
       </div>
+      <div class="tab" id="tab-messages" onclick="showTab('messages', this)">
+        <i class="fa-solid fa-paper-plane"></i> Messages
+      </div>
+      <div class="tab" id="tab-service-requests" onclick="showTab('service-requests', this)">
+        <i class="fa-solid fa-headset"></i> Service Requests
+      </div>
       <div class="tab" id="tab-logs" onclick="showTab('logs', this)">
         <i class="fa-solid fa-scroll"></i> Logs
       </div>
@@ -174,7 +180,6 @@
             <span><i class="fa-solid fa-money-bill-transfer" style="color:#8b5cf6; margin-right:0.5rem;"></i>Pending Payouts</span>
             <span id="quick-pending-payouts">₵0.00</span>
           </div>
-          <!-- NEW: Pending Refunds quick action -->
           <div class="quick-action" onclick="showTab('refunds', document.getElementById('tab-refunds')); document.getElementById('refund-status-filter').value='pending'; filterRefunds();">
             <span><i class="fa-solid fa-rotate-left" style="color:#ef4444; margin-right:0.5rem;"></i>Pending Refunds</span>
             <span id="quick-pending-refunds">₵0.00</span>
@@ -186,6 +191,10 @@
           <div class="quick-action" onclick="showTab('waitlist', document.getElementById('tab-waitlist'))">
             <span><i class="fa-solid fa-list-ol" style="color:#f59e0b; margin-right:0.5rem;"></i>Waitlist Entries</span>
             <span id="quick-waitlist-count">0</span>
+          </div>
+          <div class="quick-action" onclick="showTab('service-requests', document.getElementById('tab-service-requests')); document.getElementById('sr-status-filter').value='pending'; filterServiceRequests();">
+            <span><i class="fa-solid fa-headset" style="color:#06b6d4; margin-right:0.5rem;"></i>Open Service Requests</span>
+            <span id="quick-sr-count">0</span>
           </div>
           <div class="quick-action" onclick="showTab('logs', document.getElementById('tab-logs'))">
             <span><i class="fa-solid fa-scroll" style="color:#f59e0b; margin-right:0.5rem;"></i>Recent Logs</span>
@@ -418,9 +427,7 @@
       <div class="pagination-bar" id="payouts-pagination"></div>
     </section>
 
-    <!-- =============================================
-         REFUNDS (NEW)
-    ============================================= -->
+    <!-- REFUNDS -->
     <section id="refunds" class="section">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
         <h2 style="font-size:2rem; font-weight:700;">Refund Management</h2>
@@ -449,7 +456,6 @@
         <input type="date" class="input" id="refund-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterRefunds()">
         <input type="date" class="input" id="refund-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterRefunds()">
       </div>
-      <!-- Bulk Action Bar -->
       <div class="bulk-action-bar" id="refunds-bulk-bar" style="display:none;">
         <span id="refunds-selected-count">0 selected</span>
         <div style="display:flex; gap:0.5rem;">
@@ -518,6 +524,152 @@
       <div class="pagination-bar" id="waitlist-pagination"></div>
     </section>
 
+    <!-- SERVICE REQUESTS -->
+    <section id="service-requests" class="section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h2 style="font-size:2rem; font-weight:700;">Service Request Management</h2>
+        <div style="display:flex; gap:0.75rem; align-items:center;">
+          <div style="text-align:right; margin-right:0.5rem;">
+            <p style="font-size:0.875rem; color:#94a3b8;">Open Requests</p>
+            <p style="font-size:1.5rem; font-weight:700; color:#06b6d4;" id="open-sr-count">0</p>
+          </div>
+          <button class="btn btn-success" onclick="openExportModal('service-requests')"><i class="fa-solid fa-file-export"></i> Export</button>
+        </div>
+      </div>
+      <div class="filters">
+        <input type="text" class="input" id="sr-search" placeholder="Search by request ID, user, or subject..." oninput="filterServiceRequests()">
+        <select class="select" id="sr-status-filter" onchange="filterServiceRequests()">
+          <option value="all">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="in_progress">In Progress</option>
+          <option value="resolved">Resolved</option>
+        </select>
+        <select class="select" id="sr-category-filter" onchange="filterServiceRequests()">
+          <option value="all">All Categories</option>
+          <option value="ticket_issue">Ticket Issue</option>
+          <option value="payment_problem">Payment Problem</option>
+          <option value="refund_request">Refund Request</option>
+          <option value="organizer_support">Organizer Support</option>
+          <option value="account_issue">Account Issue</option>
+          <option value="bug_report">Bug Report</option>
+          <option value="other">Other</option>
+        </select>
+        <input type="date" class="input" id="sr-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterServiceRequests()">
+        <input type="date" class="input" id="sr-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterServiceRequests()">
+      </div>
+      <div class="bulk-action-bar" id="sr-bulk-bar" style="display:none;">
+        <span id="sr-selected-count">0 selected</span>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-success" onclick="bulkResolveServiceRequests()"><i class="fa-solid fa-circle-check"></i> Mark Resolved</button>
+          <button class="btn btn-primary" onclick="openExportModal('service-requests', true)"><i class="fa-solid fa-file-export"></i> Export Selected</button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="sr-select-all" onchange="toggleSelectAll('service-requests')"></th>
+            <th class="sortable" onclick="sortTable('service-requests','id')">Request ID <i class="fa-solid fa-sort sort-icon" id="sort-service-requests-id"></i></th>
+            <th class="sortable" onclick="sortTable('service-requests','userName')">User <i class="fa-solid fa-sort sort-icon" id="sort-service-requests-userName"></i></th>
+            <th class="sortable" onclick="sortTable('service-requests','subject')">Subject / Issue <i class="fa-solid fa-sort sort-icon" id="sort-service-requests-subject"></i></th>
+            <th class="sortable" onclick="sortTable('service-requests','category')">Category <i class="fa-solid fa-sort sort-icon" id="sort-service-requests-category"></i></th>
+            <th class="sortable" onclick="sortTable('service-requests','submittedAt')">Date Submitted <i class="fa-solid fa-sort sort-icon" id="sort-service-requests-submittedAt"></i></th>
+            <th class="sortable" onclick="sortTable('service-requests','status')">Status <i class="fa-solid fa-sort sort-icon" id="sort-service-requests-status"></i></th>
+            <th>Actions</th>
+          </tr>
+          </thead>
+          <tbody id="sr-table"></tbody>
+        </table>
+      </div>
+      <div class="pagination-bar" id="sr-pagination"></div>
+    </section>
+
+    <!-- MESSAGES -->
+    <section id="messages" class="section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h2 style="font-size:2rem; font-weight:700;">Message Management</h2>
+        <div style="display:flex; gap:0.75rem;">
+          <button class="btn btn-primary" onclick="openModal('compose-message-modal')">
+            <i class="fa-solid fa-pen-to-square"></i> Compose Message
+          </button>
+          <button class="btn btn-success" onclick="openModal('broadcast-modal')">
+            <i class="fa-solid fa-bullhorn"></i> Broadcast
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+        <div class="stat-card" style="padding:1rem;">
+          <div style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem;"><i class="fa-solid fa-paper-plane" style="color:#6366f1; margin-right:0.35rem;"></i>Total Sent</div>
+          <div style="font-size:1.75rem; font-weight:800;" id="msg-stat-total">0</div>
+        </div>
+        <div class="stat-card" style="padding:1rem;">
+          <div style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem;"><i class="fa-solid fa-bullhorn" style="color:#8b5cf6; margin-right:0.35rem;"></i>Broadcasts</div>
+          <div style="font-size:1.75rem; font-weight:800;" id="msg-stat-broadcasts">0</div>
+        </div>
+        <div class="stat-card" style="padding:1rem;">
+          <div style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem;"><i class="fa-regular fa-envelope" style="color:#10b981; margin-right:0.35rem;"></i>Direct Messages</div>
+          <div style="font-size:1.75rem; font-weight:800;" id="msg-stat-direct">0</div>
+        </div>
+        <div class="stat-card" style="padding:1rem;">
+          <div style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem;"><i class="fa-solid fa-users" style="color:#f59e0b; margin-right:0.35rem;"></i>Recipients</div>
+          <div style="font-size:1.75rem; font-weight:800;" id="msg-stat-recipients">0</div>
+        </div>
+      </div>
+
+      <!-- Filter row -->
+      <div class="filters">
+        <input type="text" class="input" id="msg-search" placeholder="Search messages by subject or recipient..." oninput="filterMessages()">
+        <select class="select" id="msg-type-filter" onchange="filterMessages()">
+          <option value="all">All Types</option>
+          <option value="direct">Direct</option>
+          <option value="broadcast">Broadcast</option>
+        </select>
+        <select class="select" id="msg-audience-filter" onchange="filterMessages()">
+          <option value="all">All Audiences</option>
+          <option value="all_users">All Users</option>
+          <option value="organizers">Organizers Only</option>
+          <option value="customers">Customers Only</option>
+          <option value="both">Organizers &amp; Customers</option>
+          <option value="individual">Individual</option>
+        </select>
+        <select class="select" id="msg-channel-filter" onchange="filterMessages()">
+          <option value="all">All Channels</option>
+          <option value="email">Email</option>
+          <option value="sms">SMS</option>
+          <option value="both">Email &amp; SMS</option>
+        </select>
+        <input type="date" class="input" id="msg-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterMessages()">
+        <input type="date" class="input" id="msg-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterMessages()">
+      </div>
+
+      <div class="bulk-action-bar" id="messages-bulk-bar" style="display:none;">
+        <span id="messages-selected-count">0 selected</span>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-danger" onclick="bulkDeleteMessages()"><i class="fa-solid fa-trash"></i> Delete</button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="messages-select-all" onchange="toggleSelectAll('messages')"></th>
+            <th class="sortable" onclick="sortTable('messages','sentAt')">Date <i class="fa-solid fa-sort sort-icon" id="sort-messages-sentAt"></i></th>
+            <th class="sortable" onclick="sortTable('messages','subject')">Subject <i class="fa-solid fa-sort sort-icon" id="sort-messages-subject"></i></th>
+            <th>Recipient(s)</th>
+            <th>Channel</th>
+            <th class="sortable" onclick="sortTable('messages','type')">Type <i class="fa-solid fa-sort sort-icon" id="sort-messages-type"></i></th>
+            <th>Actions</th>
+          </tr>
+          </thead>
+          <tbody id="messages-table"></tbody>
+        </table>
+      </div>
+      <div class="pagination-bar" id="messages-pagination"></div>
+    </section>
+
     <!-- LOGS -->
     <section id="logs" class="section">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
@@ -555,66 +707,57 @@
       </div>
     </section>
 
-    <!-- REPORTS -->
+    <!-- REPORTS — export cards removed, analytics charts added -->
     <section id="reports" class="section">
-      <h2 style="font-size:2rem; font-weight:700; margin-bottom:1.5rem;">Reports &amp; Analytics</h2>
-      <div class="report-grid">
-        <div class="card">
-          <h3 class="card-title"><i class="fa-solid fa-users" style="color:#6366f1; margin-right:0.5rem;"></i>User Reports</h3>
-          <button class="btn btn-primary" style="width:100%;" onclick="openExportModal('users')">
-            <i class="fa-solid fa-file-export"></i> Export Users
-          </button>
-          <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">Complete list of all users with contact details and status</p>
-        </div>
-        <div class="card">
-          <h3 class="card-title"><i class="fa-regular fa-calendar" style="color:#8b5cf6; margin-right:0.5rem;"></i>Event Reports</h3>
-          <button class="btn btn-primary" style="width:100%;" onclick="openExportModal('events')">
-            <i class="fa-solid fa-file-export"></i> Export Events
-          </button>
-          <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">All events with organizer info, status, and dates</p>
-        </div>
-        <div class="card">
-          <h3 class="card-title"><i class="fa-solid fa-coins" style="color:#10b981; margin-right:0.5rem;"></i>Revenue Reports</h3>
-          <button class="btn btn-success" style="width:100%;" onclick="openExportModal('revenue')">
-            <i class="fa-solid fa-file-export"></i> Export Revenue
-          </button>
-          <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">Detailed ticket sales and revenue breakdown</p>
+      <h2 style="font-size:2rem; font-weight:700; margin-bottom:0.5rem;">Reports &amp; Analytics</h2>
+      <p style="color:#94a3b8; font-size:0.875rem; margin-bottom:1.5rem;">Use the Export button on each management tab to download data. Charts below reflect all-time platform data.</p>
+
+      <!-- Chart period controls -->
+      <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+        <span style="font-size:0.8rem; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">Period:</span>
+        <div class="chart-period-group">
+          <button class="chart-period-btn active" data-period="daily" onclick="setChartPeriod('daily', this)">Daily</button>
+          <button class="chart-period-btn" data-period="weekly" onclick="setChartPeriod('weekly', this)">Weekly</button>
+          <button class="chart-period-btn" data-period="monthly" onclick="setChartPeriod('monthly', this)">Monthly</button>
+          <button class="chart-period-btn" data-period="yearly" onclick="setChartPeriod('yearly', this)">Yearly</button>
         </div>
       </div>
-      <div class="report-grid">
-        <div class="card">
-          <h3 class="card-title"><i class="fa-solid fa-money-bill-transfer" style="color:#c084fc; margin-right:0.5rem;"></i>Payout Report</h3>
-          <button class="btn btn-primary" style="width:100%;" onclick="openExportModal('payouts')">
-            <i class="fa-solid fa-file-export"></i> Export Payouts
-          </button>
-          <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">All payout requests with status, method, and organizer details</p>
+
+      <!-- Row 1: Revenue over time (full width) -->
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+          <h3 class="card-title" style="margin-bottom:0;"><i class="fa-solid fa-chart-line" style="color:#6366f1; margin-right:0.5rem;"></i>Revenue Over Time</h3>
+          <div id="chart-revenue-total" style="font-size:1.25rem; font-weight:700; color:#10b981;"></div>
         </div>
-        <div class="card">
-          <h3 class="card-title"><i class="fa-solid fa-ticket" style="color:#f472b6; margin-right:0.5rem;"></i>Ticket Report</h3>
-          <button class="btn btn-primary" style="width:100%;" onclick="openExportModal('tickets')">
-            <i class="fa-solid fa-file-export"></i> Export Tickets
-          </button>
-          <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">All issued tickets with buyer, event, type, and validation status</p>
-        </div>
-        <!-- NEW: Refund Report card -->
-        <div class="card">
-          <h3 class="card-title"><i class="fa-solid fa-rotate-left" style="color:#ef4444; margin-right:0.5rem;"></i>Refund Report</h3>
-          <button class="btn btn-danger" style="width:100%;" onclick="openExportModal('refunds')">
-            <i class="fa-solid fa-file-export"></i> Export Refunds
-          </button>
-          <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">All refund requests with status, reason, and customer details</p>
+        <div style="position:relative; height:260px;">
+          <canvas id="chart-revenue"></canvas>
         </div>
       </div>
-      <div class="report-grid">
+
+      <!-- Row 2: Ticket Sales + User Growth -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(380px, 1fr)); gap:1.5rem; margin-bottom:1.5rem;">
         <div class="card">
-          <h3 class="card-title"><i class="fa-solid fa-scroll" style="color:#fb923c; margin-right:0.5rem;"></i>Log Report</h3>
-          <button class="btn btn-warning" style="width:100%;" onclick="openExportModal('logs')">
-            <i class="fa-solid fa-file-export"></i> Export Logs
-          </button>
-          <p style="margin-top:1rem; font-size:0.875rem; color:#94a3b8;">System and user activity log history for auditing and compliance</p>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+            <h3 class="card-title" style="margin-bottom:0;"><i class="fa-solid fa-ticket" style="color:#8b5cf6; margin-right:0.5rem;"></i>Ticket Sales</h3>
+            <div id="chart-tickets-total" style="font-size:1.1rem; font-weight:700; color:#c084fc;"></div>
+          </div>
+          <div style="position:relative; height:220px;">
+            <canvas id="chart-tickets"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+            <h3 class="card-title" style="margin-bottom:0;"><i class="fa-solid fa-users" style="color:#06b6d4; margin-right:0.5rem;"></i>User Growth</h3>
+            <div id="chart-users-total" style="font-size:1.1rem; font-weight:700; color:#22d3ee;"></div>
+          </div>
+          <div style="position:relative; height:220px;">
+            <canvas id="chart-users"></canvas>
+          </div>
         </div>
       </div>
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(350px, 1fr)); gap:1.5rem; margin-top:2rem;">
+
+      <!-- Row 3: summary stats + top organizers + revenue by category -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1.5rem; margin-bottom:1.5rem;">
         <div class="card">
           <h3 class="card-title"><i class="fa-solid fa-chart-pie" style="color:#6366f1; margin-right:0.5rem;"></i>Revenue by Category</h3>
           <div id="revenue-by-category"></div>
@@ -624,18 +767,9 @@
           <div id="top-organizers"></div>
         </div>
       </div>
-      <!-- NEW: Refund Analytics card -->
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(350px, 1fr)); gap:1.5rem; margin-top:1.5rem;">
-        <div class="card">
-          <h3 class="card-title"><i class="fa-solid fa-rotate-left" style="color:#ef4444; margin-right:0.5rem;"></i>Refunds by Status</h3>
-          <div id="refunds-by-status"></div>
-        </div>
-        <div class="card">
-          <h3 class="card-title"><i class="fa-solid fa-circle-info" style="color:#f59e0b; margin-right:0.5rem;"></i>Refunds by Reason</h3>
-          <div id="refunds-by-reason"></div>
-        </div>
-      </div>
-      <div class="card" style="margin-top:1.5rem;">
+
+      <!-- Platform stats strip -->
+      <div class="card">
         <h3 class="card-title"><i class="fa-solid fa-chart-bar" style="color:#8b5cf6; margin-right:0.5rem;"></i>Platform Statistics</h3>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1.5rem;">
           <div>
@@ -654,7 +788,6 @@
             <p style="color:#94a3b8; font-size:0.875rem; margin-bottom:0.25rem;">Platform Fee</p>
             <p style="font-size:1.5rem; font-weight:700; color:#10b981;" id="platform-fee">₵0.00</p>
           </div>
-          <!-- NEW: Total Refunded stat -->
           <div>
             <p style="color:#94a3b8; font-size:0.875rem; margin-bottom:0.25rem;">Total Refunded</p>
             <p style="font-size:1.5rem; font-weight:700; color:#ef4444;" id="total-refunded">₵0.00</p>
@@ -977,9 +1110,7 @@
   </div>
 </div>
 
-<!-- =============================================
-     REFUND DETAIL MODAL (NEW)
-============================================= -->
+<!-- Refund Detail Modal -->
 <div id="refund-modal" class="modal">
   <div class="modal-content" style="max-width:620px;">
     <div class="modal-header">
@@ -990,9 +1121,7 @@
   </div>
 </div>
 
-<!-- =============================================
-     REFUND REJECT REASON MODAL (NEW)
-============================================= -->
+<!-- Refund Reject Reason Modal -->
 <div id="refund-reject-modal" class="modal">
   <div class="modal-content" style="max-width:480px;">
     <div class="modal-header">
@@ -1014,6 +1143,227 @@
           <i class="fa-solid fa-xmark"></i> Reject Refund
         </button>
         <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="closeModal('refund-reject-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Service Request Detail Modal -->
+<div id="sr-modal" class="modal">
+  <div class="modal-content" style="max-width:620px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-headset" style="color:#06b6d4; margin-right:0.5rem;"></i>Service Request Details</h3>
+      <button class="modal-close" onclick="closeModal('sr-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="sr-modal-body"></div>
+  </div>
+</div>
+
+<!-- Service Request Resolve Modal -->
+<div id="sr-resolve-modal" class="modal">
+  <div class="modal-content" style="max-width:500px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-circle-check" style="color:#10b981; margin-right:0.5rem;"></i>Resolve Service Request</h3>
+      <button class="modal-close" onclick="closeModal('sr-resolve-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="resolve-sr-id">
+      <div style="padding:1rem; background:#0f172a; border-radius:0.5rem; margin-bottom:1.25rem;">
+        <div style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.5rem;">Request</div>
+        <div id="resolve-sr-info" style="font-size:0.875rem; color:#f1f5f9;"></div>
+      </div>
+      <div class="settings-row" style="align-items:flex-start; padding-top:1rem;">
+        <span class="settings-label" style="padding-top:0.3rem;"><i class="fa-regular fa-comment" style="margin-right:0.5rem;"></i>Resolution Notes</span>
+        <textarea class="settings-input" id="sr-resolution-notes" rows="4" style="width:260px; resize:vertical;" placeholder="Describe how this request was resolved..."></textarea>
+      </div>
+      <div style="padding:0.75rem 1rem; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:0.5rem; margin-top:1rem; font-size:0.8rem; color:#34d399;">
+        <i class="fa-solid fa-circle-info" style="margin-right:0.4rem;"></i>The user will be notified that their request has been resolved.
+      </div>
+      <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+        <button class="btn btn-success" style="flex:1;" onclick="submitResolveServiceRequest()">
+          <i class="fa-solid fa-circle-check"></i> Mark as Resolved
+        </button>
+        <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="closeModal('sr-resolve-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Compose Direct Message Modal -->
+<div id="compose-message-modal" class="modal">
+  <div class="modal-content" style="max-width:560px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-pen-to-square" style="color:#6366f1; margin-right:0.5rem;"></i>Compose Message</h3>
+      <button class="modal-close" onclick="closeModal('compose-message-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-regular fa-user" style="margin-right:0.5rem;"></i>Recipient</span>
+        <div style="position:relative; flex:1; max-width:300px;">
+          <input type="text" class="settings-input" id="msg-recipient-search" placeholder="Search user..." oninput="searchMessageRecipients()" style="width:100%;">
+          <div id="msg-recipient-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:#1e293b; border:1px solid #334155; border-radius:0.5rem; max-height:200px; overflow-y:auto; z-index:300;"></div>
+        </div>
+      </div>
+      <div id="msg-selected-recipient" style="display:none; margin-bottom:0.5rem; padding:0.6rem 0.9rem; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.3); border-radius:0.5rem; font-size:0.82rem; color:#818cf8;">
+        <i class="fa-regular fa-user" style="margin-right:0.4rem;"></i>
+        <span id="msg-recipient-label"></span>
+        <button onclick="clearMessageRecipient()" style="float:right; background:none; border:none; color:#475569; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <input type="hidden" id="msg-recipient-id">
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-satellite-dish" style="margin-right:0.5rem;"></i>Channel</span>
+        <select class="settings-input" id="msg-direct-channel" style="width:200px;">
+          <option value="email">Email</option>
+          <option value="sms">SMS</option>
+          <option value="both">Email &amp; SMS</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-heading" style="margin-right:0.5rem;"></i>Subject</span>
+        <input type="text" class="settings-input" id="msg-direct-subject" placeholder="Message subject..." style="width:260px;">
+      </div>
+      <div class="settings-row" style="align-items:flex-start; padding-top:1rem;">
+        <span class="settings-label" style="padding-top:0.3rem;"><i class="fa-regular fa-comment" style="margin-right:0.5rem;"></i>Message</span>
+        <textarea class="settings-input" id="msg-direct-body" rows="5" style="width:280px; resize:vertical;" placeholder="Type your message here..."></textarea>
+      </div>
+      <div id="msg-direct-error" style="display:none; margin-top:1rem; padding:0.65rem 0.9rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:0.5rem; font-size:0.8rem;"></div>
+      <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+        <button class="btn btn-primary" style="flex:1;" onclick="submitDirectMessage()"><i class="fa-solid fa-paper-plane"></i> Send Message</button>
+        <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="closeModal('compose-message-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Broadcast Modal -->
+<div id="broadcast-modal" class="modal">
+  <div class="modal-content" style="max-width:580px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-bullhorn" style="color:#8b5cf6; margin-right:0.5rem;"></i>Broadcast Message</h3>
+      <button class="modal-close" onclick="closeModal('broadcast-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.72rem; color:#475569; text-transform:uppercase; letter-spacing:0.06em; font-weight:600; margin-bottom:0.75rem;">Audience</p>
+      <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:0.6rem; margin-bottom:1.25rem;">
+        <label class="export-range-option">
+          <input type="radio" name="broadcast-audience" value="all_users" checked>
+          <span><i class="fa-solid fa-users" style="margin-right:0.35rem;"></i> All Users</span>
+        </label>
+        <label class="export-range-option">
+          <input type="radio" name="broadcast-audience" value="organizers">
+          <span><i class="fa-solid fa-user-tie" style="margin-right:0.35rem;"></i> Organizers Only</span>
+        </label>
+        <label class="export-range-option">
+          <input type="radio" name="broadcast-audience" value="customers">
+          <span><i class="fa-solid fa-user" style="margin-right:0.35rem;"></i> Customers Only</span>
+        </label>
+        <label class="export-range-option">
+          <input type="radio" name="broadcast-audience" value="both">
+          <span><i class="fa-solid fa-people-group" style="margin-right:0.35rem;"></i> Org. &amp; Customers</span>
+        </label>
+      </div>
+      <div id="broadcast-audience-preview" style="padding:0.6rem 1rem; background:#0f172a; border-radius:0.5rem; font-size:0.8rem; color:#94a3b8; margin-bottom:1.25rem;">
+        <i class="fa-solid fa-users" style="color:#6366f1; margin-right:0.4rem;"></i>
+        Sending to: <strong id="broadcast-recipient-count">0</strong> recipients
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-satellite-dish" style="margin-right:0.5rem;"></i>Channel</span>
+        <select class="settings-input" id="broadcast-channel" style="width:200px;">
+          <option value="email">Email</option>
+          <option value="sms">SMS</option>
+          <option value="both">Email &amp; SMS</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label"><i class="fa-solid fa-heading" style="margin-right:0.5rem;"></i>Subject</span>
+        <input type="text" class="settings-input" id="broadcast-subject" placeholder="Broadcast subject..." style="width:260px;">
+      </div>
+      <div class="settings-row" style="align-items:flex-start; padding-top:1rem;">
+        <span class="settings-label" style="padding-top:0.3rem;"><i class="fa-regular fa-comment" style="margin-right:0.5rem;"></i>Message</span>
+        <textarea class="settings-input" id="broadcast-body" rows="5" style="width:280px; resize:vertical;" placeholder="Write your broadcast message..."></textarea>
+      </div>
+      <div style="margin-top:0.75rem;">
+        <p style="font-size:0.72rem; color:#475569; text-transform:uppercase; letter-spacing:0.06em; font-weight:600; margin-bottom:0.5rem;">Quick Templates</p>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="btn" style="background:#1e293b; border:1px solid #334155; font-size:0.75rem; padding:0.35rem 0.7rem;" onclick="applyBroadcastTemplate('maintenance')"><i class="fa-solid fa-gear"></i> Maintenance</button>
+          <button class="btn" style="background:#1e293b; border:1px solid #334155; font-size:0.75rem; padding:0.35rem 0.7rem;" onclick="applyBroadcastTemplate('promo')"><i class="fa-solid fa-tag"></i> Promotion</button>
+          <button class="btn" style="background:#1e293b; border:1px solid #334155; font-size:0.75rem; padding:0.35rem 0.7rem;" onclick="applyBroadcastTemplate('update')"><i class="fa-solid fa-circle-info"></i> Platform Update</button>
+        </div>
+      </div>
+      <div id="broadcast-error" style="display:none; margin-top:1rem; padding:0.65rem 0.9rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:0.5rem; font-size:0.8rem;"></div>
+      <div style="margin-top:1rem; padding:0.75rem 1rem; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); border-radius:0.5rem; font-size:0.8rem; color:#fbbf24;">
+        <i class="fa-solid fa-triangle-exclamation" style="margin-right:0.4rem;"></i>
+        This message will be sent to <strong id="broadcast-warn-count">0</strong> recipients. This action cannot be undone.
+      </div>
+      <div style="display:flex; gap:0.75rem; margin-top:1.5rem;">
+        <button class="btn" style="flex:1; background:#8b5cf6; color:white;" onclick="submitBroadcast()"><i class="fa-solid fa-bullhorn"></i> Send Broadcast</button>
+        <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="closeModal('broadcast-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- View Message Modal -->
+<div id="view-message-modal" class="modal">
+  <div class="modal-content" style="max-width:560px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-regular fa-envelope" style="color:#6366f1; margin-right:0.5rem;"></i>Message Details</h3>
+      <button class="modal-close" onclick="closeModal('view-message-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="view-message-body"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     CUSTOM CONFIRM MODAL
+============================================================ -->
+<div id="custom-confirm-modal" class="modal">
+  <div class="modal-content" style="max-width:420px;">
+    <div class="modal-header">
+      <h3 class="modal-title" id="custom-confirm-title"><i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b; margin-right:0.5rem;"></i>Confirm</h3>
+      <button class="modal-close" onclick="_customConfirmResolve(false)"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p id="custom-confirm-message" style="color:#94a3b8; margin-bottom:1.5rem; line-height:1.6;"></p>
+      <div style="display:flex; gap:0.75rem;">
+        <button class="btn" id="custom-confirm-ok-btn" style="flex:1; background:#ef4444; color:white;" onclick="_customConfirmResolve(true)">Confirm</button>
+        <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="_customConfirmResolve(false)">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     CUSTOM ALERT MODAL
+============================================================ -->
+<div id="custom-alert-modal" class="modal">
+  <div class="modal-content" style="max-width:400px;">
+    <div class="modal-header">
+      <h3 class="modal-title" id="custom-alert-title"><i class="fa-solid fa-circle-info" style="color:#6366f1; margin-right:0.5rem;"></i>Notice</h3>
+      <button class="modal-close" onclick="_customAlertResolve()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p id="custom-alert-message" style="color:#94a3b8; margin-bottom:1.5rem; line-height:1.6;"></p>
+      <button class="btn btn-primary" style="width:100%;" onclick="_customAlertResolve()"><i class="fa-solid fa-check"></i> OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     CUSTOM PROMPT MODAL
+============================================================ -->
+<div id="custom-prompt-modal" class="modal">
+  <div class="modal-content" style="max-width:440px;">
+    <div class="modal-header">
+      <h3 class="modal-title" id="custom-prompt-title"><i class="fa-solid fa-keyboard" style="color:#6366f1; margin-right:0.5rem;"></i>Input Required</h3>
+      <button class="modal-close" onclick="_customPromptResolve(null)"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p id="custom-prompt-message" style="color:#94a3b8; margin-bottom:1rem; line-height:1.6;"></p>
+      <input type="text" class="settings-input" id="custom-prompt-input" style="width:100%; margin-bottom:1.25rem;" placeholder="">
+      <div style="display:flex; gap:0.75rem;">
+        <button class="btn btn-primary" style="flex:1;" onclick="_customPromptResolve(document.getElementById('custom-prompt-input').value)"><i class="fa-solid fa-check"></i> Submit</button>
+        <button class="btn" style="background:#334155; color:#f1f5f9;" onclick="_customPromptResolve(null)">Cancel</button>
       </div>
     </div>
   </div>
@@ -1147,7 +1497,6 @@
       <button class="btn btn-primary" style="width:100%; margin-top:1.25rem;" onclick="saveProfile()">
         <i class="fa-solid fa-floppy-disk"></i> Save Profile
       </button>
-      <!-- Change Password Section -->
       <div style="margin-top:1.75rem; padding-top:1.5rem; border-top:1px solid #334155;">
         <h4 style="font-weight:700; font-size:0.95rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">
           <i class="fa-solid fa-key" style="color:#f59e0b;"></i> Change Password
@@ -1236,6 +1585,8 @@
   </div>
 </div>
 
+<!-- Chart.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="panel.js"></script>
 </body>
 </html>

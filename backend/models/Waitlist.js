@@ -8,6 +8,7 @@ const waitlistSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   joinedAt: { type: Date, default: Date.now },
   notified: { type: Boolean, default: false },
+  position: { type: Number },
 });
 
 waitlistSchema.virtual('id').get(function() { return this._id.toString(); });

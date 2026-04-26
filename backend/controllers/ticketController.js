@@ -47,9 +47,7 @@ exports.validateTicket = async (req, res, next) => {
 
 exports.cancelTicket = async (req, res, next) => {
   try {
-    const ticket = await ticketService.cancelTicket(req.params.id);
+    const ticket = await ticketService.cancelTicket(req.params.id, req.user.id);
     res.json(ticket);
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };

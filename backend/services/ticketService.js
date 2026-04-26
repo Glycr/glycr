@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
 const User = require('../models/User');
+const Refund = require('../models/Refund');
 const { sendEmail, sendSMS } = require('./notificationService');
 
 class TicketService {
@@ -25,11 +26,9 @@ class TicketService {
       pricePerTicket = pricePerTicket * (1 - discount);
     }
 
-    // Update sold count
     typeData.sold = sold + quantity;
     await event.save();
 
-    // Create all tickets
     const purchasedTickets = [];
     for (let i = 0; i < quantity; i++) {
       const ticketId = uuidv4();
@@ -51,7 +50,6 @@ class TicketService {
       purchasedTickets.push(ticket);
     }
 
-    // Send notifications for each ticket (once)
     for (const ticket of purchasedTickets) {
       const emailHtml = `
         <h2>Your Glycr Ticket</h2>
@@ -74,8 +72,7 @@ class TicketService {
   }
 
   async getUserTickets(userId) {
-    const tickets = await Ticket.find({ userId }).populate('eventId', 'title currency');
-    return tickets;
+    return await Ticket.find({ userId }).populate('eventId', 'title currency');
   }
 
   async validateTicketAtDoor(ticketId, eventId) {
@@ -99,18 +96,44 @@ class TicketService {
     return ticket;
   }
 
-  async cancelTicket(ticketId) {
-    const ticket = await Ticket.findOne({ id: ticketId });
+  async cancelTicket(ticketId, adminId) {
+    const ticket = await Ticket.findOne({ id: ticketId }).populate('eventId');
     if (!ticket) throw new Error('Ticket not found');
-    if (ticket.status !== 'active') throw new Error('Ticket already used or cancelled');
-    ticket.status = 'cancelled';
+    if (ticket.status !== 'active') throw new Error('Ticket already used, cancelled, or refunded');
+
+    // Create a pending refund request
+    const refund = new Refund({
+      ticketId: ticket._id,
+      userId: ticket.userId,
+      eventId: ticket.eventId._id,
+      amount: ticket.price,
+      reason: `Cancelled by ${adminId ? 'admin/organizer' : 'system'}`,
+      status: 'pending',
+      requestedAt: new Date(),
+      isPartial: false,
+      originalPrice: ticket.price,
+    });
+    await refund.save();
+
+    // Change ticket status to refund_pending (blocks usage until decision)
+    ticket.status = 'refund_pending';
     await ticket.save();
-    return ticket;
+
+    // Notify the event organizer
+    const organizer = await User.findById(ticket.eventId.organizerId);
+    if (organizer && organizer.email) {
+      await sendEmail(
+        organizer.email,
+        `Refund request created for ${ticket.eventId.title}`,
+        `<p>A ticket (${ticket.id}) was cancelled by admin and a refund request is pending your review.</p>`
+      );
+    }
+
+    return refund;
   }
 
   async getEventTickets(eventId) {
-    const tickets = await Ticket.find({ eventId }).populate('userId', 'name email');
-    return tickets;
+    return await Ticket.find({ eventId }).populate('userId', 'name email');
   }
 }
 

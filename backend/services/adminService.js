@@ -3,6 +3,9 @@ const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
 const Payout = require('../models/Payout');
 const bcrypt = require('bcryptjs');
+const Waitlist = require('../models/Waitlist');
+const { sendEmail, sendSMS } = require('./notificationService');
+const { v4: uuidv4 } = require('uuid');
 
 class AdminService {
   // ---------- Dashboard ----------
@@ -61,7 +64,6 @@ class AdminService {
       throw new Error('Moderators cannot delete admin or moderator accounts');
     }
     await User.findByIdAndDelete(targetUserId);
-    // Delete related data
     await Event.deleteMany({ organizerId: targetUserId });
     await Ticket.deleteMany({ userId: targetUserId });
     await Payout.deleteMany({ organizerId: targetUserId });
@@ -95,7 +97,6 @@ class AdminService {
     const user = await User.findById(userId);
     if (!user) throw new Error('User not found');
 
-    // Only admin can change role
     if (updateData.role && updateData.role !== user.role && requestingUserRole !== 'admin') {
       throw new Error('Only admins can change user roles');
     }
@@ -168,6 +169,126 @@ class AdminService {
     payout.rejectionReason = reason;
     await payout.save();
     return payout;
+  }
+
+  // ---------- Waitlist Management ----------
+  async getAllWaitlists() {
+    const entries = await Waitlist.find()
+      .populate('eventId', 'title date')
+      .sort({ joinedAt: -1 })
+      .lean();
+
+    // Filter out entries where the event was deleted
+    return entries
+      .filter(entry => entry.eventId != null)  // <-- add this
+      .map(entry => ({
+        id: entry._id.toString(),
+        userId: null,
+        userName: entry.name,
+        userEmail: entry.email,
+        userPhone: entry.phone,
+        eventId: entry.eventId._id.toString(),
+        eventTitle: entry.eventId.title,
+        eventDate: entry.eventId.date,
+        ticketType: entry.ticketType,
+        position: entry.position,
+        joinedAt: entry.joinedAt,
+        notified: entry.notified,
+      }));
+  }
+
+  async notifyWaitlistEntry(entryId, channel, message) {
+    const entry = await Waitlist.findById(entryId).populate('eventId');
+    if (!entry) throw new Error('Waitlist entry not found');
+
+    if (channel === 'email' || channel === 'both') {
+      await sendEmail(entry.email, 'Waitlist update', message);
+    }
+    if (channel === 'sms' || channel === 'both') {
+      await sendSMS(entry.phone, message);
+    }
+    entry.notified = true;
+    await entry.save();
+    return { success: true };
+  }
+
+  async convertWaitlistToTicket(entryId, ticketType) {
+    const entry = await Waitlist.findById(entryId).populate('eventId');
+    if (!entry) throw new Error('Waitlist entry not found');
+
+    const event = entry.eventId;
+
+    // Access the Map correctly
+    const ticketTypes = event.ticketTypes;
+    if (!ticketTypes || !(ticketTypes instanceof Map)) {
+      throw new Error('Event ticket types are corrupted');
+    }
+
+    // Normalize the requested ticket type (trim, lower case)
+    const normalizedType = ticketType.trim().toLowerCase();
+
+    // Find the actual key in the Map (case‑insensitive)
+    let matchedKey = null;
+    for (const [key, value] of ticketTypes.entries()) {
+      if (key.toLowerCase() === normalizedType) {
+        matchedKey = key;
+        break;
+      }
+    }
+    if (!matchedKey) {
+      const available = Array.from(ticketTypes.keys()).join(', ');
+      throw new Error(`Invalid ticket type. Received: "${ticketType}". Available: ${available}`);
+    }
+
+    const typeData = ticketTypes.get(matchedKey);
+    if (typeData.sold >= typeData.capacity) throw new Error('Tickets sold out');
+
+    // Find or create user
+    let user = await User.findOne({ email: entry.email });
+    if (!user) {
+      user = new User({
+        name: entry.name,
+        email: entry.email,
+        phone: entry.phone,
+        password: await bcrypt.hash(Math.random().toString(36), 10),
+        role: 'customer',
+      });
+      await user.save();
+    }
+
+    const ticketId = uuidv4();
+    const ticket = new Ticket({
+      id: ticketId,
+      eventId: event._id,
+      userId: user._id,
+      ticketType: matchedKey, // use the original key from the Map
+      price: typeData.price,
+      userEmail: entry.email,
+      userPhone: entry.phone,
+      status: 'active',
+      validated: false,
+    });
+    await ticket.save();
+
+    // Update sold count and save event
+    typeData.sold += 1;
+    event.markModified('ticketTypes');
+    await event.save();
+
+    // Remove from waitlist
+    await Waitlist.findByIdAndDelete(entryId);
+
+    // Notifications (non-blocking)
+    sendEmail(entry.email, `Your ticket for ${event.title}`, `<p>Ticket ID: ${ticketId}</p>`).catch(e => console.error(e));
+    sendSMS(entry.phone, `Glycr: Your ${matchedKey} ticket is ready. ID: ${ticketId}`).catch(e => console.error(e));
+
+    return { success: true, ticket: { id: ticket.id, ticketType: matchedKey } };
+  }
+
+  async deleteWaitlistEntry(entryId) {
+    const result = await Waitlist.findByIdAndDelete(entryId);
+    if (!result) throw new Error('Waitlist entry not found');
+    return true;
   }
 }
 

@@ -3,7 +3,7 @@ const User = require('../models/User');
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
 const Settings = require('../models/Settings');
-const { sendEmail } = require('./notificationService');   // <-- ADD
+const { sendEmail } = require('./notificationService');
 
 class PayoutService {
   async getPlatformFee() {
@@ -33,7 +33,6 @@ class PayoutService {
     });
     await payout.save();
 
-    // Optional: send confirmation email to organizer that request was received
     const confirmationHtml = `
       <h2>Payout Request Received</h2>
       <p>Your request for ₵${amount} via ${method.toUpperCase()} has been received and is pending approval.</p>
@@ -53,7 +52,11 @@ class PayoutService {
   async getPendingPayouts(organizerId) {
     const events = await Event.find({ organizerId, isCancelled: false });
     const eventIds = events.map(e => e._id);
-    const tickets = await Ticket.find({ eventId: { $in: eventIds } });
+    // Exclude cancelled and refunded tickets – only count active or used
+    const tickets = await Ticket.find({
+      eventId: { $in: eventIds },
+      status: { $in: ['active', 'used'] }
+    });
     const totalRevenue = tickets.reduce((sum, t) => sum + t.price, 0);
 
     const feePercent = await this.getPlatformFee();
@@ -75,7 +78,6 @@ class PayoutService {
     payout.completedAt = new Date();
     await payout.save();
 
-    // Send approval email to the organizer
     const approvalHtml = `
       <h2>Payout Approved</h2>
       <p>Your payout request of ₵${payout.amount} via ${payout.method.toUpperCase()} has been approved.</p>
@@ -97,7 +99,6 @@ class PayoutService {
     payout.completedAt = new Date();
     await payout.save();
 
-    // Send rejection email to the organizer
     const rejectionHtml = `
       <h2>Payout Request Rejected</h2>
       <p>Your payout request of ₵${payout.amount} via ${payout.method.toUpperCase()} has been rejected.</p>

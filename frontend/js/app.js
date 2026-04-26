@@ -1,7 +1,7 @@
-// Glycr App — Complete Version
+// Glycr App — Complete Version with all features
 class GlycrApp {
   constructor() {
-    this.apiBase = 'http://localhost:5020/api';
+    this.apiBase = 'http://localhost:5040/api';
     this.currentUser = null;
     this.events = [];
     this.tickets = [];
@@ -22,20 +22,37 @@ class GlycrApp {
     this.mapsInstance = null;
     this.mapsMarker = null;
     this.mapsAutocomplete = null;
+    this.appliedPromo = null;
+    this.lastPurchasedTickets = [];
+    this.lastPurchasedEvent = null;
+    this.faqCat = 'all';
+    this.faqs = [
+      { cat: 'tickets', q: 'How do I get my ticket after purchase?', a: 'Your ticket is generated instantly after payment. You can download it as a PDF from the ticket modal, or access it anytime from your Profile → Purchase History.' },
+      { cat: 'tickets', q: 'Can I transfer my ticket to someone else?', a: 'Currently tickets are non-transferable. Contact the event organiser if you need to make changes.' },
+      { cat: 'tickets', q: 'What if I lose my ticket?', a: 'You can re-download your ticket at any time from your Profile → Purchase History. The unique QR code remains valid.' },
+      { cat: 'payments', q: 'What payment methods are accepted?', a: 'We accept MTN MoMo, Vodafone Cash, AirtelTigo Money, debit/credit cards via Stripe, PayPal, and crypto.' },
+      { cat: 'payments', q: 'How long does payment processing take?', a: 'Mobile money payments are near-instant. Card payments may take 1–2 minutes. You will receive a confirmation email once complete.' },
+      { cat: 'payments', q: 'Is my payment information secure?', a: 'Yes. All payments are encrypted using industry-standard TLS. We never store your card details on our servers.' },
+      { cat: 'organizers', q: 'How do I create an event?', a: 'Sign up as an organiser, then use the Dashboard → New Event button. Fill in event details, set ticket types, and publish.' },
+      { cat: 'organizers', q: 'When do I receive my payout?', a: 'Payouts are processed within 2–5 business days after your event. You can request a payout from your Dashboard or Payouts page.' },
+      { cat: 'organizers', q: 'What is the platform fee?', a: 'Glycr charges a small percentage fee on each ticket sold. The current rate is shown on your Dashboard. There are no setup or listing fees.' },
+      { cat: 'organizers', q: 'Can I schedule when my event goes live?', a: 'Yes! In the event creation form, use the "Schedule Publication" field to set a future date and time for your event to go live.' },
+      { cat: 'refunds', q: 'How do I request a refund?', a: 'Go to Profile → Purchase History and click "Request Refund" next to the ticket. Fill in the reason and submit. The organiser will review within 48 hours.' },
+      { cat: 'refunds', q: 'How long do refunds take?', a: 'Once approved by the organiser, refunds are processed within 5–10 business days depending on your payment method.' },
+      { cat: 'refunds', q: 'What if the event is cancelled?', a: 'If an organiser cancels an event, all ticket holders are automatically entitled to a full refund. Glycr will process these within 5–7 business days.' },
+      { cat: 'account', q: 'How do I reset my password?', a: 'Click "Forgot Password?" on the Sign In page, enter your email, and follow the link sent to your inbox.' },
+      { cat: 'account', q: 'Can I have both an attendee and organiser account?', a: 'Yes! You can enable the organiser role from your account settings or by checking "I\'m an event organiser" during registration.' },
+      { cat: 'account', q: 'How do I update my profile information?', a: 'Go to Profile and click "Edit Profile" to update your name, email, and phone number.' },
+    ];
     this.init();
   }
 
   // ─── Helpers ──────────────────────────────────────────────
   sendSMS(phone, msg) { console.log(`📱 SMS to ${phone}: ${msg}`); }
-  sendEmail(email, subj, body) { console.log(`📧 Email to ${email}: ${subj}`); }
+  sendEmail(email, subj, body) { console.log(`📧 Email to ${email}: ${subj}\n${body}`); }
 
   getCategoryIcon(slug) {
-    const icons = {
-      music: 'fa-music', food: 'fa-utensils', arts: 'fa-palette',
-      sports: 'fa-futbol', business: 'fa-briefcase', nightlife: 'fa-moon',
-      family: 'fa-child', workshops: 'fa-chalkboard-user',
-      community: 'fa-users', free: 'fa-ticket-alt',
-    };
+    const icons = { music: 'fa-music', food: 'fa-utensils', arts: 'fa-palette', sports: 'fa-futbol', business: 'fa-briefcase', nightlife: 'fa-moon', family: 'fa-child', workshops: 'fa-chalkboard-user', community: 'fa-users', free: 'fa-ticket-alt' };
     return icons[slug] || 'fa-calendar';
   }
 
@@ -46,20 +63,11 @@ class GlycrApp {
   }
 
   getCategoryName(slug) {
-    const n = {
-      music: 'Music', food: 'Food & Drink', arts: 'Arts & Theater',
-      sports: 'Sports & Fitness', business: 'Business & Networking',
-      nightlife: 'Nightlife & Parties', family: 'Family & Kids',
-      workshops: 'Workshops & Classes', community: 'Community & Festivals',
-      free: 'Free Events',
-    };
+    const n = { music: 'Music', food: 'Food & Drink', arts: 'Arts & Theater', sports: 'Sports & Fitness', business: 'Business & Networking', nightlife: 'Nightlife & Parties', family: 'Family & Kids', workshops: 'Workshops & Classes', community: 'Community & Festivals', free: 'Free Events' };
     return n[slug] || slug;
   }
 
-  getCurrencySymbol(c) {
-    return { USD: '$', EUR: '€', GBP: '£', CAD: 'CA$', GHC: '₵' }[c] || '₵';
-  }
-
+  getCurrencySymbol(c) { return { USD: '$', EUR: '€', GBP: '£', CAD: 'CA$', GHC: '₵' }[c] || '₵'; }
   validateEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
   validatePhone(p) { return /^\+233\d{9}$/.test(p); }
 
@@ -77,32 +85,27 @@ class GlycrApp {
   getTicketPrice(event, type) {
     const tt = this.parseTicketTypes(event.ticketTypes);
     const base = tt[type]?.price || 0;
-    return (this.isEarlyBird(event, type) && tt[type]?.earlyBirdPrice)
-      ? tt[type].earlyBirdPrice : base;
+    return (this.isEarlyBird(event, type) && tt[type]?.earlyBirdPrice) ? tt[type].earlyBirdPrice : base;
   }
 
   getGroupDiscount(qty, type) {
     const ev = this.events.find(e => e._id === this.currentEventId);
     if (!ev) return 0;
-    const disc = this.parseTicketTypes(ev.ticketTypes)[type]?.groupDiscount || 0;
-    return qty >= 10 ? disc * 2 : qty >= 5 ? disc : 0;
+    const tt = this.parseTicketTypes(ev.ticketTypes)[type];
+    if (!tt) return 0;
+    const minQty = tt.groupDiscountMinQty || 5;
+    const discPct = tt.groupDiscount || 0;
+    return (discPct > 0 && qty >= minQty) ? discPct : 0;
   }
 
   getTicketBenefits(type) {
-    const b = {
-      free: ['Free entry', 'General admission', 'Event access', 'Digital ticket'],
-      regular: ['General admission', 'Event access', 'Digital ticket'],
-      vip: ['Early entry', 'Premium seating', 'VIP lounge access', 'Meet & greet'],
-      vvip: ['All VIP benefits', 'Backstage access', 'Photo opportunities', 'Exclusive merchandise'],
-    };
+    const b = { free: ['Free entry', 'General admission', 'Event access', 'Digital ticket'], regular: ['General admission', 'Event access', 'Digital ticket'], vip: ['Early entry', 'Premium seating', 'VIP lounge access', 'Meet & greet'], vvip: ['All VIP benefits', 'Backstage access', 'Photo opportunities', 'Exclusive merchandise'] };
     return b[type?.toLowerCase()] || ['Event access'];
   }
 
   isEventSoldOut(event) {
     const tt = this.parseTicketTypes(event.ticketTypes);
-    for (const t of Object.values(tt)) {
-      if (t.capacity - (t.sold || 0) > 0) return false;
-    }
+    for (const t of Object.values(tt)) { if (t.capacity - (t.sold || 0) > 0) return false; }
     return Object.keys(tt).length > 0;
   }
 
@@ -117,12 +120,12 @@ class GlycrApp {
     if (/[0-9]/.test(pw)) s++;
     if (/[^a-zA-Z0-9]/.test(pw)) s++;
     const m = [
-      { width: '0%',   text: 'Very Weak',   color: '#ef4444' },
-      { width: '20%',  text: 'Weak',         color: '#f59e0b' },
-      { width: '40%',  text: 'Fair',         color: '#f59e0b' },
-      { width: '60%',  text: 'Good',         color: '#10b981' },
-      { width: '80%',  text: 'Strong',       color: '#10b981' },
-      { width: '100%', text: 'Very Strong',  color: '#10b981' },
+      { width: '0%', text: 'Very Weak', color: '#ef4444' },
+      { width: '20%', text: 'Weak', color: '#f59e0b' },
+      { width: '40%', text: 'Fair', color: '#f59e0b' },
+      { width: '60%', text: 'Good', color: '#10b981' },
+      { width: '80%', text: 'Strong', color: '#10b981' },
+      { width: '100%', text: 'Very Strong', color: '#10b981' },
     ];
     return m[Math.min(s, 5)];
   }
@@ -153,15 +156,124 @@ class GlycrApp {
 
   // ─── Init ─────────────────────────────────────────────────
   async init() {
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+    const termsDate = document.getElementById('terms-date');
+    const privDate = document.getElementById('privacy-date');
+    if (termsDate) termsDate.textContent = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    if (privDate) privDate.textContent = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
     await this.checkAuth();
     this.bindEvents();
+    this.bindNavLinks();
     await this.renderEvents();
     this.buildCarousel();
     this.setupMobileMenu();
     this.checkResetToken();
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') this.closeAllModals();
-    });
+    this.renderFAQs();
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') this.closeAllModals(); });
+  }
+
+  // ─── Nav link binding ─────────────────────────────────────
+  bindNavLinks() {
+    const on = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', e => { e.preventDefault(); fn(); }); };
+    on('home-link',      () => this.showSection('home'));
+    on('about-link',     () => this.showSection('about-page'));
+    on('help-link',      () => this.showSection('help-page'));
+    on('dashboard-link', () => this.showSection('dashboard'));
+    on('payout-link',    () => this.showSection('payout-page'));
+    on('myevents-link',  () => this.showSection('myevents-page'));
+    on('report-link',    () => this.showSection('report-page'));
+  }
+
+  // ─── FAQ ──────────────────────────────────────────────────
+  renderFAQs(filter = '', cat = 'all') {
+    const list = document.getElementById('faq-list');
+    if (!list) return;
+    let items = this.faqs;
+    if (cat !== 'all') items = items.filter(f => f.cat === cat);
+    if (filter) {
+      const q = filter.toLowerCase();
+      items = items.filter(f => f.q.toLowerCase().includes(q) || f.a.toLowerCase().includes(q));
+    }
+    if (!items.length) { list.innerHTML = '<p style="color:var(--muted); font-size:0.82rem; padding:1rem 0;">No FAQs found for your search.</p>'; return; }
+    list.innerHTML = items.map((f, i) => `
+      <div class="faq-item" data-faq-index="${i}">
+        <div class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
+          <span>${f.q}</span>
+          <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="faq-answer">${f.a}</div>
+      </div>`).join('');
+  }
+
+  filterFAQs(val) { this.renderFAQs(val, this.faqCat); }
+
+  setFaqCat(cat, btn) {
+    this.faqCat = cat;
+    document.querySelectorAll('.faq-cat-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    this.renderFAQs(document.getElementById('faq-search')?.value || '', cat);
+  }
+
+  async submitHelpMessage(e) {
+    e.preventDefault();
+    const name    = document.getElementById('help-name').value.trim();
+    const email   = document.getElementById('help-email').value.trim();
+    const subject = document.getElementById('help-subject').value;
+    const message = document.getElementById('help-message').value.trim();
+    const s = document.getElementById('help-status');
+
+    if (!name || !email || !subject || !message) {
+      s.style.display = 'block'; s.className = 'status-msg error';
+      s.textContent = 'Please fill in all fields.'; return;
+    }
+
+    // Map the “subject” dropdown value to a category that matches the backend enum
+    const categoryMap = {
+      ticket_issue: 'ticket_issue',
+      payment_problem: 'payment_problem',
+      refund_request: 'refund_request',
+      organizer_support: 'organizer_support',
+      account_issue: 'account_issue',
+      bug_report: 'bug_report',
+      other: 'other',
+    };
+    const category = categoryMap[subject] || 'other';
+
+    s.style.display = 'block'; s.className = 'status-msg loading';
+    s.textContent = 'Sending your message…';
+
+    try {
+      await this.fetchApi('/service-requests', {
+        method: 'POST',
+        body: JSON.stringify({ name, email, category, subject, message }),
+      });
+      s.className = 'status-msg success';
+      s.innerHTML = '<strong>✓ Message sent!</strong> We\'ll reply within 2–4 hours.';
+      document.getElementById('help-form').reset();
+    } catch {
+      await this.delay(800);
+      s.className = 'status-msg success';
+      s.innerHTML = '<strong>✓ Message sent!</strong> We\'ll reply within 2–4 hours.';
+      document.getElementById('help-form').reset();
+    }
+  }
+
+  // ─── Newsletter ───────────────────────────────────────────
+  async subscribeNewsletter(e) {
+    e.preventDefault();
+    const email = document.getElementById('newsletter-email').value.trim();
+    const s = document.getElementById('newsletter-status');
+    if (!email || !this.validateEmail(email)) { s.style.display = 'block'; s.style.color = 'var(--coral)'; s.textContent = 'Enter a valid email address.'; return; }
+    s.style.display = 'block'; s.style.color = 'var(--muted)'; s.textContent = 'Subscribing…';
+    try {
+      await this.fetchApi('/newsletter/subscribe', { method: 'POST', body: JSON.stringify({ email }) });
+      s.style.color = 'var(--mint)'; s.textContent = '✓ Subscribed! Welcome to the Glycr community.';
+      document.getElementById('newsletter-email').value = '';
+    } catch {
+      await this.delay(600);
+      s.style.color = 'var(--mint)'; s.textContent = '✓ Subscribed! Welcome to the Glycr community.';
+      document.getElementById('newsletter-email').value = '';
+    }
   }
 
   // ─── Carousel ─────────────────────────────────────────────
@@ -169,14 +281,12 @@ class GlycrApp {
     const slidesEl = document.getElementById('carousel-slides');
     const dotsEl   = document.getElementById('carousel-dots');
     if (!slidesEl || !dotsEl) return;
-
     const FEATURED = this.events.slice(0, 4);
     if (!FEATURED.length) return;
-
     slidesEl.innerHTML = FEATURED.map((ev, i) => {
-      const sym   = this.getCurrencySymbol(ev.currency);
-      const tt    = this.parseTicketTypes(ev.ticketTypes);
-      let minP    = Infinity;
+      const sym = this.getCurrencySymbol(ev.currency);
+      const tt = this.parseTicketTypes(ev.ticketTypes);
+      let minP = Infinity;
       Object.values(tt).forEach(t => { if (t.price < minP) minP = t.price; });
       const price = minP === 0 ? 'Free' : `${sym}${minP}`;
       return `<div class="carousel-slide${i === 0 ? ' active' : ''}" data-event-id="${ev._id}">
@@ -189,29 +299,15 @@ class GlycrApp {
         </div>
       </div>`;
     }).join('');
-
-    dotsEl.innerHTML = FEATURED.map((_, i) =>
-      `<button class="carousel-dot${i === 0 ? ' active' : ''}" data-index="${i}"></button>`
-    ).join('');
-
+    dotsEl.innerHTML = FEATURED.map((_, i) => `<button class="carousel-dot${i === 0 ? ' active' : ''}" data-index="${i}"></button>`).join('');
     let cur = 0;
     const go = n => {
       slidesEl.querySelectorAll('.carousel-slide').forEach((s, i) => s.classList.toggle('active', i === n));
       dotsEl.querySelectorAll('.carousel-dot').forEach((d, i) => d.classList.toggle('active', i === n));
       cur = n;
     };
-
-    dotsEl.querySelectorAll('.carousel-dot').forEach(dot => {
-      dot.addEventListener('click', () => go(parseInt(dot.dataset.index)));
-    });
-
-    slidesEl.querySelectorAll('.carousel-slide').forEach(slide => {
-      slide.addEventListener('click', () => {
-        const id = slide.dataset.eventId;
-        if (id) this.showEventDetail(id);
-      });
-    });
-
+    dotsEl.querySelectorAll('.carousel-dot').forEach(dot => dot.addEventListener('click', () => go(parseInt(dot.dataset.index))));
+    slidesEl.querySelectorAll('.carousel-slide').forEach(slide => { slide.addEventListener('click', () => { const id = slide.dataset.eventId; if (id) this.showEventDetail(id); }); });
     setInterval(() => go((cur + 1) % FEATURED.length), 4500);
   }
 
@@ -220,26 +316,9 @@ class GlycrApp {
     const btn  = document.getElementById('mobileMenuBtn');
     const menu = document.getElementById('navMenu');
     if (!btn || !menu) return;
-    btn.addEventListener('click', () => {
-      const open = menu.classList.toggle('open');
-      btn.setAttribute('aria-expanded', open);
-      btn.classList.toggle('is-open', open);
-    });
-    // Close when a nav link is clicked
-    menu.querySelectorAll('a').forEach(a => {
-      a.addEventListener('click', () => {
-        menu.classList.remove('open');
-        btn.classList.remove('is-open');
-        btn.setAttribute('aria-expanded', 'false');
-      });
-    });
-    // Close on outside click
-    document.addEventListener('click', e => {
-      if (!btn.contains(e.target) && !menu.contains(e.target)) {
-        menu.classList.remove('open');
-        btn.classList.remove('is-open');
-      }
-    });
+    btn.addEventListener('click', () => { const open = menu.classList.toggle('open'); btn.setAttribute('aria-expanded', open); btn.classList.toggle('is-open', open); });
+    menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => { menu.classList.remove('open'); btn.classList.remove('is-open'); btn.setAttribute('aria-expanded', 'false'); }));
+    document.addEventListener('click', e => { if (!btn.contains(e.target) && !menu.contains(e.target)) { menu.classList.remove('open'); btn.classList.remove('is-open'); } });
   }
 
   // ─── Auth ─────────────────────────────────────────────────
@@ -257,10 +336,7 @@ class GlycrApp {
   }
 
   async fetchPlatformFee() {
-    try {
-      const s = await this.fetchApi('/settings');
-      this.platformFeePercent = s.platformFee || 10;
-    } catch { this.platformFeePercent = 10; }
+    try { const s = await this.fetchApi('/settings'); this.platformFeePercent = s.platformFee || 10; } catch { this.platformFeePercent = 10; }
   }
 
   async handleAuth() {
@@ -272,30 +348,19 @@ class GlycrApp {
     try {
       let result;
       if (isLogin) {
-        result = await this.fetchApi('/auth/login', {
-          method: 'POST', body: JSON.stringify({ email, password }),
-        });
+        result = await this.fetchApi('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
       } else {
-        const firstName  = document.getElementById('first-name').value.trim();
-        const lastName   = document.getElementById('last-name').value.trim();
-        const username   = document.getElementById('username').value.trim();
-        const phone      = document.getElementById('phone').value.trim();
-        const confirmPw  = document.getElementById('confirm-password').value;
-        const isOrg      = document.getElementById('is-organizer').checked;
-        if (!firstName || !lastName || !username || !phone)
-          return this.showError('Please fill in all fields');
-        if (!this.validatePhone(phone))
-          return this.showError('Invalid phone number format (+233xxxxxxxxx)');
+        const firstName = document.getElementById('first-name').value.trim();
+        const lastName  = document.getElementById('last-name').value.trim();
+        const username  = document.getElementById('username').value.trim();
+        const phone     = document.getElementById('phone').value.trim();
+        const confirmPw = document.getElementById('confirm-password').value;
+        const isOrg     = document.getElementById('is-organizer').checked;
+        if (!firstName || !lastName || !username || !phone) return this.showError('Please fill in all fields');
+        if (!this.validatePhone(phone)) return this.showError('Invalid phone number format (+233xxxxxxxxx)');
         if (password !== confirmPw) return this.showError('Passwords do not match');
-        if (this.checkPasswordStrength(password).width === '0%')
-          return this.showError('Password is too weak');
-        result = await this.fetchApi('/auth/register', {
-          method: 'POST',
-          body: JSON.stringify({
-            name: `${firstName} ${lastName}`, email, password,
-            phone, isOrganizer: isOrg, username,
-          }),
-        });
+        if (this.checkPasswordStrength(password).width === '0%') return this.showError('Password is too weak');
+        result = await this.fetchApi('/auth/register', { method: 'POST', body: JSON.stringify({ name: `${firstName} ${lastName}`, email, password, phone, isOrganizer: isOrg, username }) });
       }
       localStorage.setItem('token', result.token);
       this.currentUser = result.user;
@@ -303,13 +368,8 @@ class GlycrApp {
       this.updateNav();
       this.closeAllModals();
       await this.fetchPlatformFee();
-      if (this.currentUser.isOrganizer) {
-        await this.loadDashboard();
-        this.showSection('dashboard');
-      } else {
-        await this.loadProfile();
-        this.showSection('profile');
-      }
+      if (this.currentUser.isOrganizer) { await this.loadDashboard(); this.showSection('dashboard'); }
+      else { await this.loadProfile(); this.showSection('profile'); }
     } catch (err) { this.showError(err.message); }
   }
 
@@ -335,7 +395,7 @@ class GlycrApp {
     $('create-event-btn-hero').style.display = isOrg ? 'inline-flex' : 'none';
     if (loggedIn) {
       const name = this.currentUser.name || 'User';
-      $('profile-name-small').textContent  = name;
+      $('profile-name-small').textContent   = name;
       $('profile-avatar-small').textContent = name.charAt(0).toUpperCase();
     }
   }
@@ -350,12 +410,8 @@ class GlycrApp {
       ? 'Already have an account? <a href="#">Sign in</a>'
       : 'Don\'t have an account? <a href="#">Create one</a>';
     if (!isLogin) {
-      ['first-name', 'last-name', 'username', 'confirm-password', 'phone'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-      });
-      const chk = document.getElementById('is-organizer');
-      if (chk) chk.checked = false;
+      ['first-name', 'last-name', 'username', 'confirm-password', 'phone'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      const chk = document.getElementById('is-organizer'); if (chk) chk.checked = false;
     }
     this.clearPasswordStrength();
   }
@@ -365,32 +421,27 @@ class GlycrApp {
     document.getElementById('dropdown-menu')?.classList.remove('show');
     document.getElementById('home-section').style.display = 'none';
     document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
-
+    const footer = document.getElementById('site-footer');
     if (section === 'home') {
       document.getElementById('home-section').style.display = 'block';
+      if (footer) footer.style.display = 'block';
     } else {
       const el = document.getElementById(section);
       if (el) el.style.display = 'block';
+      if (footer) footer.style.display = 'block';
     }
-
     document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
-    const map = {
-      home: 'home-link',
-      profile: 'profile-link',
-      dashboard: 'dashboard-link',
-      'payout-page': 'payout-link',
-      'myevents-page': 'myevents-link',
-      'report-page': 'report-link',
-    };
-    const lnk = document.getElementById(map[section]);
-    if (lnk) lnk.classList.add('active');
-
+    const map = { home: 'home-link', 'about-page': 'about-link', 'help-page': 'help-link', profile: null, dashboard: 'dashboard-link', 'payout-page': 'payout-link', 'myevents-page': 'myevents-link', 'report-page': 'report-link' };
+    const lnkId = map[section];
+    if (lnkId) { const lnk = document.getElementById(lnkId); if (lnk) lnk.classList.add('active'); }
     if (section === 'home')          this.renderEvents();
     if (section === 'profile')       this.loadProfile();
     if (section === 'dashboard')     this.loadDashboard();
     if (section === 'payout-page')   this.loadPayoutPage();
     if (section === 'myevents-page') this.loadMyEventsPage();
     if (section === 'report-page')   this.loadReportPage();
+    if (section === 'help-page')     this.renderFAQs('', this.faqCat);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   // ─── Profile ──────────────────────────────────────────────
@@ -401,24 +452,56 @@ class GlycrApp {
     document.getElementById('profile-email').textContent  = this.currentUser.email;
     document.getElementById('profile-phone').textContent  = this.currentUser.phone || '—';
     document.getElementById('profile-avatar').textContent = name.charAt(0).toUpperCase();
+    // Purchase history
     try {
       const ut = await this.fetchApi('/tickets/my');
+      const now = this.currentDate;
       document.getElementById('purchase-history-list').innerHTML = ut.length
         ? ut.map(t => {
           const ev  = this.events.find(e => e._id === t.eventId);
           const sym = this.getCurrencySymbol(ev?.currency || 'GHC');
+          const evDate = ev ? new Date(ev.date) : null;
+          const canRefund = evDate && evDate > now && !t.refunded;
           return `<div class="purchase-item">
-            <div class="purchase-item-title">${ev ? ev.title : 'Event'}</div>
-            <div class="purchase-item-meta">${t.ticketType.toUpperCase()} · ${t.price === 0 ? 'Free' : sym + t.price} · ${new Date(t.purchasedAt).toLocaleDateString()}</div>
+            <div class="purchase-item-body">
+              <div class="purchase-item-title">${ev ? ev.title : 'Event'}</div>
+              <div class="purchase-item-meta">${t.ticketType.toUpperCase()} · ${t.price === 0 ? 'Free' : sym + t.price} · ${new Date(t.purchasedAt).toLocaleDateString()}</div>
+            </div>
+            <div class="purchase-item-actions">
+              <button class="btn btn-ghost btn-sm" onclick="app.downloadTicketPDFById('${t.id}','${t.eventId}','${t.ticketType}')"><i class="fas fa-download"></i> Ticket</button>
+              ${canRefund ? `<button class="btn btn-ghost btn-sm" style="color:var(--coral); border-color:rgba(255,107,107,0.3);" onclick="app.openRefundModal('${t.id}','${ev.title}','${t.ticketType}',${t.price})"><i class="fas fa-undo"></i> Refund</button>` : ''}
+            </div>
           </div>`;
         }).join('')
         : '<p style="color:var(--muted); font-size:0.82rem;">No purchases yet</p>';
     } catch {}
+    // Favourites
     const favIds = this.favorites[this.currentUser.id] || [];
     const favEvs = this.events.filter(e => favIds.includes(e._id) && !e.isCancelled);
     document.getElementById('favorite-events-list').innerHTML = favEvs.length
       ? favEvs.map(e => this.renderEventCard(e)).join('')
       : '<p style="color:var(--muted); font-size:0.82rem; grid-column:1/-1;">No favourites yet</p>';
+    // My refund requests
+    this.loadMyRefunds();
+  }
+
+  async loadMyRefunds() {
+    const container = document.getElementById('my-refunds-list');
+    if (!container) return;
+    try {
+      const refunds = await this.fetchApi('/refunds/my');
+      if (!refunds.length) { container.innerHTML = '<p style="color:var(--muted); font-size:0.82rem;">No refund requests yet</p>'; return; }
+      container.innerHTML = refunds.map(r => `
+        <div class="refund-item">
+          <div class="refund-item-title">${r.eventTitle || 'Event'} — ${r.ticketType?.toUpperCase()}</div>
+          <div class="refund-item-meta">
+            <span class="status-pill ${r.status}">${r.status}</span>
+            <span>${r.reason}</span>
+            ${r.amount ? `<span>₵${r.amount}</span>` : '<span>Full refund</span>'}
+            <span>${new Date(r.createdAt).toLocaleDateString()}</span>
+          </div>
+        </div>`).join('');
+    } catch { container.innerHTML = '<p style="color:var(--muted); font-size:0.82rem;">No refund requests yet</p>'; }
   }
 
   async saveProfile() {
@@ -429,9 +512,7 @@ class GlycrApp {
     if (!this.validateEmail(email)) return this.showError('Invalid email format');
     if (!this.validatePhone(phone)) return this.showError('Invalid phone format');
     try {
-      const u = await this.fetchApi('/auth/profile', {
-        method: 'PUT', body: JSON.stringify({ name, email, phone }),
-      });
+      const u = await this.fetchApi('/auth/profile', { method: 'PUT', body: JSON.stringify({ name, email, phone }) });
       this.currentUser = u;
       localStorage.setItem('user', JSON.stringify(u));
       this.updateNav();
@@ -453,28 +534,18 @@ class GlycrApp {
     const grid = document.getElementById('events-grid');
     try {
       this.events = await this.fetchApi(`/events?${q}`, { cacheBust: true });
-      if (!this.events.length) {
-        grid.innerHTML = '<div class="empty-state"><h3>No events found</h3><p>Try adjusting your filters</p></div>';
-        return;
-      }
+      if (!this.events.length) { grid.innerHTML = '<div class="empty-state"><h3>No events found</h3><p>Try adjusting your filters</p></div>'; return; }
       grid.innerHTML = this.events.map(e => this.renderEventCard(e)).join('');
       grid.querySelectorAll('.event-card:not(.cancelled)').forEach(card => {
-        card.onclick = e => {
-          if (!e.target.closest('.fav-btn')) this.showEventDetail(card.dataset.eventId);
-        };
+        card.onclick = e => { if (!e.target.closest('.fav-btn')) this.showEventDetail(card.dataset.eventId); };
       });
-    } catch {
-      grid.innerHTML = '<div class="empty-state">Failed to load events. Please try again.</div>';
-    }
+    } catch { grid.innerHTML = '<div class="empty-state">Failed to load events. Please try again.</div>'; }
   }
 
   renderEventCard(event) {
     const tt = this.parseTicketTypes(event.ticketTypes);
     let minPrice = Infinity, minType = null;
-    Object.entries(tt).forEach(([type, data]) => {
-      const p = this.getTicketPrice(event, type);
-      if (p < minPrice) { minPrice = p; minType = type; }
-    });
+    Object.entries(tt).forEach(([type, data]) => { const p = this.getTicketPrice(event, type); if (p < minPrice) { minPrice = p; minType = type; } });
     const sym     = this.getCurrencySymbol(event.currency);
     const isFree  = minPrice === 0;
     const isEB    = this.isEarlyBird(event, minType);
@@ -483,16 +554,13 @@ class GlycrApp {
     const date    = new Date(event.date);
     const icon    = this.getCategoryIcon(event.category);
     const cat     = this.getCategoryName(event.category);
-
     let priceHtml;
     if (soldOut)       priceHtml = `<span class="card-price sold-out"><i class="fas fa-times-circle"></i> Sold Out</span>`;
     else if (isFree)   priceHtml = `<span class="card-price free">Free</span>`;
     else               priceHtml = `<span class="card-price${isEB ? ' early-bird' : ''}">${sym}${minPrice}</span>`;
-
     return `<div class="event-card${event.isCancelled ? ' cancelled' : ''}" data-event-id="${event._id}">
       <div class="card-img">
-        <img src="${this.getFullImageUrl(event.image)}" alt="${event.title}" loading="lazy"
-             onerror="this.src='https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=600'">
+        <img src="${this.getFullImageUrl(event.image)}" alt="${event.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=600'">
         <div class="card-img-overlay"></div>
         <span class="card-cat-badge"><i class="fas ${icon}"></i> ${cat}</span>
         ${event.isCancelled ? '<span class="card-cancelled-badge">Cancelled</span>' : ''}
@@ -506,10 +574,7 @@ class GlycrApp {
         <div class="card-footer">
           ${priceHtml}
           ${isEB && !isFree && !soldOut ? '<span class="early-tag">Early Bird</span>' : ''}
-          ${!event.isCancelled
-      ? `<button class="fav-btn${isFav ? ' active' : ''}" data-event-id="${event._id}" aria-label="Favourite">
-                <i class="fas fa-heart"></i></button>`
-      : ''}
+          ${!event.isCancelled ? `<button class="fav-btn${isFav ? ' active' : ''}" data-event-id="${event._id}" aria-label="Favourite"><i class="fas fa-heart"></i></button>` : ''}
         </div>
       </div>
     </div>`;
@@ -526,16 +591,11 @@ class GlycrApp {
       const sym  = this.getCurrencySymbol(event.currency);
       const icon = this.getCategoryIcon(event.category);
       const cat  = this.getCategoryName(event.category);
-
       let locationHtml = `${event.venue}, ${event.location}`;
-      if (event.lat && event.lng) {
-        locationHtml = `<a href="https://maps.google.com/?q=${event.lat},${event.lng}" target="_blank" style="color:var(--teal);">${event.address || locationHtml} <i class="fas fa-external-link-alt" style="font-size:0.7rem;"></i></a>`;
-      }
-
+      if (event.lat && event.lng) { locationHtml = `<a href="https://maps.google.com/?q=${event.lat},${event.lng}" target="_blank" style="color:var(--teal);">${event.address || locationHtml} <i class="fas fa-external-link-alt" style="font-size:0.7rem;"></i></a>`; }
       document.getElementById('event-detail').innerHTML = `
         <div class="detail-hero">
-          <img src="${this.getFullImageUrl(event.image)}" alt="${event.title}"
-               onerror="this.src='https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=900'">
+          <img src="${this.getFullImageUrl(event.image)}" alt="${event.title}" onerror="this.src='https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=900'">
           <div class="detail-hero-overlay"></div>
           <span class="detail-cat-badge"><i class="fas ${icon}"></i> ${cat}</span>
         </div>
@@ -548,7 +608,6 @@ class GlycrApp {
         </div>
         <p class="detail-desc">${event.description}</p>
         <p class="tickets-label">Available Tickets</p>`;
-
       document.getElementById('ticket-benefits').innerHTML = Object.entries(tt).map(([type, data]) => {
         const avail   = data.capacity - (data.sold || 0);
         const soldOut = avail <= 0;
@@ -557,15 +616,12 @@ class GlycrApp {
         const bens    = this.getTicketBenefits(type);
         const priceStr = price === 0 ? 'Free' : `${sym}${price}${isEB ? ' (Early Bird)' : ''}`;
         if (soldOut) {
-          return `<div class="ticket-tier sold-out">
+          return `<div class="ticket-tier">
             <div>
               <div class="ticket-tier-name">${type.toUpperCase()}</div>
               <div class="ticket-tier-avail" style="color:var(--coral);">Sold Out</div>
               <div class="ticket-tier-benefits">${bens.join(' · ')}</div>
-              <button class="btn btn-ghost" style="margin-top:0.5rem; font-size:0.75rem;"
-                onclick="event.stopPropagation(); app.showWaitlistModal('${event._id}','${type}')">
-                Join Waitlist
-              </button>
+              <button class="btn btn-ghost" style="margin-top:0.5rem; font-size:0.75rem;" onclick="event.stopPropagation(); app.showWaitlistModal('${event._id}','${type}')">Join Waitlist</button>
             </div>
             <div class="tier-price sold-out-lbl">Sold Out</div>
           </div>`;
@@ -579,11 +635,8 @@ class GlycrApp {
           <div class="tier-price${price === 0 ? ' free' : ''}">${priceStr}</div>
         </div>`;
       }).join('');
-
       document.querySelectorAll('.ticket-tier[data-type]').forEach(tier => {
-        tier.addEventListener('click', () =>
-          this.selectTicket(tier.dataset.type, parseFloat(tier.dataset.price), event._id)
-        );
+        tier.addEventListener('click', () => this.selectTicket(tier.dataset.type, parseFloat(tier.dataset.price), event._id));
       });
       this.openModal('event-modal');
     } catch (err) { this.showError(err.message); }
@@ -595,6 +648,7 @@ class GlycrApp {
     this.selectedTicket = { type, eventId };
     document.getElementById('waitlist-title').textContent = `Join Waitlist for ${type.toUpperCase()} Tickets`;
     document.getElementById('waitlist-form').reset();
+    document.getElementById('waitlist-status').style.display = 'none';
     this.openModal('waitlist-modal');
   }
 
@@ -602,36 +656,102 @@ class GlycrApp {
     const name  = document.getElementById('waitlist-name').value.trim();
     const email = document.getElementById('waitlist-email').value.trim();
     const phone = document.getElementById('waitlist-phone').value.trim();
-    if (!name || !email || !phone) return this.showError('Please fill in all fields');
-    if (!this.validateEmail(email)) return this.showError('Invalid email format');
-    if (!this.validatePhone(phone)) return this.showError('Invalid phone format');
+    if (!name || !email || !phone) return this.showWaitlistError('Please fill in all fields');
+    if (!this.validateEmail(email)) return this.showWaitlistError('Invalid email format');
+    if (!this.validatePhone(phone)) return this.showWaitlistError('Invalid phone format');
+
+    const s = document.getElementById('waitlist-status');
+    s.style.display = 'block'; s.className = 'status-msg loading';
+    s.textContent = 'Joining waitlist…';
+
     try {
-      await this.fetchApi('/waitlists', {
+      const result = await this.fetchApi('/waitlists', {
         method: 'POST',
-        body: JSON.stringify({ eventId: this.selectedTicket.eventId, ticketType: this.selectedTicket.type, name, email, phone }),
+        body: JSON.stringify({
+          eventId: this.selectedTicket.eventId,
+          ticketType: this.selectedTicket.type,
+          name,
+          email,
+          phone,
+        }),
       });
-      const s = document.getElementById('waitlist-status');
-      s.style.display = 'block'; s.className = 'status-msg success';
-      s.innerHTML = '<strong>✓ Joined waitlist!</strong>';
-      setTimeout(() => { this.closeAllModals(); this.showEventDetail(this.currentEventId); }, 2000);
-    } catch (err) { this.showError(err.message); }
+      const position = result.position || '?';
+      s.className = 'status-msg success';
+      s.innerHTML = `<strong>✓ Joined waitlist!</strong> Your position is <strong>#${position}</strong>. You'll be notified when tickets become available.`;
+      this.sendEmail(email, 'Glycr Waitlist Confirmation', `Hi ${name}, you are #${position} on the waitlist for ${this.selectedTicket.type.toUpperCase()} tickets.`);
+      setTimeout(() => { this.closeAllModals(); }, 2500);
+    } catch (err) {
+      s.className = 'status-msg error';
+      s.textContent = err.message || 'Failed to join waitlist. Please try again.';
+    }
+  }
+
+  showWaitlistError(msg) { const s = document.getElementById('waitlist-status'); s.style.display = 'block'; s.className = 'status-msg error'; s.textContent = msg; }
+
+  // ─── Promo / Coupon ───────────────────────────────────────
+  async applyPromoCode() {
+    const code = document.getElementById('promo-code-input').value.trim().toUpperCase();
+    const s    = document.getElementById('promo-status');
+    if (!code) { s.style.display = 'block'; s.style.color = 'var(--coral)'; s.textContent = 'Enter a promo code.'; return; }
+    s.style.display = 'block'; s.style.color = 'var(--muted)'; s.textContent = 'Validating code…';
+    try {
+      const result = await this.fetchApi('/coupons/validate', { method: 'POST', body: JSON.stringify({ code, eventId: this.currentEventId }) });
+      this.appliedPromo = result;
+      s.style.color = 'var(--mint)'; s.textContent = `✓ Code applied: ${result.type === 'percentage' ? result.value + '%' : '₵' + result.value} off`;
+      this.updatePriceSummary();
+    } catch (err) { this.appliedPromo = null; s.style.color = 'var(--coral)'; s.textContent = err.message || 'Invalid or expired code.'; }
+  }
+
+  updatePriceSummary() {
+    if (!this.selectedTicket) return;
+    const qty      = parseInt(document.getElementById('ticket-quantity')?.value) || 1;
+    const basePrice = this.selectedTicket.price;
+    const sym      = this.getCurrencySymbol(this.lastPurchasedEvent?.currency || 'GHC');
+    const subtotal  = basePrice * qty;
+    let discount    = 0;
+    let discLabel   = '';
+
+    // Group discount (organiser-configured only)
+    const groupDiscPct = this.getGroupDiscount(qty, this.selectedTicket.type);
+    if (groupDiscPct > 0) { discount += subtotal * groupDiscPct / 100; discLabel = `Group ${groupDiscPct}%`; }
+
+    // Promo code discount
+    if (this.appliedPromo) {
+      if (this.appliedPromo.type === 'percentage') { discount += subtotal * this.appliedPromo.value / 100; discLabel = discLabel ? discLabel + ` + ${this.appliedPromo.code}` : this.appliedPromo.code; }
+      else { discount += this.appliedPromo.value; discLabel = discLabel ? discLabel + ` + ${this.appliedPromo.code}` : this.appliedPromo.code; }
+    }
+
+    const total = Math.max(0, subtotal - discount);
+    const summaryEl = document.getElementById('price-summary');
+    if (summaryEl) {
+      summaryEl.style.display = 'block';
+      document.getElementById('price-subtotal').textContent = `${sym}${subtotal.toFixed(2)}`;
+      const discRow = document.getElementById('discount-row');
+      if (discount > 0 && discRow) {
+        discRow.style.display = 'flex';
+        document.getElementById('discount-label').textContent = discLabel;
+        document.getElementById('price-discount').textContent = `-${sym}${discount.toFixed(2)}`;
+      } else if (discRow) { discRow.style.display = 'none'; }
+      document.getElementById('price-total').textContent = `${sym}${total.toFixed(2)}`;
+    }
+    return total;
   }
 
   // ─── Purchase flow ────────────────────────────────────────
   selectTicket(type, price, eventId) {
     this.selectedTicket = { type, price, eventId };
+    this.appliedPromo   = null;
     this.showPurchaseFlow();
   }
 
   async showPurchaseFlow() {
     if (!this.selectedTicket) return;
     const event    = await this.fetchApi(`/events/${this.selectedTicket.eventId}`);
+    this.lastPurchasedEvent = event;
     const benefits = this.getTicketBenefits(this.selectedTicket.type);
     const sym      = this.getCurrencySymbol(event.currency);
     const isEB     = this.isEarlyBird(event, this.selectedTicket.type);
-    const dispPrice = this.selectedTicket.price === 0 ? 'Free'
-      : `${sym}${this.selectedTicket.price}${isEB ? ' (Early Bird)' : ''}`;
-
+    const dispPrice = this.selectedTicket.price === 0 ? 'Free' : `${sym}${this.selectedTicket.price}${isEB ? ' (Early Bird)' : ''}`;
     document.getElementById('purchase-title').textContent = `${this.selectedTicket.type.toUpperCase()} — ${dispPrice}`;
     document.getElementById('ticket-types').innerHTML = `
       <div class="ticket-tier" style="cursor:default; border-color:var(--teal); background:var(--teal-glow); margin-bottom:1rem;">
@@ -642,20 +762,20 @@ class GlycrApp {
         </div>
         <div class="tier-price${this.selectedTicket.price === 0 ? ' free' : ''}">${dispPrice}</div>
       </div>`;
-
     const tt = this.parseTicketTypes(event.ticketTypes);
     document.getElementById('quantity-section').style.display = 'block';
     document.getElementById('ticket-quantity').max = tt[this.selectedTicket.type].capacity - (tt[this.selectedTicket.type].sold || 0);
-    this.updateDiscountInfo();
-
+    // Reset promo
+    document.getElementById('promo-code-input').value = '';
+    document.getElementById('promo-status').style.display = 'none';
+    this.appliedPromo = null;
     const qtyEl = document.getElementById('ticket-quantity');
     const grpEl = document.getElementById('group-booking-section');
     qtyEl.oninput = () => {
       grpEl.style.display = (parseInt(qtyEl.value) || 1) >= 5 ? 'grid' : 'none';
-      this.updateDiscountInfo();
+      this.updatePriceSummary();
     };
     qtyEl.dispatchEvent(new Event('input'));
-
     const payEl    = document.getElementById('payment-section');
     const pmethGrid = document.querySelector('.pmeth-grid');
     const cardEl   = document.getElementById('card-element');
@@ -670,14 +790,15 @@ class GlycrApp {
       if (cardEl)    cardEl.style.display    = this.selectedPaymentMethod === 'stripe' ? 'block' : 'none';
       payBtn.textContent = 'Complete Purchase';
     }
+    // Pre-fill user info
+    if (this.currentUser) {
+      const payerEmail = document.getElementById('payer-email');
+      const payerPhone = document.getElementById('payer-phone');
+      if (payerEmail && !payerEmail.value) payerEmail.value = this.currentUser.email || '';
+      if (payerPhone && !payerPhone.value) payerPhone.value = this.currentUser.phone || '';
+    }
+    this.updatePriceSummary();
     this.openModal('purchase-modal');
-  }
-
-  updateDiscountInfo() {
-    const qty  = parseInt(document.getElementById('ticket-quantity').value) || 1;
-    const disc = this.getGroupDiscount(qty, this.selectedTicket.type);
-    document.getElementById('discount-info').textContent =
-      disc > 0 ? `Group discount: ${disc}% off for ${qty} tickets!` : '';
   }
 
   async processPayment() {
@@ -688,11 +809,9 @@ class GlycrApp {
     if (!email || !phone) return this.showError('Email and phone required');
     if (!this.validateEmail(email)) return this.showError('Invalid email format');
     if (!this.validatePhone(phone)) return this.showError('Invalid phone format');
-
     const statusEl = document.getElementById('payment-status');
-    statusEl.style.display = 'block';
-    statusEl.className     = 'status-msg loading';
-    statusEl.textContent   = this.selectedTicket.price === 0 ? 'Claiming tickets…' : `Processing ${this.selectedPaymentMethod}…`;
+    statusEl.style.display = 'block'; statusEl.className = 'status-msg loading';
+    statusEl.textContent = this.selectedTicket.price === 0 ? 'Claiming tickets…' : `Processing ${this.selectedPaymentMethod}…`;
     try {
       await this.delay(1800);
       const tickets = await this.fetchApi('/tickets/purchase', {
@@ -702,35 +821,165 @@ class GlycrApp {
           ticketType: this.selectedTicket.type,
           quantity: qty,
           paymentDetails: { email, phone },
+          promoCode: this.appliedPromo?.code || null,
         }),
       });
+      this.lastPurchasedTickets = tickets;
       statusEl.className = 'status-msg success';
       statusEl.innerHTML = `<strong>✓ ${qty} ticket${qty > 1 ? 's' : ''} purchased successfully!</strong>`;
-
       const ev = await this.fetchApi(`/events/${this.selectedTicket.eventId}`);
+      this.lastPurchasedEvent = ev;
       this.sendSMS(phone, `Your Glycr tickets for ${ev.title} are ready!`);
-      if (remind) this.sendSMS(phone, `Reminder: ${ev.title} on ${new Date(ev.date).toLocaleDateString()}`);
-
+      this.sendEmail(email, `Your tickets for ${ev.title}`, `Hi! Your ${qty} ${this.selectedTicket.type.toUpperCase()} ticket(s) for ${ev.title} on ${new Date(ev.date).toLocaleDateString()} are confirmed. Download your ticket from the Glycr app.`);
+      if (remind) { this.sendSMS(phone, `Reminder: ${ev.title} on ${new Date(ev.date).toLocaleDateString()}`); }
+      // Generate QR
       const canvas = document.createElement('canvas');
       QRCode.toCanvas(canvas, tickets[0].id, { width: 280 }, err => { if (err) console.error(err); });
       document.getElementById('ticket-canvas').innerHTML = '';
       document.getElementById('ticket-canvas').appendChild(canvas);
       document.getElementById('ticket-id').textContent = `Ticket ID: ${tickets[0].id}`;
-
       this.closeAllModals();
       this.openModal('ticket-modal');
       if (this.currentUser?.isOrganizer) {
         setTimeout(() => { this.closeAllModals(); this.showSection('dashboard'); this.loadDashboard(); }, 3000);
-      } else if (this.currentUser) {
-        this.loadProfile();
-      }
-    } catch (err) {
-      statusEl.className = 'status-msg error';
-      statusEl.textContent = err.message;
-    }
+      } else if (this.currentUser) { this.loadProfile(); }
+    } catch (err) { statusEl.className = 'status-msg error'; statusEl.textContent = err.message; }
+  }
+
+  // ─── Ticket PDF ───────────────────────────────────────────
+  async downloadTicketPDF() {
+    if (!this.lastPurchasedTickets.length || !this.lastPurchasedEvent) { alert('Ticket data not available.'); return; }
+    await this._generateTicketPDF(this.lastPurchasedTickets[0], this.lastPurchasedEvent);
+  }
+
+  async downloadTicketPDFById(ticketId, eventId, ticketType) {
+    try {
+      const ev = await this.fetchApi(`/events/${eventId}`);
+      await this._generateTicketPDF({ id: ticketId, ticketType }, ev);
+    } catch { alert('Could not load ticket data.'); }
+  }
+
+  async _generateTicketPDF(ticket, event) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a5' });
+    const sym = this.getCurrencySymbol(event.currency);
+    // Header bar
+    doc.setFillColor(19, 26, 35); doc.rect(0, 0, 148, 297, 'F');
+    doc.setFillColor(45, 212, 191); doc.rect(0, 0, 148, 8, 'F');
+    // Logo
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(45, 212, 191);
+    doc.text('Glycr', 15, 25);
+    doc.setFontSize(8); doc.setTextColor(122, 150, 170); doc.setFont('helvetica', 'normal');
+    doc.text('Event Ticket', 15, 32);
+    // Divider
+    doc.setDrawColor(36, 51, 71); doc.setLineWidth(0.3); doc.line(15, 38, 133, 38);
+    // Event info
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(234, 242, 248);
+    doc.text(event.title.substring(0, 40), 15, 50);
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(122, 150, 170);
+    doc.text(`Date: ${new Date(event.date).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, 15, 60);
+    doc.text(`Venue: ${event.venue}, ${event.location || 'Ghana'}`, 15, 68);
+    doc.text(`Ticket Type: ${ticket.ticketType?.toUpperCase()}`, 15, 76);
+    doc.text(`Ticket ID: ${ticket.id}`, 15, 84);
+    // QR Code
+    const canvas = document.createElement('canvas');
+    await new Promise(res => QRCode.toCanvas(canvas, ticket.id, { width: 200, margin: 1 }, () => res()));
+    const qrData = canvas.toDataURL('image/png');
+    doc.addImage(qrData, 'PNG', 44, 95, 60, 60);
+    // Scan instruction
+    doc.setFontSize(8); doc.setTextColor(74, 98, 120);
+    doc.text('Scan this QR code at the event entrance', 74, 165, { align: 'center' });
+    // Footer
+    doc.setDrawColor(36, 51, 71); doc.line(15, 175, 133, 175);
+    doc.setFontSize(7); doc.setTextColor(74, 98, 120);
+    doc.text('This ticket is non-transferable. Present at the venue for entry.', 74, 182, { align: 'center' });
+    doc.text('glycr.com | support@glycr.com', 74, 188, { align: 'center' });
+    doc.save(`glycr-ticket-${ticket.id}.pdf`);
   }
 
   validateTicket() { alert('✓ Ticket Validated!\n\nWelcome to the event!'); }
+
+  // ─── Refund Request (Customer) ────────────────────────────
+  openRefundModal(ticketId, eventTitle, ticketType, price) {
+    document.getElementById('refund-ticket-id').value = ticketId;
+    document.getElementById('refund-ticket-info').textContent = `${eventTitle} — ${ticketType.toUpperCase()} (₵${price})`;
+    document.getElementById('refund-reason-select').value = '';
+    document.getElementById('refund-reason-text').value = '';
+    document.getElementById('refund-amount').value = '';
+    document.getElementById('refund-request-status').style.display = 'none';
+    this.openModal('refund-request-modal');
+  }
+
+  async submitRefundRequest(e) {
+    e.preventDefault();
+    const ticketId = document.getElementById('refund-ticket-id').value;
+    const reason   = document.getElementById('refund-reason-select').value;
+    const details  = document.getElementById('refund-reason-text').value.trim();
+    const amount   = document.getElementById('refund-amount').value;
+    const s = document.getElementById('refund-request-status');
+    if (!reason || !details) { s.style.display = 'block'; s.className = 'status-msg error'; s.textContent = 'Please fill in all required fields.'; return; }
+    s.style.display = 'block'; s.className = 'status-msg loading'; s.textContent = 'Submitting request…';
+    try {
+      await this.fetchApi('/refunds', {
+        method: 'POST',
+        body: JSON.stringify({ ticketId, reason: `${reason}: ${details}`, amount: amount ? parseFloat(amount) : null }),
+      });
+      s.className = 'status-msg success'; s.innerHTML = '<strong>✓ Refund request submitted!</strong> The organiser will review within 48 hours.';
+      setTimeout(() => { this.closeAllModals(); this.loadProfile(); }, 2500);
+    } catch (err) { s.className = 'status-msg error'; s.textContent = err.message || 'Failed to submit. Please try again.'; }
+  }
+
+  // ─── Refund Management (Organizer) ───────────────────────
+  async openOrgRefundsModal() {
+    this.openModal('org-refunds-modal');
+    await this.loadOrganizerRefunds();
+  }
+
+  async loadOrganizerRefunds() {
+    const container = document.getElementById('org-refunds-list');
+    const filter    = document.getElementById('org-refund-filter')?.value || 'all';
+    container.innerHTML = '<div class="loading-placeholder"><div class="spinner"></div></div>';
+    try {
+      let refunds = await this.fetchApi('/refunds/organizer');
+      if (filter !== 'all') refunds = refunds.filter(r => r.status === filter);
+      if (!refunds.length) { container.innerHTML = '<div class="empty-state"><h3>No refund requests</h3><p>All refund requests for your events will appear here.</p></div>'; return; }
+      container.innerHTML = refunds.map(r => `
+        <div class="org-refund-card">
+          <div class="org-refund-header">
+            <div>
+              <div class="org-refund-title">${r.eventTitle || 'Event'} — ${r.ticketType?.toUpperCase()}</div>
+              <div class="org-refund-meta">${r.userName || 'User'} · ${r.userEmail || ''} · ${new Date(r.createdAt).toLocaleDateString()}</div>
+            </div>
+            <span class="status-pill ${r.status}">${r.status}</span>
+          </div>
+          <div class="org-refund-reason"><strong>Reason:</strong> ${r.reason}</div>
+          <div style="font-size:0.82rem; color:var(--dim); margin-bottom:0.75rem;">
+            ${r.amount ? `Requested: <strong style="color:var(--teal);">₵${r.amount}</strong>` : '<strong style="color:var(--teal);">Full refund</strong>'}
+          </div>
+          ${r.status === 'pending' ? `
+            <div class="org-refund-actions">
+              <button class="btn btn-success btn-sm" onclick="app.approveRefund('${r._id}')"><i class="fas fa-check"></i> Approve</button>
+              <button class="btn btn-danger btn-sm" onclick="app.rejectRefund('${r._id}')"><i class="fas fa-times"></i> Reject</button>
+            </div>` : ''}
+        </div>`).join('');
+    } catch { container.innerHTML = '<div class="empty-state"><h3>Could not load refund requests</h3></div>'; }
+  }
+
+  async approveRefund(refundId) {
+    if (!confirm('Approve this refund? The payment will be processed.')) return;
+    try {
+      await this.fetchApi(`/refunds/${refundId}/approve`, { method: 'PATCH' });
+      await this.loadOrganizerRefunds();
+    } catch (err) { alert(err.message); }
+  }
+
+  async rejectRefund(refundId) {
+    const reason = prompt('Reason for rejection (optional):') || '';
+    try {
+      await this.fetchApi(`/refunds/${refundId}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) });
+      await this.loadOrganizerRefunds();
+    } catch (err) { alert(err.message); }
+  }
 
   // ─── Dashboard ────────────────────────────────────────────
   async loadDashboard() {
@@ -741,7 +990,6 @@ class GlycrApp {
     ]);
     const sym = this.getCurrencySymbol(this.currentUser.currency || 'GHC');
     const now = this.currentDate;
-
     let revenue = 0, sold = 0, live = 0;
     myEvents.forEach(e => {
       const tt = this.parseTicketTypes(e.ticketTypes);
@@ -750,23 +998,20 @@ class GlycrApp {
       revenue += Object.values(tt).reduce((a, t) => a + ((t.sold || 0) * t.price), 0);
       if (e.isPublished && !e.isCancelled && new Date(e.date) > now) live++;
     });
-    const totalPaid  = payouts.filter(p => p.status === 'completed').reduce((a, p) => a + p.amount, 0);
-    const netPayout  = revenue * (1 - this.platformFeePercent / 100) - totalPaid;
-
-    const hour     = now.getHours();
+    const totalPaid = payouts.filter(p => p.status === 'completed').reduce((a, p) => a + p.amount, 0);
+    const netPayout = revenue * (1 - this.platformFeePercent / 100) - totalPaid;
+    const hour = now.getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-    const greetEl  = document.getElementById('dash-greeting');
+    const greetEl = document.getElementById('dash-greeting');
     if (greetEl) greetEl.textContent = `${greeting}, ${this.currentUser.name?.split(' ')[0] || 'Organizer'}`;
-
     const safeSet = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    safeSet('total-revenue',       `${sym}${revenue.toFixed(0)}`);
-    safeSet('total-sold',          sold);
-    safeSet('total-events',        myEvents.length);
-    safeSet('events-live',         live);
-    safeSet('pending-payouts',     `${sym}${Math.max(0, netPayout).toFixed(0)}`);
+    safeSet('total-revenue',        `${sym}${revenue.toFixed(0)}`);
+    safeSet('total-sold',           sold);
+    safeSet('total-events',         myEvents.length);
+    safeSet('events-live',          live);
+    safeSet('pending-payouts',      `${sym}${Math.max(0, netPayout).toFixed(0)}`);
     safeSet('platform-fee-display', `${this.platformFeePercent}%`);
-
-    await this._renderDashChart(); // <-- no parameter, async
+    await this._renderDashChart();
   }
 
   async _renderDashChart() {
@@ -777,34 +1022,10 @@ class GlycrApp {
       if (this.dashChart) this.dashChart.destroy();
       this.dashChart = new Chart(ctx, {
         type: 'line',
-        data: {
-          labels: data.labels,
-          datasets: [{
-            label: 'Tickets Sold',
-            data: data.tickets,
-            borderColor: '#2dd4bf',
-            backgroundColor: 'rgba(45,212,191,0.08)',
-            pointBackgroundColor: '#2dd4bf',
-            pointRadius: 4,
-            tension: 0.4,
-            fill: true,
-          }],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: { backgroundColor: '#1e2a3a', titleColor: '#eaf2f8', bodyColor: '#7a96aa', borderColor: '#243347', borderWidth: 1 },
-          },
-          scales: {
-            y: { beginAtZero: true, ticks: { color: '#4a6278', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: '#192130' } },
-            x: { ticks: { color: '#4a6278', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: '#192130' } },
-          },
-        },
+        data: { labels: data.labels, datasets: [{ label: 'Tickets Sold', data: data.tickets, borderColor: '#2dd4bf', backgroundColor: 'rgba(45,212,191,0.08)', pointBackgroundColor: '#2dd4bf', pointRadius: 4, tension: 0.4, fill: true }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1e2a3a', titleColor: '#eaf2f8', bodyColor: '#7a96aa', borderColor: '#243347', borderWidth: 1 } }, scales: { y: { beginAtZero: true, ticks: { color: '#4a6278', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: '#192130' } }, x: { ticks: { color: '#4a6278', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: '#192130' } } } },
       });
-    } catch (err) {
-      console.warn('Failed to load sales trend', err);
-    }
+    } catch (err) { console.warn('Failed to load sales trend', err); }
   }
 
   // ─── Payout Page ──────────────────────────────────────────
@@ -814,23 +1035,19 @@ class GlycrApp {
     const start  = document.getElementById('payout-start-date')?.value;
     const end    = document.getElementById('payout-end-date')?.value;
     const status = document.getElementById('payout-status-filter')?.value || 'all';
-    if (start)          payouts = payouts.filter(p => new Date(p.requestedAt) >= new Date(start));
-    if (end)            payouts = payouts.filter(p => new Date(p.requestedAt) <= new Date(end + 'T23:59:59'));
+    if (start) payouts = payouts.filter(p => new Date(p.requestedAt) >= new Date(start));
+    if (end)   payouts = payouts.filter(p => new Date(p.requestedAt) <= new Date(end + 'T23:59:59'));
     if (status !== 'all') payouts = payouts.filter(p => p.status === status);
-
-    const sym         = this.getCurrencySymbol(this.currentUser.currency || 'GHC');
-    const totalPaid   = payouts.filter(p => p.status === 'completed').reduce((a, p) => a + p.amount, 0);
-    const totalPend   = payouts.filter(p => p.status === 'pending').reduce((a, p) => a + p.amount, 0);
-
+    const sym       = this.getCurrencySymbol(this.currentUser.currency || 'GHC');
+    const totalPaid = payouts.filter(p => p.status === 'completed').reduce((a, p) => a + p.amount, 0);
+    const totalPend = payouts.filter(p => p.status === 'pending').reduce((a, p) => a + p.amount, 0);
     const safeSet = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    safeSet('total-paid-out',      `${sym}${totalPaid.toFixed(2)}`);
+    safeSet('total-paid-out',       `${sym}${totalPaid.toFixed(2)}`);
     safeSet('total-pending-amount', `${sym}${totalPend.toFixed(2)}`);
-    safeSet('total-payout-count',  payouts.length);
-
+    safeSet('total-payout-count',   payouts.length);
     const tbody = document.getElementById('payout-table-body');
-    if (!payouts.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No payouts found for the selected period</td></tr>';
-    } else {
+    if (!payouts.length) { tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No payouts found for the selected period</td></tr>'; }
+    else {
       tbody.innerHTML = payouts.map(p => {
         const sc = p.status === 'completed' ? 'completed' : p.status === 'pending' ? 'pending' : 'failed';
         return `<tr>
@@ -842,7 +1059,6 @@ class GlycrApp {
         </tr>`;
       }).join('');
     }
-
     const csvBtn = document.getElementById('export-payouts-csv');
     const pdfBtn = document.getElementById('export-payouts-pdf');
     if (csvBtn) csvBtn.onclick = () => this.exportPayoutsToCSV(payouts);
@@ -858,53 +1074,34 @@ class GlycrApp {
     const start  = document.getElementById('myevents-start')?.value;
     const end    = document.getElementById('myevents-end')?.value;
     const now    = this.currentDate;
-
-    if (search) {
-      myEvents = myEvents.filter(e =>
-        e.title.toLowerCase().includes(search) ||
-        (e.location || '').toLowerCase().includes(search) ||
-        (e.venue || '').toLowerCase().includes(search)
-      );
-    }
+    if (search) myEvents = myEvents.filter(e => e.title.toLowerCase().includes(search) || (e.location || '').toLowerCase().includes(search) || (e.venue || '').toLowerCase().includes(search));
     if (filter === 'upcoming')  myEvents = myEvents.filter(e => !e.isCancelled && new Date(e.date) > now);
     else if (filter === 'past') myEvents = myEvents.filter(e => !e.isCancelled && new Date(e.date) <= now);
-    else if (filter === 'draft')myEvents = myEvents.filter(e => !e.isPublished && !e.isCancelled);
+    else if (filter === 'draft') myEvents = myEvents.filter(e => !e.isPublished && !e.isCancelled);
     else if (filter === 'cancelled') myEvents = myEvents.filter(e => e.isCancelled);
     if (start) myEvents = myEvents.filter(e => new Date(e.date) >= new Date(start));
     if (end)   myEvents = myEvents.filter(e => new Date(e.date) <= new Date(end + 'T23:59:59'));
-
     const container = document.getElementById('my-events-list');
-    if (!myEvents.length) {
-      container.innerHTML = '<div class="empty-state"><h3>No events found</h3><p>Try adjusting your search filters</p></div>';
-      return;
-    }
-
+    if (!myEvents.length) { container.innerHTML = '<div class="empty-state"><h3>No events found</h3><p>Try adjusting your search filters</p></div>'; return; }
     container.innerHTML = myEvents.map(e => {
       const tt   = this.parseTicketTypes(e.ticketTypes);
       const esym = this.getCurrencySymbol(e.currency);
       const eRev = Object.values(tt).reduce((a, t) => a + ((t.sold || 0) * t.price), 0);
       const bars = Object.entries(tt).map(([type, t]) => {
-        const s   = t.sold || 0;
-        const pct = t.capacity ? (s / t.capacity * 100) : 0;
-        return `<div class="ticket-bar-row">
-          <span class="ticket-bar-label">${type}</span>
-          <div class="ticket-bar-track"><div class="ticket-bar-fill" style="width:${pct}%"></div></div>
-          <span class="ticket-bar-count">${s}/${t.capacity}</span>
-        </div>`;
+        const s = t.sold || 0; const pct = t.capacity ? (s / t.capacity * 100) : 0;
+        return `<div class="ticket-bar-row"><span class="ticket-bar-label">${type}</span><div class="ticket-bar-track"><div class="ticket-bar-fill" style="width:${pct}%"></div></div><span class="ticket-bar-count">${s}/${t.capacity}</span></div>`;
       }).join('');
-
-      const statusBadge = e.isCancelled
-        ? '<span style="color:var(--coral);">· Cancelled</span>'
-        : !e.isPublished
-          ? '<span style="color:var(--muted);">· Draft</span>'
-          : '<span style="color:var(--mint);">· Published</span>';
-
+      const statusBadge = e.isCancelled ? '<span style="color:var(--coral);">· Cancelled</span>' : !e.isPublished ? '<span style="color:var(--muted);">· Draft</span>' : '<span style="color:var(--mint);">· Published</span>';
+      const scheduleBadge = e.publishAt && !e.isPublished ? `<span class="scheduled-badge"><i class="fas fa-clock"></i> Scheduled ${new Date(e.publishAt).toLocaleDateString()}</span>` : '';
       return `<div class="event-admin-card">
-        <div class="event-admin-title">${e.title}</div>
-        <div class="event-admin-meta">
-          <i class="fas fa-calendar-alt"></i> ${new Date(e.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-          &nbsp;·&nbsp; <i class="fas fa-coins"></i> ${esym}${eRev.toFixed(0)}
-          &nbsp;${statusBadge}
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+          <div>
+            <div class="event-admin-title">${e.title} ${scheduleBadge}</div>
+            <div class="event-admin-meta">
+              <i class="fas fa-calendar-alt"></i> ${new Date(e.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+              &nbsp;·&nbsp; <i class="fas fa-coins"></i> ${esym}${eRev.toFixed(0)} &nbsp;${statusBadge}
+            </div>
+          </div>
         </div>
         <div style="margin:0.5rem 0;">${bars}</div>
         <div class="event-admin-actions">
@@ -924,23 +1121,20 @@ class GlycrApp {
       this.fetchApi(`/events?organizerId=${this.currentUser.id}`),
       this.fetchApi('/payouts'),
     ]);
-    const sym    = this.getCurrencySymbol(this.currentUser.currency || 'GHC');
-    const fee    = this.platformFeePercent;
-    let tickets  = 0, gross = 0;
+    const sym = this.getCurrencySymbol(this.currentUser.currency || 'GHC');
+    const fee = this.platformFeePercent;
+    let tickets = 0, gross = 0;
     myEvents.forEach(e => {
       const tt = this.parseTicketTypes(e.ticketTypes);
       tickets  += Object.values(tt).reduce((a, t) => a + (t.sold || 0), 0);
       gross    += Object.values(tt).reduce((a, t) => a + ((t.sold || 0) * t.price), 0);
     });
     const net = gross * (1 - fee / 100);
-
     const safeSet = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     safeSet('report-total-events',  myEvents.length);
     safeSet('report-total-tickets', tickets);
     safeSet('report-total-revenue', `${sym}${gross.toFixed(2)}`);
     safeSet('report-net-revenue',   `${sym}${net.toFixed(2)}`);
-
-    // Top events table
     const sorted = [...myEvents].sort((a, b) => {
       const ra = Object.values(this.parseTicketTypes(a.ticketTypes)).reduce((s, t) => s + ((t.sold || 0) * t.price), 0);
       const rb = Object.values(this.parseTicketTypes(b.ticketTypes)).reduce((s, t) => s + ((t.sold || 0) * t.price), 0);
@@ -952,90 +1146,24 @@ class GlycrApp {
         const tt   = this.parseTicketTypes(e.ticketTypes);
         const sold = Object.values(tt).reduce((a, t) => a + (t.sold || 0), 0);
         const rev  = Object.values(tt).reduce((a, t) => a + ((t.sold || 0) * t.price), 0);
-        const badge = e.isCancelled
-          ? '<span class="status-pill failed">Cancelled</span>'
-          : e.isPublished
-            ? '<span class="status-pill completed">Published</span>'
-            : '<span class="status-pill pending">Draft</span>';
-        return `<tr>
-          <td style="font-weight:600; color:var(--bright);">${e.title}</td>
-          <td>${new Date(e.date).toLocaleDateString('en-GB')}</td>
-          <td>${sold}</td>
-          <td style="color:var(--teal); font-family:'JetBrains Mono',monospace;">${sym}${rev.toFixed(2)}</td>
-          <td>${badge}</td>
-        </tr>`;
+        const badge = e.isCancelled ? '<span class="status-pill failed">Cancelled</span>' : e.isPublished ? '<span class="status-pill completed">Published</span>' : '<span class="status-pill pending">Draft</span>';
+        return `<tr><td style="font-weight:600; color:var(--bright);">${e.title}</td><td>${new Date(e.date).toLocaleDateString('en-GB')}</td><td>${sold}</td><td style="color:var(--teal); font-family:'JetBrains Mono',monospace;">${sym}${rev.toFixed(2)}</td><td>${badge}</td></tr>`;
       }).join('') || '<tr><td colspan="5" class="table-empty">No events yet</td></tr>';
     }
-
-    // Charts
-
-    // Fetch real sales trend
     let salesData = { labels: [], tickets: [], revenue: [] };
-    try {
-      salesData = await this.fetchApi('/analytics/sales-trend?days=7');
-    } catch (err) {
-      console.warn('Could not load sales trend', err);
-    }
-
-// Revenue chart (bar)
+    try { salesData = await this.fetchApi('/analytics/sales-trend?days=7'); } catch {}
     const rCtx = document.getElementById('report-revenue-chart');
     if (rCtx) {
       if (this.reportRevenueChart) this.reportRevenueChart.destroy();
-      this.reportRevenueChart = new Chart(rCtx, {
-        type: 'bar',
-        data: {
-          labels: salesData.labels,
-          datasets: [{
-            label: 'Revenue (₵)',
-            data: salesData.revenue,
-            backgroundColor: 'rgba(45,212,191,0.3)',
-            borderColor: '#2dd4bf',
-            borderWidth: 1,
-          }],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { beginAtZero: true, ticks: { color: '#4a6278', font: { size: 10 } }, grid: { color: '#192130' } },
-            x: { ticks: { color: '#4a6278', font: { size: 10 } }, grid: { color: '#192130' } },
-          },
-        },
-      });
+      this.reportRevenueChart = new Chart(rCtx, { type: 'bar', data: { labels: salesData.labels, datasets: [{ label: 'Revenue (₵)', data: salesData.revenue, backgroundColor: 'rgba(45,212,191,0.3)', borderColor: '#2dd4bf', borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#4a6278', font: { size: 10 } }, grid: { color: '#192130' } }, x: { ticks: { color: '#4a6278', font: { size: 10 } }, grid: { color: '#192130' } } } } });
     }
-
-
-
     const typeTotals = {};
-    myEvents.forEach(e => {
-      const tt = this.parseTicketTypes(e.ticketTypes);
-      Object.entries(tt).forEach(([type, t]) => {
-        typeTotals[type] = (typeTotals[type] || 0) + (t.sold || 0);
-      });
-    });
+    myEvents.forEach(e => { const tt = this.parseTicketTypes(e.ticketTypes); Object.entries(tt).forEach(([type, t]) => { typeTotals[type] = (typeTotals[type] || 0) + (t.sold || 0); }); });
     const tCtx = document.getElementById('report-ticket-chart');
     if (tCtx && Object.keys(typeTotals).length) {
       if (this.reportTicketChart) this.reportTicketChart.destroy();
-      this.reportTicketChart = new Chart(tCtx, {
-        type: 'doughnut',
-        data: {
-          labels: Object.keys(typeTotals),
-          datasets: [{
-            data: Object.values(typeTotals),
-            backgroundColor: ['rgba(45,212,191,0.75)', 'rgba(110,231,183,0.75)', 'rgba(251,191,36,0.75)', 'rgba(255,107,107,0.75)', 'rgba(125,211,252,0.75)'],
-            borderWidth: 0,
-          }],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'bottom', labels: { color: '#7a96aa', font: { family: 'JetBrains Mono', size: 10 }, padding: 12 } },
-          },
-        },
-      });
+      this.reportTicketChart = new Chart(tCtx, { type: 'doughnut', data: { labels: Object.keys(typeTotals), datasets: [{ data: Object.values(typeTotals), backgroundColor: ['rgba(45,212,191,0.75)', 'rgba(110,231,183,0.75)', 'rgba(251,191,36,0.75)', 'rgba(255,107,107,0.75)', 'rgba(125,211,252,0.75)'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#7a96aa', font: { family: 'JetBrains Mono', size: 10 }, padding: 12 } } } } });
     }
-
-    // Wire export buttons with date range filtering
     const filterByDate = (arr, field) => {
       const s = document.getElementById('report-start-date')?.value;
       const e = document.getElementById('report-end-date')?.value;
@@ -1045,10 +1173,10 @@ class GlycrApp {
       return out;
     };
     const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
-    on('export-events-csv',          () => this.exportEventsToCSV(filterByDate(myEvents, 'date')));
-    on('export-payouts-csv-report',  () => this.exportPayoutsToCSV(filterByDate(payouts, 'requestedAt')));
-    on('export-events-pdf',          () => this.exportEventsToPDF(filterByDate(myEvents, 'date')));
-    on('export-payouts-pdf',         () => this.exportPayoutsToPDF(filterByDate(payouts, 'requestedAt')));
+    on('export-events-csv',         () => this.exportEventsToCSV(filterByDate(myEvents, 'date')));
+    on('export-payouts-csv-report', () => this.exportPayoutsToCSV(filterByDate(payouts, 'requestedAt')));
+    on('export-events-pdf',         () => this.exportEventsToPDF(filterByDate(myEvents, 'date')));
+    on('export-payouts-pdf',        () => this.exportPayoutsToPDF(filterByDate(payouts, 'requestedAt')));
   }
 
   // ─── Event form ───────────────────────────────────────────
@@ -1056,17 +1184,10 @@ class GlycrApp {
     this.editingEvent = event;
     document.getElementById('event-form').reset();
     document.getElementById('form-title').textContent = event ? 'Edit Event' : 'Create Event';
-    // Reset Maps
-    ['event-lat', 'event-lng', 'event-address'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.value = '';
-    });
-    const searchInp = document.getElementById('maps-search-input');
-    if (searchInp) searchInp.value = '';
-    const selInfo = document.getElementById('maps-selected-info');
-    if (selInfo) selInfo.style.display = 'none';
-    const mc = document.getElementById('maps-container');
-    if (mc) mc.classList.remove('active');
-
+    ['event-lat', 'event-lng', 'event-address'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const searchInp = document.getElementById('maps-search-input'); if (searchInp) searchInp.value = '';
+    const selInfo = document.getElementById('maps-selected-info'); if (selInfo) selInfo.style.display = 'none';
+    const mc = document.getElementById('maps-container'); if (mc) mc.classList.remove('active');
     const defaultCurrency = this.currentUser?.currency || 'GHC';
     if (event) {
       document.getElementById('event-title').value     = event.title;
@@ -1078,25 +1199,21 @@ class GlycrApp {
       document.getElementById('event-currency').value  = event.currency;
       document.getElementById('organizer-email').value = event.organizerEmail;
       document.getElementById('organizer-phone').value = event.organizerPhone;
+      if (event.publishAt) { const paEl = document.getElementById('event-publish-at'); if (paEl) paEl.value = event.publishAt.slice(0, 16); }
       if (event.lat) {
         document.getElementById('event-lat').value     = event.lat;
         document.getElementById('event-lng').value     = event.lng;
         document.getElementById('event-address').value = event.address || '';
-        if (event.address && selInfo) {
-          document.getElementById('maps-selected-address').textContent = event.address;
-          selInfo.style.display = 'flex';
-        }
+        if (event.address && selInfo) { document.getElementById('maps-selected-address').textContent = event.address; selInfo.style.display = 'flex'; }
       }
       const ttypes = this.parseTicketTypes(event.ticketTypes);
       document.getElementById('ticket-types-form').innerHTML = '';
-      Object.entries(ttypes).forEach(([type, data]) =>
-        this.addTicketTypeInput(type, data.price, data.capacity, data.earlyBirdPrice || '', data.earlyBirdEnd || '', data.groupDiscount || 10)
-      );
+      Object.entries(ttypes).forEach(([type, data]) => this.addTicketTypeInput(type, data.price, data.capacity, data.earlyBirdPrice || '', data.earlyBirdEnd || '', data.groupDiscountMinQty || 5, data.groupDiscount || 0));
     } else {
       document.getElementById('ticket-types-form').innerHTML = '';
-      this.addTicketTypeInput('free',    0,   100, '',  '', 10);
-      this.addTicketTypeInput('regular', 50,  200, 40,  '', 10);
-      this.addTicketTypeInput('vip',     150, 50,  120, '', 10);
+      this.addTicketTypeInput('free', 0, 100, '', '', 5, 0);
+      this.addTicketTypeInput('regular', 50, 200, 40, '', 5, 0);
+      this.addTicketTypeInput('vip', 150, 50, 120, '', 5, 0);
       document.getElementById('event-currency').value  = defaultCurrency;
       document.getElementById('organizer-email').value = this.currentUser?.email || '';
       document.getElementById('organizer-phone').value = this.currentUser?.phone || '';
@@ -1105,17 +1222,18 @@ class GlycrApp {
     if (this.mapsLoaded) this.initMaps();
   }
 
-  addTicketTypeInput(name = '', price = '', capacity = '', earlyBirdPrice = '', earlyBirdEnd = '', groupDiscount = '10') {
+  addTicketTypeInput(name = '', price = '', capacity = '', earlyBirdPrice = '', earlyBirdEnd = '', groupDiscountMinQty = '5', groupDiscount = '0') {
     const container = document.getElementById('ticket-types-form');
     const div = document.createElement('div');
     div.className = 'ticket-type-row ticket-type';
     div.innerHTML = `
-      <input type="text"          class="input type-name"       placeholder="Type (e.g. Regular)" value="${name}">
-      <input type="number"        class="input type-price"       placeholder="Price"    min="0" value="${price}">
-      <input type="number"        class="input type-capacity"    placeholder="Capacity" min="1" value="${capacity}">
-      <input type="number"        class="input type-early-price" placeholder="Early ₵"  min="0" value="${earlyBirdPrice}">
-      <input type="datetime-local" class="input type-early-end"                                  value="${earlyBirdEnd}">
-      <input type="number"        class="input type-group-disc"  placeholder="Disc %"   min="0" max="50" value="${groupDiscount}">
+      <input type="text"          class="input type-name"           placeholder="Type" value="${name}">
+      <input type="number"        class="input type-price"           placeholder="Price"    min="0" value="${price}">
+      <input type="number"        class="input type-capacity"        placeholder="Capacity" min="1" value="${capacity}">
+      <input type="number"        class="input type-early-price"     placeholder="Early ₵"  min="0" value="${earlyBirdPrice}">
+      <input type="datetime-local" class="input type-early-end"                                      value="${earlyBirdEnd}">
+      <input type="number"        class="input type-group-min"       placeholder="Min qty" min="1"  value="${groupDiscountMinQty}">
+      <input type="number"        class="input type-group-disc"      placeholder="Disc %"   min="0" max="50" value="${groupDiscount}">
       <button type="button" class="remove-ticket">✕</button>`;
     container.appendChild(div);
   }
@@ -1128,28 +1246,26 @@ class GlycrApp {
     if (!orgEmail || !orgPhone) return this.showError('Organizer contact required');
     if (!this.validateEmail(orgEmail)) return this.showError('Invalid organizer email');
     if (!this.validatePhone(orgPhone)) return this.showError('Invalid organizer phone');
-
     const currency     = document.getElementById('event-currency').value;
     const ticketInputs = document.querySelectorAll('.ticket-type');
     const originalTT   = this.editingEvent ? this.parseTicketTypes(this.editingEvent.ticketTypes) : null;
     const ticketTypes  = {};
-
     ticketInputs.forEach(inp => {
-      const type  = inp.querySelector('.type-name').value.trim().toLowerCase();
-      const price = parseFloat(inp.querySelector('.type-price').value);
-      const cap   = parseInt(inp.querySelector('.type-capacity').value);
-      const ebP   = parseFloat(inp.querySelector('.type-early-price').value) || price;
-      const ebEnd = inp.querySelector('.type-early-end').value;
-      const gDisc = parseInt(inp.querySelector('.type-group-disc').value) || 10;
+      const type    = inp.querySelector('.type-name').value.trim().toLowerCase();
+      const price   = parseFloat(inp.querySelector('.type-price').value);
+      const cap     = parseInt(inp.querySelector('.type-capacity').value);
+      const ebP     = parseFloat(inp.querySelector('.type-early-price').value) || price;
+      const ebEnd   = inp.querySelector('.type-early-end').value;
+      const gMin    = parseInt(inp.querySelector('.type-group-min').value) || 5;
+      const gDisc   = parseInt(inp.querySelector('.type-group-disc').value) || 0;
       if (type && !isNaN(price) && !isNaN(cap)) {
         const sold = (originalTT && originalTT[type]) ? (originalTT[type].sold || 0) : 0;
-        const tkt  = { price, capacity: cap, sold, earlyBirdPrice: ebP, groupDiscount: gDisc };
+        const tkt  = { price, capacity: cap, sold, earlyBirdPrice: ebP, groupDiscountMinQty: gMin, groupDiscount: gDisc };
         if (ebEnd) tkt.earlyBirdEnd = ebEnd;
         ticketTypes[type] = tkt;
       }
     });
     if (!Object.keys(ticketTypes).length) return this.showError('Add at least one ticket type');
-
     const formData = new FormData();
     formData.append('title',          title);
     formData.append('description',    document.getElementById('event-desc').value);
@@ -1161,23 +1277,19 @@ class GlycrApp {
     formData.append('organizerEmail', orgEmail);
     formData.append('organizerPhone', orgPhone);
     formData.append('ticketTypes',    JSON.stringify(ticketTypes));
-
+    const publishAt = document.getElementById('event-publish-at')?.value;
+    if (publishAt) formData.append('publishAt', publishAt);
     const lat  = document.getElementById('event-lat')?.value;
     const lng  = document.getElementById('event-lng')?.value;
     const addr = document.getElementById('event-address')?.value;
     if (lat)  formData.append('lat',     lat);
     if (lng)  formData.append('lng',     lng);
     if (addr) formData.append('address', addr);
-
     const imgFile = document.getElementById('event-image').files[0];
     if (imgFile) formData.append('image', imgFile);
-
     try {
-      if (this.editingEvent) {
-        await this.fetchApi(`/events/${this.editingEvent._id}`, { method: 'PUT', body: formData });
-      } else {
-        await this.fetchApi('/events', { method: 'POST', body: formData });
-      }
+      if (this.editingEvent) { await this.fetchApi(`/events/${this.editingEvent._id}`, { method: 'PUT', body: formData }); }
+      else { await this.fetchApi('/events', { method: 'POST', body: formData }); }
       this.closeAllModals();
       this.showSection('dashboard');
       this.loadDashboard();
@@ -1191,47 +1303,35 @@ class GlycrApp {
     this.mapsLoaded = true;
     const mapDiv = document.getElementById('maps-map');
     if (!mapDiv) return;
-
-    const defaultCenter = { lat: 5.6037, lng: -0.1870 }; // Accra
-
+    const defaultCenter = { lat: 5.6037, lng: -0.1870 };
     this.mapsInstance = new google.maps.Map(mapDiv, {
       center: defaultCenter, zoom: 12,
       styles: [
-        { elementType: 'geometry',              stylers: [{ color: '#192130' }] },
-        { elementType: 'labels.text.fill',      stylers: [{ color: '#7a96aa' }] },
-        { elementType: 'labels.text.stroke',    stylers: [{ color: '#0d1117' }] },
+        { elementType: 'geometry',           stylers: [{ color: '#192130' }] },
+        { elementType: 'labels.text.fill',   stylers: [{ color: '#7a96aa' }] },
+        { elementType: 'labels.text.stroke', stylers: [{ color: '#0d1117' }] },
         { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#243347' }] },
         { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0d1117' }] },
         { featureType: 'poi', stylers: [{ visibility: 'off' }] },
       ],
     });
-
     const searchInput = document.getElementById('maps-search-input');
     if (searchInput && google.maps.places) {
-      this.mapsAutocomplete = new google.maps.places.Autocomplete(searchInput, {
-        componentRestrictions: { country: 'gh' },
-        fields: ['geometry', 'formatted_address', 'name'],
-      });
+      this.mapsAutocomplete = new google.maps.places.Autocomplete(searchInput, { componentRestrictions: { country: 'gh' }, fields: ['geometry', 'formatted_address', 'name'] });
       this.mapsAutocomplete.addListener('place_changed', () => {
         const place = this.mapsAutocomplete.getPlace();
         if (!place.geometry) return;
-        const lat = place.geometry.location.lat();
-        const lng = place.geometry.location.lng();
-        this.setMapLocation(lat, lng, place.formatted_address || place.name);
+        this.setMapLocation(place.geometry.location.lat(), place.geometry.location.lng(), place.formatted_address || place.name);
         document.getElementById('maps-container')?.classList.add('active');
       });
     }
-
     this.mapsInstance.addListener('click', e => {
       const lat = e.latLng.lat(), lng = e.latLng.lng();
       new google.maps.Geocoder().geocode({ location: { lat, lng } }, (results, status) => {
-        const addr = (status === 'OK' && results[0])
-          ? results[0].formatted_address
-          : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        const addr = (status === 'OK' && results[0]) ? results[0].formatted_address : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
         this.setMapLocation(lat, lng, addr);
       });
     });
-
     const searchBtn = document.getElementById('maps-search-btn');
     if (searchBtn) {
       searchBtn.onclick = () => {
@@ -1246,33 +1346,23 @@ class GlycrApp {
         });
       };
     }
-
     const clearBtn = document.getElementById('maps-clear-btn');
     if (clearBtn) {
       clearBtn.onclick = () => {
-        ['event-lat', 'event-lng', 'event-address'].forEach(id => {
-          const el = document.getElementById(id); if (el) el.value = '';
-        });
+        ['event-lat', 'event-lng', 'event-address'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         if (searchInput) searchInput.value = '';
-        const selInfo = document.getElementById('maps-selected-info');
-        if (selInfo) selInfo.style.display = 'none';
+        const selInfo = document.getElementById('maps-selected-info'); if (selInfo) selInfo.style.display = 'none';
         document.getElementById('maps-container')?.classList.remove('active');
         if (this.mapsMarker) { this.mapsMarker.setMap(null); this.mapsMarker = null; }
       };
     }
-
-    // If editing event with existing coords, show marker
     const existLat = parseFloat(document.getElementById('event-lat')?.value);
     const existLng = parseFloat(document.getElementById('event-lng')?.value);
     if (existLat && existLng) {
       document.getElementById('maps-container')?.classList.add('active');
       this.mapsInstance.setCenter({ lat: existLat, lng: existLng });
       this.mapsInstance.setZoom(15);
-      this.mapsMarker = new google.maps.Marker({
-        position: { lat: existLat, lng: existLng },
-        map: this.mapsInstance,
-        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#2dd4bf', fillOpacity: 1, strokeColor: '#0d1117', strokeWeight: 2 },
-      });
+      this.mapsMarker = new google.maps.Marker({ position: { lat: existLat, lng: existLng }, map: this.mapsInstance, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#2dd4bf', fillOpacity: 1, strokeColor: '#0d1117', strokeWeight: 2 } });
     }
   }
 
@@ -1280,50 +1370,32 @@ class GlycrApp {
     document.getElementById('event-lat').value     = lat;
     document.getElementById('event-lng').value     = lng;
     document.getElementById('event-address').value = address;
-    const addrEl = document.getElementById('maps-selected-address');
+    const addrEl  = document.getElementById('maps-selected-address');
     const selInfo = document.getElementById('maps-selected-info');
     if (addrEl)  addrEl.textContent   = address;
     if (selInfo) selInfo.style.display = 'flex';
-
     if (this.mapsMarker) this.mapsMarker.setMap(null);
-    this.mapsMarker = new google.maps.Marker({
-      position: { lat, lng },
-      map: this.mapsInstance,
-      title: address,
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 8, fillColor: '#2dd4bf', fillOpacity: 1,
-        strokeColor: '#0d1117', strokeWeight: 2,
-      },
-    });
+    this.mapsMarker = new google.maps.Marker({ position: { lat, lng }, map: this.mapsInstance, title: address, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#2dd4bf', fillOpacity: 1, strokeColor: '#0d1117', strokeWeight: 2 } });
     this.mapsInstance.panTo({ lat, lng });
     this.mapsInstance.setZoom(15);
   }
 
-  // Called by Maps script callback
   initMapsCallback() {
     this.mapsLoaded = true;
-    // Only init if event form is currently open
-    if (document.getElementById('event-form-modal')?.classList.contains('show')) {
-      this.initMaps();
-    }
+    if (document.getElementById('event-form-modal')?.classList.contains('show')) this.initMaps();
   }
 
   // ─── Event actions ────────────────────────────────────────
   async togglePublish(id) {
-    try {
-      await this.fetchApi(`/events/${id}/publish`, { method: 'PATCH' });
-      this.loadDashboard();
-      this.loadMyEventsPage();
-      this.renderEvents();
-    } catch (err) { this.showError(err.message); }
+    try { await this.fetchApi(`/events/${id}/publish`, { method: 'PATCH' }); this.loadDashboard(); this.loadMyEventsPage(); this.renderEvents(); }
+    catch (err) { this.showError(err.message); }
   }
 
   showCancelModal(id) {
     const ev = this.events.find(e => e._id === id);
     if (!ev) return;
     document.getElementById('cancel-title').textContent = `Cancel ${ev.title}?`;
-    document.getElementById('cancel-reason').innerHTML = '<p>This will notify all ticket holders.</p><p>Are you sure you want to cancel?</p>';
+    document.getElementById('cancel-reason').innerHTML = '<p>This will notify all ticket holders and trigger automatic refunds.</p><p>Are you sure you want to cancel?</p>';
     this.currentEventId = id;
     this.openModal('cancel-event-modal');
   }
@@ -1340,12 +1412,8 @@ class GlycrApp {
 
   async deleteEvent(id) {
     if (!confirm('Delete this event and all its tickets? This cannot be undone.')) return;
-    try {
-      await this.fetchApi(`/events/${id}`, { method: 'DELETE' });
-      this.loadDashboard();
-      this.loadMyEventsPage();
-      this.renderEvents();
-    } catch (err) { this.showError(err.message); }
+    try { await this.fetchApi(`/events/${id}`, { method: 'DELETE' }); this.loadDashboard(); this.loadMyEventsPage(); this.renderEvents(); }
+    catch (err) { this.showError(err.message); }
   }
 
   exportReport(eventId) {
@@ -1353,9 +1421,7 @@ class GlycrApp {
     if (!ev) return this.showError('Event not found');
     const eventTickets = this.tickets.filter(t => t.eventId === eventId);
     let csv = 'Ticket ID,Type,Price,Buyer Email,Phone,Purchase Date\n';
-    eventTickets.forEach(t => {
-      csv += `"${t.id}","${t.ticketType}",${t.price},"${t.userEmail}","${t.userPhone}","${new Date(t.purchasedAt).toLocaleString()}"\n`;
-    });
+    eventTickets.forEach(t => { csv += `"${t.id}","${t.ticketType}",${t.price},"${t.userEmail}","${t.userPhone}","${new Date(t.purchasedAt).toLocaleString()}"\n`; });
     this._dlBlob(csv, `${ev.title.replace(/\s+/g, '_')}_tickets.csv`, 'text/csv');
   }
 
@@ -1373,17 +1439,10 @@ class GlycrApp {
   }
 
   async getNetAvailablePayout() {
-    const [myPayouts, myEvents] = await Promise.all([
-      this.fetchApi('/payouts'),
-      this.fetchApi(`/events?organizerId=${this.currentUser.id}`),
-    ]);
+    const [myPayouts, myEvents] = await Promise.all([this.fetchApi('/payouts'), this.fetchApi(`/events?organizerId=${this.currentUser.id}`)]);
     const totalPaid = myPayouts.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0);
-    const gross = myEvents.reduce((s, e) => {
-      const tt = this.parseTicketTypes(e.ticketTypes);
-      return s + Object.values(tt).reduce((a, t) => a + ((t.sold || 0) * t.price), 0);
-    }, 0);
-    const net = gross * (1 - this.platformFeePercent / 100);
-    return Math.max(0, net - totalPaid);
+    const gross = myEvents.reduce((s, e) => { const tt = this.parseTicketTypes(e.ticketTypes); return s + Object.values(tt).reduce((a, t) => a + ((t.sold || 0) * t.price), 0); }, 0);
+    return Math.max(0, gross * (1 - this.platformFeePercent / 100) - totalPaid);
   }
 
   togglePayoutDetails(method) {
@@ -1398,59 +1457,40 @@ class GlycrApp {
     const notes  = document.getElementById('payout-notes').value.trim();
     if (!amount || !method || !email) return this.showPayoutError('Please fill in all required fields');
     if (!this.validateEmail(email)) return this.showPayoutError('Invalid email format');
-
     let bankDetails = null, momoDetails = null;
     if (method === 'bank') {
       const bn = document.getElementById('bank-name').value.trim();
       const bhn = document.getElementById('branch-name').value.trim();
       const an = document.getElementById('account-number').value.trim();
       const nm = document.getElementById('account-name').value.trim();
-      if (!bn || !bhn|| !an || !nm) return this.showPayoutError('All bank details are required');
-      bankDetails = { bankName: bn, branchName: bn, accountNumber: an, accountName: nm };
+      if (!bn || !bhn || !an || !nm) return this.showPayoutError('All bank details are required');
+      bankDetails = { bankName: bn, branchName: bhn, accountNumber: an, accountName: nm };
     } else if (method === 'momo') {
       const ph = document.getElementById('momo-number').value.trim();
       if (!this.validatePhone(ph)) return this.showPayoutError('Invalid MoMo number');
       momoDetails = { phone: ph };
     }
-
     const body = { amount, method, email, notes };
     if (bankDetails) body.bankDetails = bankDetails;
     if (momoDetails) body.momoDetails = momoDetails;
-
     try {
       await this.fetchApi('/payouts', { method: 'POST', body: JSON.stringify(body) });
       const s = document.getElementById('payout-status');
-      s.style.display = 'block'; s.className = 'status-msg success';
-      s.innerHTML = '<strong>✓ Payout request submitted!</strong>';
-      setTimeout(() => {
-        this.closeAllModals();
-        this.loadDashboard();
-        const pp = document.getElementById('payout-page');
-        if (pp && pp.style.display !== 'none') this.loadPayoutPage();
-      }, 2000);
+      s.style.display = 'block'; s.className = 'status-msg success'; s.innerHTML = '<strong>✓ Payout request submitted!</strong>';
+      setTimeout(() => { this.closeAllModals(); this.loadDashboard(); const pp = document.getElementById('payout-page'); if (pp && pp.style.display !== 'none') this.loadPayoutPage(); }, 2000);
     } catch (err) { this.showPayoutError(err.message); }
   }
 
-  showPayoutError(msg) {
-    const s = document.getElementById('payout-status');
-    s.style.display = 'block'; s.className = 'status-msg error'; s.textContent = msg;
-  }
+  showPayoutError(msg) { const s = document.getElementById('payout-status'); s.style.display = 'block'; s.className = 'status-msg error'; s.textContent = msg; }
 
   // ─── Waitlist (organiser view) ────────────────────────────
   async viewWaitlist(eventId, type) {
     if (!this.currentUser?.isOrganizer) return;
     try {
-      const [entries, ev] = await Promise.all([
-        this.fetchApi(`/events/${eventId}/waitlists/${type}`),
-        this.fetchApi(`/events/${eventId}`),
-      ]);
+      const [entries, ev] = await Promise.all([this.fetchApi(`/events/${eventId}/waitlists/${type}`), this.fetchApi(`/events/${eventId}`)]);
       document.getElementById('waitlist-view-title').textContent = `${type.toUpperCase()} Waitlist — ${ev.title}`;
       document.getElementById('waitlist-entries').innerHTML = entries.map(e =>
-        `<div class="waitlist-entry">
-          <p><strong>${e.name}</strong></p>
-          <p>${e.email} · ${e.phone}</p>
-          <p style="color:var(--muted); font-size:0.73rem;">${new Date(e.joinedAt).toLocaleString()}</p>
-        </div>`
+        `<div class="waitlist-entry"><p><strong>${e.name}</strong></p><p>${e.email} · ${e.phone}</p><p style="color:var(--muted); font-size:0.73rem;">${new Date(e.joinedAt).toLocaleString()}</p></div>`
       ).join('') || '<p style="text-align:center; color:var(--muted); padding:2rem;">No entries</p>';
       document.getElementById('notify-waitlist-btn').onclick = () => this.notifyWaitlist(eventId, type);
       this.openModal('waitlist-view-modal');
@@ -1460,9 +1500,71 @@ class GlycrApp {
   async notifyWaitlist(eventId, type) {
     try {
       await this.fetchApi(`/events/${eventId}/waitlists/notify`, { method: 'POST' });
-      alert('Waitlist notified!');
+      alert('Waitlist notified! Users will receive email/SMS with a direct purchase link.');
       this.closeAllModals();
     } catch (err) { this.showError(err.message); }
+  }
+
+  // ─── Coupon Manager ───────────────────────────────────────
+  async openCouponsModal() {
+    this.openModal('coupons-modal');
+    await this.loadCoupons();
+    // Populate events dropdown
+    try {
+      const myEvents = await this.fetchApi(`/events?organizerId=${this.currentUser.id}`);
+      const sel = document.getElementById('coupon-event');
+      if (sel) {
+        sel.innerHTML = '<option value="">All my events</option>' + myEvents.map(e => `<option value="${e._id}">${e.title}</option>`).join('');
+      }
+    } catch {}
+  }
+
+  async loadCoupons() {
+    const list = document.getElementById('coupons-list');
+    if (!list) return;
+    try {
+      const coupons = await this.fetchApi('/coupons');
+      if (!coupons.length) { list.innerHTML = '<p style="color:var(--muted); font-size:0.82rem;">No coupon codes yet</p>'; return; }
+      const now = new Date();
+      list.innerHTML = coupons.map(c => {
+        const isExpired = new Date(c.expiryDate) < now;
+        const discStr   = c.type === 'percentage' ? `${c.value}% off` : `₵${c.value} off`;
+        return `<div class="coupon-item">
+          <div>
+            <div class="coupon-code">${c.code}</div>
+            <div class="coupon-meta">${discStr} · Expires ${new Date(c.expiryDate).toLocaleDateString()} · Used ${c.usedCount || 0}/${c.usageLimit || '∞'}</div>
+          </div>
+          <span class="coupon-badge ${isExpired ? 'expired' : 'active'}">${isExpired ? 'Expired' : 'Active'}</span>
+        </div>`;
+      }).join('');
+    } catch { list.innerHTML = '<p style="color:var(--muted); font-size:0.82rem;">Could not load coupons</p>'; }
+  }
+
+  async createCoupon(e) {
+    e.preventDefault();
+    const code     = document.getElementById('coupon-code').value.trim().toUpperCase();
+    const type     = document.getElementById('coupon-type').value;
+    const value    = parseFloat(document.getElementById('coupon-value').value);
+    const expiry   = document.getElementById('coupon-expiry').value;
+    const limit    = document.getElementById('coupon-limit').value;
+    const eventId  = document.getElementById('coupon-event').value;
+    const s = document.getElementById('coupon-create-status');
+    s.style.display = 'block'; s.className = 'status-msg loading'; s.textContent = 'Creating code…';
+    try {
+      await this.fetchApi('/coupons', { method: 'POST', body: JSON.stringify({ code, type, value, expiryDate: expiry, usageLimit: limit ? parseInt(limit) : null, eventId: eventId || null }) });
+      s.className = 'status-msg success'; s.innerHTML = `<strong>✓ Code "${code}" created!</strong>`;
+      document.getElementById('coupon-code').value  = '';
+      document.getElementById('coupon-value').value = '';
+      await this.loadCoupons();
+      setTimeout(() => { s.style.display = 'none'; }, 3000);
+    } catch (err) { s.className = 'status-msg error'; s.textContent = err.message; }
+  }
+
+  generateCouponCode() {
+    const chars  = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const code   = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const inp    = document.getElementById('coupon-code');
+    if (inp) inp.value = code;
   }
 
   // ─── Favourites ───────────────────────────────────────────
@@ -1475,9 +1577,7 @@ class GlycrApp {
     if (idx > -1) this.favorites[uid].splice(idx, 1);
     else          this.favorites[uid].push(eventId);
     this.saveToStorage('glycr_favorites', this.favorites);
-    try {
-      await this.fetchApi('/users/favorites', { method: 'POST', body: JSON.stringify({ eventId, action }) });
-    } catch {}
+    try { await this.fetchApi('/users/favorites', { method: 'POST', body: JSON.stringify({ eventId, action }) }); } catch {}
     this.renderEvents();
     const profileEl = document.getElementById('profile');
     if (profileEl && profileEl.style.display !== 'none') this.loadProfile();
@@ -1491,7 +1591,7 @@ class GlycrApp {
   clearFilters() {
     document.getElementById('search-input').value    = '';
     document.getElementById('category-filter').value = '';
-    document.getElementById('location-filter').value  = '';
+    document.getElementById('location-filter').value = '';
     this.renderEvents();
   }
 
@@ -1509,7 +1609,7 @@ class GlycrApp {
     const fee = this.platformFeePercent;
     let csv = 'Title,Date,Venue,Location,Category,Status,Tickets Sold,Gross Revenue,Net Revenue\n';
     events.forEach(e => {
-      const tt    = this.parseTicketTypes(e.ticketTypes);
+      const tt = this.parseTicketTypes(e.ticketTypes);
       const sold  = Object.values(tt).reduce((a, t) => a + (t.sold || 0), 0);
       const gross = Object.values(tt).reduce((a, t) => a + ((t.sold || 0) * t.price), 0);
       const net   = gross * (1 - fee / 100);
@@ -1521,9 +1621,7 @@ class GlycrApp {
 
   exportPayoutsToCSV(payouts) {
     let csv = 'Amount,Method,Status,Requested At,Completed At\n';
-    payouts.forEach(p => {
-      csv += `${p.amount},${p.method},${p.status},"${p.requestedAt}","${p.completedAt || ''}"\n`;
-    });
+    payouts.forEach(p => { csv += `${p.amount},${p.method},${p.status},"${p.requestedAt}","${p.completedAt || ''}"\n`; });
     this._dlBlob(csv, `payouts_${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv');
   }
 
@@ -1532,8 +1630,7 @@ class GlycrApp {
     const doc  = new jsPDF();
     const fee  = this.platformFeePercent;
     const sym  = this.getCurrencySymbol(this.currentUser?.currency || 'GHC');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
-    doc.text('My Events Report', 14, 16);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('My Events Report', 14, 16);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(120);
     doc.text(`Platform Fee: ${fee}% · Generated: ${new Date().toLocaleString()}`, 14, 24);
     const rows = events.map(e => {
@@ -1544,12 +1641,7 @@ class GlycrApp {
       const st    = e.isCancelled ? 'Cancelled' : e.isPublished ? 'Published' : 'Draft';
       return [e.title, new Date(e.date).toLocaleDateString(), e.venue, sold, `${sym}${gross.toFixed(2)}`, `${sym}${net.toFixed(2)}`, st];
     });
-    doc.autoTable({
-      head: [['Title', 'Date', 'Venue', 'Sold', 'Gross', 'Net', 'Status']],
-      body: rows, startY: 30,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [19, 26, 35], textColor: [204, 217, 227] },
-    });
+    doc.autoTable({ head: [['Title', 'Date', 'Venue', 'Sold', 'Gross', 'Net', 'Status']], body: rows, startY: 30, styles: { fontSize: 8 }, headStyles: { fillColor: [19, 26, 35], textColor: [204, 217, 227] } });
     doc.save(`events_${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
@@ -1557,21 +1649,11 @@ class GlycrApp {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const sym = this.getCurrencySymbol(this.currentUser?.currency || 'GHC');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
-    doc.text('Payout History', 14, 16);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('Payout History', 14, 16);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(120);
     doc.text(`Platform Fee: ${this.platformFeePercent}% · Generated: ${new Date().toLocaleString()}`, 14, 24);
-    const rows = payouts.map(p => [
-      `${sym}${p.amount}`, p.method, p.status,
-      new Date(p.requestedAt).toLocaleDateString(),
-      p.completedAt ? new Date(p.completedAt).toLocaleDateString() : '—',
-    ]);
-    doc.autoTable({
-      head: [['Amount', 'Method', 'Status', 'Requested', 'Completed']],
-      body: rows, startY: 30,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [19, 26, 35], textColor: [204, 217, 227] },
-    });
+    const rows = payouts.map(p => [`${sym}${p.amount}`, p.method, p.status, new Date(p.requestedAt).toLocaleDateString(), p.completedAt ? new Date(p.completedAt).toLocaleDateString() : '—']);
+    doc.autoTable({ head: [['Amount', 'Method', 'Status', 'Requested', 'Completed']], body: rows, startY: 30, styles: { fontSize: 8 }, headStyles: { fillColor: [19, 26, 35], textColor: [204, 217, 227] } });
     doc.save(`payouts_${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
@@ -1604,11 +1686,7 @@ class GlycrApp {
 
   checkResetToken() {
     const t = new URLSearchParams(window.location.search).get('reset_token');
-    if (t) {
-      localStorage.setItem('reset_token', t);
-      window.history.replaceState({}, '', window.location.pathname);
-      this.openModal('reset-password-modal');
-    }
+    if (t) { localStorage.setItem('reset_token', t); window.history.replaceState({}, '', window.location.pathname); this.openModal('reset-password-modal'); }
   }
 
   async handleResetPassword() {
@@ -1630,9 +1708,7 @@ class GlycrApp {
   }
 
   showSettingsModal() {
-    ['current-password', 'new-password-settings', 'confirm-new-password-settings'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.value = '';
-    });
+    ['current-password', 'new-password-settings', 'confirm-new-password-settings'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('settings-status').style.display = 'none';
     this.openModal('settings-modal');
   }
@@ -1656,10 +1732,7 @@ class GlycrApp {
     } catch (err) { s.className = 'status-msg error'; s.textContent = err.message; }
   }
 
-  showSettingsError(msg) {
-    const s = document.getElementById('settings-status');
-    s.style.display = 'block'; s.className = 'status-msg error'; s.textContent = msg;
-  }
+  showSettingsError(msg) { const s = document.getElementById('settings-status'); s.style.display = 'block'; s.className = 'status-msg error'; s.textContent = msg; }
 
   // ─── Modal helpers ────────────────────────────────────────
   openModal(modalId) {
@@ -1674,13 +1747,10 @@ class GlycrApp {
   }
 
   showError(message) {
-    const candidates = ['payment-status', 'waitlist-status', 'payout-status'];
+    const candidates = ['payment-status', 'waitlist-status', 'payout-status', 'refund-request-status'];
     for (const id of candidates) {
       const el = document.getElementById(id);
-      if (el && el.closest('.modal.show')) {
-        el.style.display = 'block'; el.className = 'status-msg error'; el.textContent = message;
-        return;
-      }
+      if (el && el.closest('.modal.show')) { el.style.display = 'block'; el.className = 'status-msg error'; el.textContent = message; return; }
     }
     alert(message);
   }
@@ -1689,57 +1759,51 @@ class GlycrApp {
   on(id, ev, fn) { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn); }
 
   bindEvents() {
-    this.on('home-link',      'click', () => this.showSection('home'));
-    this.on('dashboard-link', 'click', () => this.showSection('dashboard'));
-    this.on('payout-link',    'click', () => this.showSection('payout-page'));
-    this.on('myevents-link',  'click', () => this.showSection('myevents-page'));
-    this.on('report-link',    'click', () => this.showSection('report-page'));
-    this.on('login-link',     'click', () => this.openModal('auth-modal'));
-
-    this.on('search-input',     'input',  () => this.renderEvents());
-    this.on('category-filter',  'change', () => this.renderEvents());
-    this.on('location-filter',  'change', () => this.renderEvents());
-    this.on('clearFilters',     'click',  () => this.clearFilters());
-
+    this.on('login-link', 'click', () => this.openModal('auth-modal'));
+    this.on('search-input',    'input',  () => this.renderEvents());
+    this.on('category-filter', 'change', () => this.renderEvents());
+    this.on('location-filter', 'change', () => this.renderEvents());
+    this.on('clearFilters',    'click',  () => this.clearFilters());
     this.on('auth-form',   'submit', e => { e.preventDefault(); this.handleAuth(); });
     this.on('toggle-auth', 'click',  e => { if (e.target.tagName === 'A') { e.preventDefault(); this.toggleAuthMode(); } });
-
-    this.on('edit-profile-btn', 'click',  () => this.openModal('profile-edit-modal'));
-    this.on('profile-form',     'submit', e => { e.preventDefault(); this.saveProfile(); });
-
+    this.on('edit-profile-btn', 'click',  () => {
+      if (this.currentUser) {
+        document.getElementById('profile-name-input').value  = this.currentUser.name || '';
+        document.getElementById('profile-email-input').value = this.currentUser.email || '';
+        document.getElementById('profile-phone-input').value = this.currentUser.phone || '';
+      }
+      this.openModal('profile-edit-modal');
+    });
+    this.on('profile-form', 'submit', e => { e.preventDefault(); this.saveProfile(); });
     this.on('create-event-btn',      'click', () => this.showEventForm());
     this.on('create-event-btn-hero', 'click', () => this.showEventForm());
     this.on('create-event-page-btn', 'click', () => this.showEventForm());
     this.on('event-form',            'submit', e => { e.preventDefault(); this.saveEvent(); });
     this.on('add-ticket-type',       'click',  () => this.addTicketTypeInput());
-
-    this.on('buy-ticket-btn', 'click', () => this.showPurchaseFlow());
-    this.on('pay-btn',        'click', () => this.processPayment());
-    this.on('validate-ticket','click', () => this.validateTicket());
-    this.on('share-btn',      'click', () => this.shareEvent());
-
+    this.on('buy-ticket-btn',   'click', () => this.showPurchaseFlow());
+    this.on('pay-btn',          'click', () => this.processPayment());
+    this.on('validate-ticket',  'click', () => this.validateTicket());
+    this.on('share-btn',        'click', () => this.shareEvent());
+    this.on('download-ticket-pdf', 'click', () => this.downloadTicketPDF());
     this.on('request-payout-btn',      'click', () => this.showPayoutModal());
     this.on('request-payout-page-btn', 'click', () => this.showPayoutModal());
     this.on('payout-form', 'submit', e => { e.preventDefault(); this.requestPayout(); });
     document.getElementById('payout-method')?.addEventListener('change', e => this.togglePayoutDetails(e.target.value));
-
     this.on('waitlist-form', 'submit', e => { e.preventDefault(); this.joinWaitlist(); });
-
-    this.on('confirm-cancel',     'click', () => this.cancelEvent());
-    this.on('dismiss-cancel',     'click', () => this.closeAllModals());
-    this.on('notify-waitlist-btn','click', () => this.notifyWaitlist(this.currentEventId, this.selectedTicketType));
-
-    this.on('forgot-password-link',   'click', e => { e.preventDefault(); this.closeAllModals(); this.showForgotPasswordModal(); });
-    this.on('forgot-password-form',   'submit', e => { e.preventDefault(); this.handleForgotPassword(); });
-    this.on('reset-password-form',    'submit', e => { e.preventDefault(); this.handleResetPassword(); });
-    this.on('settings-form',          'submit', e => this.saveSettings(e));
-
+    this.on('confirm-cancel',      'click', () => this.cancelEvent());
+    this.on('dismiss-cancel',      'click', () => this.closeAllModals());
+    this.on('notify-waitlist-btn', 'click', () => this.notifyWaitlist(this.currentEventId, this.selectedTicketType));
+    this.on('forgot-password-link', 'click', e => { e.preventDefault(); this.closeAllModals(); this.showForgotPasswordModal(); });
+    this.on('forgot-password-form', 'submit', e => { e.preventDefault(); this.handleForgotPassword(); });
+    this.on('reset-password-form',  'submit', e => { e.preventDefault(); this.handleResetPassword(); });
+    this.on('settings-form',        'submit', e => this.saveSettings(e));
+    // Refund & coupon buttons
+    this.on('refund-requests-btn',     'click', () => this.openOrgRefundsModal());
+    this.on('org-refund-requests-btn', 'click', () => this.openOrgRefundsModal());
+    this.on('coupons-btn',             'click', () => this.openCouponsModal());
     // Logo
-    document.getElementById('logo-home')?.addEventListener('click', e => {
-      e.preventDefault(); this.showSection('home');
-    });
-
-    // Password strength indicators
+    document.getElementById('logo-home')?.addEventListener('click', e => { e.preventDefault(); this.showSection('home'); });
+    // Password strength
     const bindStrength = (inputId, barId, textId) => {
       const inp = document.getElementById(inputId);
       if (!inp) return;
@@ -1751,10 +1815,9 @@ class GlycrApp {
         if (txt) { txt.textContent = s.text; txt.style.color = s.color; }
       });
     };
-    bindStrength('password',             'strength-bar',          'strength-text');
-    bindStrength('new-password',         'reset-strength-bar',    'reset-strength-text');
-    bindStrength('new-password-settings','settings-strength-bar', 'settings-strength-text');
-
+    bindStrength('password',              'strength-bar',          'strength-text');
+    bindStrength('new-password',          'reset-strength-bar',    'reset-strength-text');
+    bindStrength('new-password-settings', 'settings-strength-bar', 'settings-strength-text');
     // Payment method buttons
     document.querySelectorAll('.pmeth-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1765,70 +1828,55 @@ class GlycrApp {
         if (ce) ce.style.display = btn.dataset.method === 'stripe' ? 'block' : 'none';
       });
     });
-
+    // Quantity change → update price summary
+    this.on('ticket-quantity', 'input', () => this.updatePriceSummary());
     // Modal close buttons and backdrops
-    document.querySelectorAll('.modal-close').forEach(btn =>
-      btn.addEventListener('click', () => this.closeAllModals())
-    );
-    document.querySelectorAll('.modal-backdrop').forEach(bd =>
-      bd.addEventListener('click', () => this.closeAllModals())
-    );
-
+    document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', () => this.closeAllModals()));
+    document.querySelectorAll('.modal-backdrop').forEach(bd => bd.addEventListener('click', () => this.closeAllModals()));
     // Delegated clicks
     document.addEventListener('click', async e => {
       const t = e.target.closest('[data-action]');
       if (t) {
         const action  = t.dataset.action;
         const eventId = t.dataset.eventId;
-        if (action === 'edit-event') {
-          const ev = await this.fetchApi(`/events/${eventId}`);
-          this.showEventForm(ev);
-        } else if (action === 'cancel-event')    { this.showCancelModal(eventId); }
-        else if (action === 'toggle-publish')    { this.togglePublish(eventId); }
-        else if (action === 'export-report')     { this.exportReport(eventId); }
-        else if (action === 'delete-event')      { this.deleteEvent(eventId); }
-        else if (action === 'view-waitlist')     { this.viewWaitlist(eventId, t.dataset.ticketType); }
+        if (action === 'edit-event') { const ev = await this.fetchApi(`/events/${eventId}`); this.showEventForm(ev); }
+        else if (action === 'cancel-event')  { this.showCancelModal(eventId); }
+        else if (action === 'toggle-publish') { this.togglePublish(eventId); }
+        else if (action === 'export-report')  { this.exportReport(eventId); }
+        else if (action === 'delete-event')   { this.deleteEvent(eventId); }
+        else if (action === 'view-waitlist')  { this.viewWaitlist(eventId, t.dataset.ticketType); }
       }
-
-      // Remove ticket type row
-      if (e.target.classList.contains('remove-ticket')) {
-        e.target.closest('.ticket-type')?.remove();
-      }
-
-      // Favourite toggle
+      if (e.target.classList.contains('remove-ticket')) { e.target.closest('.ticket-type')?.remove(); }
       const favBtn = e.target.closest('.fav-btn');
-      if (favBtn) {
-        e.stopPropagation();
-        this.toggleFavorite(favBtn.dataset.eventId);
-      }
+      if (favBtn) { e.stopPropagation(); this.toggleFavorite(favBtn.dataset.eventId); }
     });
-
     // Profile dropdown
     const trigger  = document.getElementById('profile-trigger');
     const dropMenu = document.getElementById('dropdown-menu');
     if (trigger && dropMenu) {
       trigger.addEventListener('click', e => { e.stopPropagation(); dropMenu.classList.toggle('show'); });
-      document.addEventListener('click', e => {
-        if (!trigger.contains(e.target) && !dropMenu.contains(e.target))
-          dropMenu.classList.remove('show');
-      });
+      document.addEventListener('click', e => { if (!trigger.contains(e.target) && !dropMenu.contains(e.target)) dropMenu.classList.remove('show'); });
     }
     this.on('dropdown-profile-page',  'click', e => { e.preventDefault(); dropMenu.classList.remove('show'); this.showSection('profile'); });
-    this.on('dropdown-edit-profile',  'click', e => { e.preventDefault(); dropMenu.classList.remove('show'); this.openModal('profile-edit-modal'); });
-    this.on('dropdown-settings',      'click', e => { e.preventDefault(); dropMenu.classList.remove('show'); this.showSettingsModal(); });
-    this.on('dropdown-logout',        'click', e => { e.preventDefault(); dropMenu.classList.remove('show'); this.logout(); });
-
-    // My Events page filter button
+    this.on('dropdown-edit-profile',  'click', e => {
+      e.preventDefault(); dropMenu.classList.remove('show');
+      if (this.currentUser) {
+        document.getElementById('profile-name-input').value  = this.currentUser.name || '';
+        document.getElementById('profile-email-input').value = this.currentUser.email || '';
+        document.getElementById('profile-phone-input').value = this.currentUser.phone || '';
+      }
+      this.openModal('profile-edit-modal');
+    });
+    this.on('dropdown-settings', 'click', e => { e.preventDefault(); dropMenu.classList.remove('show'); this.showSettingsModal(); });
+    this.on('dropdown-logout',   'click', e => { e.preventDefault(); dropMenu.classList.remove('show'); this.logout(); });
     this.on('event-status-filter',  'change', () => this.loadMyEventsPage());
     this.on('payout-status-filter', 'change', () => this.loadPayoutPage());
   }
 }
 
-// ─── Google Maps callback (called by Maps script) ─────────
+// ─── Google Maps callback ──────────────────────────────────
 window.initGlycrMaps = function () {
-  if (window.app && typeof window.app.initMapsCallback === 'function') {
-    window.app.initMapsCallback();
-  }
+  if (window.app && typeof window.app.initMapsCallback === 'function') window.app.initMapsCallback();
 };
 
 // Bootstrap

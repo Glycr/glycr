@@ -155,3 +155,44 @@ exports.togglePublish = async (req, res, next) => {
 };
 
 
+// Waitlist Management
+exports.getAllWaitlists = async (req, res, next) => {
+  try {
+    const waitlists = await adminService.getAllWaitlists();
+    res.json(waitlists);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.notifyWaitlistEntry = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { channel, message } = req.body;
+    const result = await adminService.notifyWaitlistEntry(id, channel, message);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.convertWaitlistToTicket = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { ticketType } = req.body;
+    const result = await adminService.convertWaitlistToTicket(id, ticketType);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.deleteWaitlistEntry = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await adminService.deleteWaitlistEntry(id);
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+};

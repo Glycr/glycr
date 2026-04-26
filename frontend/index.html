@@ -19,7 +19,9 @@
 <nav class="navbar">
   <a class="nav-logo" id="logo-home">Glycr<span class="nav-logo-dot"></span></a>
   <ul class="nav-links" id="navMenu" role="menubar">
-    <li><a href="#" id="home-link" class="active">Events</a></li>
+    <li><a href="#" id="home-link" class="active"><i class="fas fa-calendar-alt"></i> Events</a></li>
+    <li><a href="#" id="about-link"><i class="fas fa-info-circle"></i> About</a></li>
+    <li><a href="#" id="help-link"><i class="fas fa-question-circle"></i> Help Center</a></li>
     <li><a href="#" id="dashboard-link" style="display:none;"><i class="fas fa-gauge-high"></i> Dashboard</a></li>
     <li><a href="#" id="payout-link" style="display:none;"><i class="fas fa-wallet"></i> Payouts</a></li>
     <li><a href="#" id="myevents-link" style="display:none;"><i class="fas fa-calendar-alt"></i> My Events</a></li>
@@ -119,6 +121,126 @@
   </div>
 </div>
 
+<!-- ===== ABOUT PAGE ===== -->
+<section class="section" id="about-page" style="padding-top:calc(64px + 2.5rem);">
+  <div class="about-hero">
+    <div class="about-hero-content">
+      <div class="hero-badge" style="margin:0 auto 1.5rem;">
+        <span>Our Story</span>
+        <span class="hero-badge-live"></span>
+      </div>
+      <h1 class="about-title">Built for Ghana's <span style="color:var(--teal);">Vibrant</span> Event Scene</h1>
+      <p class="about-subtitle">Glycr connects event creators with audiences across Ghana — from Accra's music festivals to Kumasi's cultural celebrations.</p>
+    </div>
+  </div>
+  <div class="about-grid">
+    <div class="about-card">
+      <div class="about-card-icon"><i class="fas fa-rocket"></i></div>
+      <h3>Our Mission</h3>
+      <p>Democratize event creation and ticketing for every organizer in Ghana — from students running campus shows to established concert promoters.</p>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon"><i class="fas fa-shield-alt"></i></div>
+      <h3>Secure Payments</h3>
+      <p>Every transaction is encrypted and protected. Organizers receive instant payouts via MoMo, bank transfer, or PayPal — guaranteed.</p>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon"><i class="fas fa-users"></i></div>
+      <h3>Community First</h3>
+      <p>We believe in building Ghana's cultural economy by empowering local artists, venues, and communities through technology.</p>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon"><i class="fas fa-mobile-alt"></i></div>
+      <h3>Mobile-First</h3>
+      <p>Designed for Ghana's mobile internet users — works flawlessly on any device, anywhere in the country.</p>
+    </div>
+  </div>
+  <div class="about-stats-row">
+    <div class="about-stat"><span class="about-stat-num">12,000+</span><span class="about-stat-label">Events Hosted</span></div>
+    <div class="about-stat"><span class="about-stat-num">₵2M+</span><span class="about-stat-label">Paid to Organizers</span></div>
+    <div class="about-stat"><span class="about-stat-num">50,000+</span><span class="about-stat-label">Tickets Sold</span></div>
+    <div class="about-stat"><span class="about-stat-num">10+</span><span class="about-stat-label">Cities Served</span></div>
+  </div>
+  <div class="about-contact-cta">
+    <h2>Ready to create your event?</h2>
+    <p>Join thousands of organizers already using Glycr.</p>
+    <button class="btn btn-primary" onclick="app.openModal('auth-modal')"><i class="fas fa-plus"></i> Get Started Free</button>
+  </div>
+</section>
+
+<!-- ===== HELP CENTER ===== -->
+<section class="section" id="help-page" style="padding-top:calc(64px + 2.5rem);">
+  <div class="section-head">
+    <h2 class="section-title"><i class="fas fa-question-circle" style="color:var(--teal);"></i> Help Center</h2>
+  </div>
+  <div class="help-layout">
+    <div class="help-faq-col">
+      <div class="help-search-wrap">
+        <i class="fas fa-search"></i>
+        <input type="text" id="faq-search" class="input" placeholder="Search FAQs…" oninput="app.filterFAQs(this.value)">
+      </div>
+      <div class="faq-categories" id="faq-categories">
+        <button class="faq-cat-btn active" data-cat="all" onclick="app.setFaqCat('all', this)">All</button>
+        <button class="faq-cat-btn" data-cat="tickets" onclick="app.setFaqCat('tickets', this)">Tickets</button>
+        <button class="faq-cat-btn" data-cat="payments" onclick="app.setFaqCat('payments', this)">Payments</button>
+        <button class="faq-cat-btn" data-cat="organizers" onclick="app.setFaqCat('organizers', this)">Organizers</button>
+        <button class="faq-cat-btn" data-cat="refunds" onclick="app.setFaqCat('refunds', this)">Refunds</button>
+        <button class="faq-cat-btn" data-cat="account" onclick="app.setFaqCat('account', this)">Account</button>
+      </div>
+      <div class="faq-list" id="faq-list"></div>
+    </div>
+    <div class="help-contact-col">
+      <div class="help-contact-card">
+        <h3><i class="fas fa-envelope" style="color:var(--teal);"></i> Send us a Message</h3>
+        <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1.25rem;">Our support team typically responds within 2–4 hours.</p>
+        <form id="help-form" class="form" onsubmit="app.submitHelpMessage(event)">
+          <div class="form-field">
+            <label class="form-label">Your Name</label>
+            <input type="text" id="help-name" class="input" placeholder="Kwame Mensah" required>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Email Address</label>
+            <input type="email" id="help-email" class="input" placeholder="you@email.com" required>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Subject</label>
+            <select id="help-subject" class="input" required>
+              <option value="">Select a topic…</option>
+              <option value="ticket_issue">Ticket Issue</option>
+              <option value="payment_problem">Payment Problem</option>
+              <option value="refund_request">Refund Request</option>
+              <option value="organizer_support">Organizer Support</option>
+              <option value="account_issue">Account Issue</option>
+              <option value="bug_report">Bug Report</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Message</label>
+            <textarea id="help-message" class="input" rows="5" placeholder="Describe your issue in detail…" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-paper-plane"></i> Send Message</button>
+          <div id="help-status" class="status-msg" style="display:none;"></div>
+        </form>
+      </div>
+      <div class="help-contact-info">
+        <div class="help-contact-item">
+          <i class="fas fa-envelope"></i>
+          <div><strong>Email Support</strong><br><a href="mailto:support@glycr.com" style="color:var(--teal);">support@glycr.com</a></div>
+        </div>
+        <div class="help-contact-item">
+          <i class="fas fa-phone"></i>
+          <div><strong>Phone</strong><br><span style="color:var(--dim);">+233 (0) 30 000 0000</span></div>
+        </div>
+        <div class="help-contact-item">
+          <i class="fas fa-clock"></i>
+          <div><strong>Support Hours</strong><br><span style="color:var(--dim);">Mon–Fri 8am–8pm GMT</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ===== PROFILE ===== -->
 <section class="section" id="profile" style="padding-top:calc(64px + 2.5rem);">
   <div class="section-head">
@@ -137,95 +259,41 @@
       <div id="purchase-history-list"></div>
       <p class="form-label" style="margin:2rem 0 1rem;">Favourites</p>
       <div class="events-grid" id="favorite-events-list"></div>
+      <p class="form-label" style="margin:2rem 0 1rem;">My Refund Requests</p>
+      <div id="my-refunds-list"></div>
     </div>
   </div>
 </section>
 
-<!-- ===== DASHBOARD (Redesigned — KPI only, no payout/my-events blocks) ===== -->
+<!-- ===== DASHBOARD ===== -->
 <section class="section" id="dashboard" style="padding-top:calc(64px + 2.5rem);">
   <div class="dash-header">
     <div>
       <h2 class="section-title">Dashboard</h2>
       <p class="dash-subtitle" id="dash-greeting">Good day — here's your overview</p>
     </div>
-    <button class="btn btn-primary" id="create-event-btn"><i class="fas fa-plus"></i> New Event</button>
+    <div style="display:flex; gap:0.75rem;">
+      <button class="btn btn-ghost" id="refund-requests-btn" style="font-size:0.82rem;"><i class="fas fa-undo"></i> Refund Requests</button>
+      <button class="btn btn-ghost" id="coupons-btn" style="font-size:0.82rem;"><i class="fas fa-tag"></i> Coupons</button>
+      <button class="btn btn-primary" id="create-event-btn"><i class="fas fa-plus"></i> New Event</button>
+    </div>
   </div>
-
-  <!-- 6 KPI cards -->
   <div class="kpi-grid">
-    <div class="kpi-card kpi-revenue">
-      <div class="kpi-icon"><i class="fas fa-coins"></i></div>
-      <div class="kpi-body">
-        <div class="kpi-value" id="total-revenue">—</div>
-        <div class="kpi-label">Total Revenue</div>
-      </div>
-    </div>
-    <div class="kpi-card kpi-tickets">
-      <div class="kpi-icon"><i class="fas fa-ticket-alt"></i></div>
-      <div class="kpi-body">
-        <div class="kpi-value" id="total-sold">—</div>
-        <div class="kpi-label">Tickets Sold</div>
-      </div>
-    </div>
-    <div class="kpi-card kpi-total-events">
-      <div class="kpi-icon"><i class="fas fa-calendar-alt"></i></div>
-      <div class="kpi-body">
-        <div class="kpi-value" id="total-events">0</div>
-        <div class="kpi-label">Total Events</div>
-      </div>
-    </div>
-    <div class="kpi-card kpi-live">
-      <div class="kpi-icon"><i class="fas fa-broadcast-tower"></i></div>
-      <div class="kpi-body">
-        <div class="kpi-value" id="events-live">0</div>
-        <div class="kpi-label">Live Events</div>
-      </div>
-    </div>
-    <div class="kpi-card kpi-payout">
-      <div class="kpi-icon"><i class="fas fa-money-check-alt"></i></div>
-      <div class="kpi-body">
-        <div class="kpi-value" id="pending-payouts">—</div>
-        <div class="kpi-label">Pending Payouts</div>
-      </div>
-    </div>
-    <div class="kpi-card kpi-fee">
-      <div class="kpi-icon"><i class="fas fa-percent"></i></div>
-      <div class="kpi-body">
-        <div class="kpi-value" id="platform-fee-display">—%</div>
-        <div class="kpi-label">Platform Fee</div>
-      </div>
-    </div>
+    <div class="kpi-card kpi-revenue"><div class="kpi-icon"><i class="fas fa-coins"></i></div><div class="kpi-body"><div class="kpi-value" id="total-revenue">—</div><div class="kpi-label">Total Revenue</div></div></div>
+    <div class="kpi-card kpi-tickets"><div class="kpi-icon"><i class="fas fa-ticket-alt"></i></div><div class="kpi-body"><div class="kpi-value" id="total-sold">—</div><div class="kpi-label">Tickets Sold</div></div></div>
+    <div class="kpi-card kpi-total-events"><div class="kpi-icon"><i class="fas fa-calendar-alt"></i></div><div class="kpi-body"><div class="kpi-value" id="total-events">0</div><div class="kpi-label">Total Events</div></div></div>
+    <div class="kpi-card kpi-live"><div class="kpi-icon"><i class="fas fa-broadcast-tower"></i></div><div class="kpi-body"><div class="kpi-value" id="events-live">0</div><div class="kpi-label">Live Events</div></div></div>
+    <div class="kpi-card kpi-payout"><div class="kpi-icon"><i class="fas fa-money-check-alt"></i></div><div class="kpi-body"><div class="kpi-value" id="pending-payouts">—</div><div class="kpi-label">Pending Payouts</div></div></div>
+    <div class="kpi-card kpi-fee"><div class="kpi-icon"><i class="fas fa-percent"></i></div><div class="kpi-body"><div class="kpi-value" id="platform-fee-display">—%</div><div class="kpi-label">Platform Fee</div></div></div>
   </div>
-
-  <!-- Quick nav tiles -->
   <div class="dash-quick-row">
-    <button class="dash-quick-tile" onclick="app.showSection('payout-page')">
-      <i class="fas fa-wallet"></i>
-      <span>Payouts</span>
-      <i class="fas fa-arrow-right dash-tile-arrow"></i>
-    </button>
-    <button class="dash-quick-tile" onclick="app.showSection('myevents-page')">
-      <i class="fas fa-calendar-alt"></i>
-      <span>My Events</span>
-      <i class="fas fa-arrow-right dash-tile-arrow"></i>
-    </button>
-    <button class="dash-quick-tile" onclick="app.showSection('report-page')">
-      <i class="fas fa-chart-bar"></i>
-      <span>Reports</span>
-      <i class="fas fa-arrow-right dash-tile-arrow"></i>
-    </button>
-    <button class="dash-quick-tile" onclick="app.showEventForm()">
-      <i class="fas fa-plus-circle"></i>
-      <span>Create Event</span>
-      <i class="fas fa-arrow-right dash-tile-arrow"></i>
-    </button>
+    <button class="dash-quick-tile" onclick="app.showSection('payout-page')"><i class="fas fa-wallet"></i><span>Payouts</span><i class="fas fa-arrow-right dash-tile-arrow"></i></button>
+    <button class="dash-quick-tile" onclick="app.showSection('myevents-page')"><i class="fas fa-calendar-alt"></i><span>My Events</span><i class="fas fa-arrow-right dash-tile-arrow"></i></button>
+    <button class="dash-quick-tile" onclick="app.showSection('report-page')"><i class="fas fa-chart-bar"></i><span>Reports</span><i class="fas fa-arrow-right dash-tile-arrow"></i></button>
+    <button class="dash-quick-tile" onclick="app.showEventForm()"><i class="fas fa-plus-circle"></i><span>Create Event</span><i class="fas fa-arrow-right dash-tile-arrow"></i></button>
   </div>
-
-  <!-- 7-day sales chart -->
   <div class="dash-chart-block">
-    <div class="dash-chart-header">
-      <span><i class="fas fa-chart-line"></i> Sales Overview — Last 7 Days</span>
-    </div>
+    <div class="dash-chart-header"><span><i class="fas fa-chart-line"></i> Sales Overview — Last 7 Days</span></div>
     <canvas id="dash-sales-chart" style="max-height:200px;"></canvas>
   </div>
 </section>
@@ -236,23 +304,13 @@
     <h2 class="section-title"><i class="fas fa-wallet"></i> Payout History</h2>
     <button class="btn btn-primary" id="request-payout-page-btn"><i class="fas fa-paper-plane"></i> Request Payout</button>
   </div>
-
   <div class="page-filters">
-    <div class="filter-group">
-      <label class="filter-label"><i class="fas fa-calendar"></i> From</label>
-      <input type="date" id="payout-start-date" class="filter-input" onchange="app.loadPayoutPage()">
-    </div>
-    <div class="filter-group">
-      <label class="filter-label"><i class="fas fa-calendar"></i> To</label>
-      <input type="date" id="payout-end-date" class="filter-input" onchange="app.loadPayoutPage()">
-    </div>
-    <div class="filter-group">
-      <label class="filter-label"><i class="fas fa-filter"></i> Status</label>
+    <div class="filter-group"><label class="filter-label"><i class="fas fa-calendar"></i> From</label><input type="date" id="payout-start-date" class="filter-input" onchange="app.loadPayoutPage()"></div>
+    <div class="filter-group"><label class="filter-label"><i class="fas fa-calendar"></i> To</label><input type="date" id="payout-end-date" class="filter-input" onchange="app.loadPayoutPage()"></div>
+    <div class="filter-group"><label class="filter-label"><i class="fas fa-filter"></i> Status</label>
       <select id="payout-status-filter" class="filter-input" onchange="app.loadPayoutPage()">
-        <option value="all">All Status</option>
-        <option value="pending">Pending</option>
-        <option value="completed">Completed</option>
-        <option value="failed">Failed</option>
+        <option value="all">All Status</option><option value="pending">Pending</option>
+        <option value="completed">Completed</option><option value="failed">Failed</option>
       </select>
     </div>
     <div class="filter-actions">
@@ -260,30 +318,15 @@
       <button class="btn btn-outline btn-sm" id="export-payouts-pdf"><i class="fas fa-file-pdf"></i> PDF</button>
     </div>
   </div>
-
   <div class="payout-summary-row">
-    <div class="payout-summary-card">
-      <div class="payout-summary-label">Total Paid Out</div>
-      <div class="payout-summary-value" id="total-paid-out">₵0</div>
-    </div>
-    <div class="payout-summary-card">
-      <div class="payout-summary-label">Pending</div>
-      <div class="payout-summary-value pending" id="total-pending-amount">₵0</div>
-    </div>
-    <div class="payout-summary-card">
-      <div class="payout-summary-label">Total Requests</div>
-      <div class="payout-summary-value" id="total-payout-count">0</div>
-    </div>
+    <div class="payout-summary-card"><div class="payout-summary-label">Total Paid Out</div><div class="payout-summary-value" id="total-paid-out">₵0</div></div>
+    <div class="payout-summary-card"><div class="payout-summary-label">Pending</div><div class="payout-summary-value pending" id="total-pending-amount">₵0</div></div>
+    <div class="payout-summary-card"><div class="payout-summary-label">Total Requests</div><div class="payout-summary-value" id="total-payout-count">0</div></div>
   </div>
-
   <div class="data-table-wrap">
     <table class="data-table">
-      <thead>
-      <tr><th>Amount</th><th>Method</th><th>Status</th><th>Requested</th><th>Completed</th></tr>
-      </thead>
-      <tbody id="payout-table-body">
-      <tr><td colspan="5" class="table-empty">No payouts found</td></tr>
-      </tbody>
+      <thead><tr><th>Amount</th><th>Method</th><th>Status</th><th>Requested</th><th>Completed</th></tr></thead>
+      <tbody id="payout-table-body"><tr><td colspan="5" class="table-empty">No payouts found</td></tr></tbody>
     </table>
   </div>
 </section>
@@ -292,77 +335,39 @@
 <section class="section" id="myevents-page" style="padding-top:calc(64px + 2.5rem);">
   <div class="section-head">
     <h2 class="section-title"><i class="fas fa-calendar-alt"></i> My Events</h2>
-    <button class="btn btn-primary" id="create-event-page-btn"><i class="fas fa-plus"></i> New Event</button>
-  </div>
-
-  <div class="page-filters">
-    <div class="filter-group" style="flex:2;">
-      <label class="filter-label"><i class="fas fa-search"></i> Search</label>
-      <input type="text" id="myevents-search" class="filter-input" placeholder="Search by event name…" oninput="app.loadMyEventsPage()">
+    <div style="display:flex; gap:0.75rem;">
+      <button class="btn btn-ghost" id="org-refund-requests-btn" style="font-size:0.82rem;"><i class="fas fa-undo"></i> Refund Requests</button>
+      <button class="btn btn-primary" id="create-event-page-btn"><i class="fas fa-plus"></i> New Event</button>
     </div>
-    <div class="filter-group">
-      <label class="filter-label"><i class="fas fa-filter"></i> Status</label>
+  </div>
+  <div class="page-filters">
+    <div class="filter-group" style="flex:2;"><label class="filter-label"><i class="fas fa-search"></i> Search</label><input type="text" id="myevents-search" class="filter-input" placeholder="Search by event name…" oninput="app.loadMyEventsPage()"></div>
+    <div class="filter-group"><label class="filter-label"><i class="fas fa-filter"></i> Status</label>
       <select id="event-status-filter" class="filter-input" onchange="app.loadMyEventsPage()">
-        <option value="all">All</option>
-        <option value="upcoming">Upcoming</option>
-        <option value="past">Past</option>
-        <option value="draft">Draft</option>
-        <option value="cancelled">Cancelled</option>
+        <option value="all">All</option><option value="upcoming">Upcoming</option>
+        <option value="past">Past</option><option value="draft">Draft</option><option value="cancelled">Cancelled</option>
       </select>
     </div>
-    <div class="filter-group">
-      <label class="filter-label"><i class="fas fa-calendar"></i> From</label>
-      <input type="date" id="myevents-start" class="filter-input" onchange="app.loadMyEventsPage()">
-    </div>
-    <div class="filter-group">
-      <label class="filter-label"><i class="fas fa-calendar"></i> To</label>
-      <input type="date" id="myevents-end" class="filter-input" onchange="app.loadMyEventsPage()">
-    </div>
+    <div class="filter-group"><label class="filter-label"><i class="fas fa-calendar"></i> From</label><input type="date" id="myevents-start" class="filter-input" onchange="app.loadMyEventsPage()"></div>
+    <div class="filter-group"><label class="filter-label"><i class="fas fa-calendar"></i> To</label><input type="date" id="myevents-end" class="filter-input" onchange="app.loadMyEventsPage()"></div>
   </div>
-
   <div id="my-events-list"></div>
 </section>
 
 <!-- ===== REPORT PAGE ===== -->
 <section class="section" id="report-page" style="padding-top:calc(64px + 2.5rem);">
-  <div class="section-head">
-    <h2 class="section-title"><i class="fas fa-chart-bar"></i> Reports &amp; Analytics</h2>
-  </div>
-
+  <div class="section-head"><h2 class="section-title"><i class="fas fa-chart-bar"></i> Reports &amp; Analytics</h2></div>
   <div class="report-kpi-grid">
-    <div class="report-kpi-card">
-      <div class="report-kpi-icon" style="color:var(--teal);"><i class="fas fa-calendar-alt"></i></div>
-      <div class="report-kpi-value" id="report-total-events">0</div>
-      <div class="report-kpi-label">Total Events</div>
-    </div>
-    <div class="report-kpi-card">
-      <div class="report-kpi-icon" style="color:var(--mint);"><i class="fas fa-ticket-alt"></i></div>
-      <div class="report-kpi-value" id="report-total-tickets">0</div>
-      <div class="report-kpi-label">Tickets Sold</div>
-    </div>
-    <div class="report-kpi-card">
-      <div class="report-kpi-icon" style="color:var(--gold);"><i class="fas fa-coins"></i></div>
-      <div class="report-kpi-value" id="report-total-revenue">₵0</div>
-      <div class="report-kpi-label">Gross Revenue</div>
-    </div>
-    <div class="report-kpi-card">
-      <div class="report-kpi-icon" style="color:var(--coral);"><i class="fas fa-hand-holding-usd"></i></div>
-      <div class="report-kpi-value" id="report-net-revenue">₵0</div>
-      <div class="report-kpi-label">Net Revenue</div>
-    </div>
+    <div class="report-kpi-card"><div class="report-kpi-icon" style="color:var(--teal);"><i class="fas fa-calendar-alt"></i></div><div class="report-kpi-value" id="report-total-events">0</div><div class="report-kpi-label">Total Events</div></div>
+    <div class="report-kpi-card"><div class="report-kpi-icon" style="color:var(--mint);"><i class="fas fa-ticket-alt"></i></div><div class="report-kpi-value" id="report-total-tickets">0</div><div class="report-kpi-label">Tickets Sold</div></div>
+    <div class="report-kpi-card"><div class="report-kpi-icon" style="color:var(--gold);"><i class="fas fa-coins"></i></div><div class="report-kpi-value" id="report-total-revenue">₵0</div><div class="report-kpi-label">Gross Revenue</div></div>
+    <div class="report-kpi-card"><div class="report-kpi-icon" style="color:var(--coral);"><i class="fas fa-hand-holding-usd"></i></div><div class="report-kpi-value" id="report-net-revenue">₵0</div><div class="report-kpi-label">Net Revenue</div></div>
   </div>
-
   <div class="report-section-card">
     <div class="report-section-title"><i class="fas fa-sliders-h"></i> Export Data</div>
     <div class="page-filters" style="margin-bottom:1.25rem;">
-      <div class="filter-group">
-        <label class="filter-label"><i class="fas fa-calendar"></i> From</label>
-        <input type="date" id="report-start-date" class="filter-input">
-      </div>
-      <div class="filter-group">
-        <label class="filter-label"><i class="fas fa-calendar"></i> To</label>
-        <input type="date" id="report-end-date" class="filter-input">
-      </div>
+      <div class="filter-group"><label class="filter-label"><i class="fas fa-calendar"></i> From</label><input type="date" id="report-start-date" class="filter-input"></div>
+      <div class="filter-group"><label class="filter-label"><i class="fas fa-calendar"></i> To</label><input type="date" id="report-end-date" class="filter-input"></div>
     </div>
     <div class="export-btn-grid">
       <button class="export-btn export-btn-csv" id="export-events-csv"><i class="fas fa-file-csv"></i><span>Events CSV</span></button>
@@ -371,35 +376,93 @@
       <button class="export-btn export-btn-pdf" id="export-payouts-pdf"><i class="fas fa-file-pdf"></i><span>Payouts PDF</span></button>
     </div>
   </div>
-
   <div class="report-charts-row">
-    <div class="report-section-card">
-      <div class="report-section-title"><i class="fas fa-chart-line"></i> Revenue Trend (7 Days)</div>
-      <canvas id="report-revenue-chart" style="max-height:200px;"></canvas>
-    </div>
-    <div class="report-section-card">
-      <div class="report-section-title"><i class="fas fa-chart-pie"></i> Tickets by Type</div>
-      <canvas id="report-ticket-chart" style="max-height:200px;"></canvas>
-    </div>
+    <div class="report-section-card"><div class="report-section-title"><i class="fas fa-chart-line"></i> Revenue Trend (7 Days)</div><canvas id="report-revenue-chart" style="max-height:200px;"></canvas></div>
+    <div class="report-section-card"><div class="report-section-title"><i class="fas fa-chart-pie"></i> Tickets by Type</div><canvas id="report-ticket-chart" style="max-height:200px;"></canvas></div>
   </div>
-
   <div class="report-section-card">
     <div class="report-section-title"><i class="fas fa-trophy"></i> Top Events by Revenue</div>
     <div class="data-table-wrap">
       <table class="data-table">
-        <thead>
-        <tr><th>Event</th><th>Date</th><th>Tickets Sold</th><th>Revenue</th><th>Status</th></tr>
-        </thead>
-        <tbody id="report-events-tbody">
-        <tr><td colspan="5" class="table-empty">Loading…</td></tr>
-        </tbody>
+        <thead><tr><th>Event</th><th>Date</th><th>Tickets Sold</th><th>Revenue</th><th>Status</th></tr></thead>
+        <tbody id="report-events-tbody"><tr><td colspan="5" class="table-empty">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
 </section>
 
+<!-- ===== FOOTER ===== -->
+<footer class="site-footer" id="site-footer">
+  <div class="footer-top">
+    <div class="footer-brand">
+      <div class="footer-logo">Glycr<span class="footer-logo-dot"></span></div>
+      <p class="footer-desc">Ghana's premier event ticketing platform. Connecting event creators with audiences across the country — from Accra to Tamale.</p>
+      <div class="footer-social">
+        <a href="#" aria-label="Facebook" class="social-link"><i class="fab fa-facebook-f"></i></a>
+        <a href="#" aria-label="Twitter/X" class="social-link"><i class="fab fa-x-twitter"></i></a>
+        <a href="#" aria-label="Instagram" class="social-link"><i class="fab fa-instagram"></i></a>
+        <a href="#" aria-label="LinkedIn" class="social-link"><i class="fab fa-linkedin-in"></i></a>
+        <a href="#" aria-label="TikTok" class="social-link"><i class="fab fa-tiktok"></i></a>
+        <a href="#" aria-label="YouTube" class="social-link"><i class="fab fa-youtube"></i></a>
+      </div>
+    </div>
+    <div class="footer-links-group">
+      <h4 class="footer-heading">Platform</h4>
+      <ul>
+        <li><a href="#" onclick="app.showSection('home')">Browse Events</a></li>
+        <li><a href="#" onclick="app.showSection('about-page')">About Glycr</a></li>
+        <li><a href="#" onclick="app.showSection('help-page')">Help Center</a></li>
+        <li><a href="#" onclick="app.openModal('auth-modal')">Create Account</a></li>
+      </ul>
+    </div>
+    <div class="footer-links-group">
+      <h4 class="footer-heading">For Organizers</h4>
+      <ul>
+        <li><a href="#" onclick="app.showSection('dashboard')">Dashboard</a></li>
+        <li><a href="#" onclick="app.showEventForm()">Create Event</a></li>
+        <li><a href="#" onclick="app.showSection('payout-page')">Payouts</a></li>
+        <li><a href="#" onclick="app.showSection('report-page')">Analytics</a></li>
+      </ul>
+    </div>
+    <div class="footer-links-group">
+      <h4 class="footer-heading">Legal</h4>
+      <ul>
+        <li><a href="#" onclick="app.openModal('terms-modal')">Terms of Service</a></li>
+        <li><a href="#" onclick="app.openModal('privacy-modal')">Privacy Policy</a></li>
+        <li><a href="#" onclick="app.openModal('refund-policy-modal')">Refund Policy</a></li>
+        <li><a href="#" onclick="app.openModal('cookie-modal')">Cookie Policy</a></li>
+      </ul>
+    </div>
+    <div class="footer-newsletter">
+      <h4 class="footer-heading">Stay in the Loop</h4>
+      <p>Get notified about trending events and platform updates.</p>
+      <form class="newsletter-form" onsubmit="app.subscribeNewsletter(event)">
+        <div class="newsletter-input-wrap">
+          <input type="email" id="newsletter-email" placeholder="your@email.com" required>
+          <button type="submit"><i class="fas fa-arrow-right"></i></button>
+        </div>
+        <div id="newsletter-status" style="display:none; font-size:0.75rem; margin-top:0.5rem;"></div>
+      </form>
+      <div class="footer-contact-info">
+        <div><i class="fas fa-envelope"></i> <a href="mailto:hello@glycr.com">hello@glycr.com</a></div>
+        <div><i class="fas fa-phone"></i> +233 (0) 30 000 0000</div>
+        <div><i class="fas fa-map-marker-alt"></i> Accra, Ghana</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p class="footer-copy">© <span id="footer-year"></span> Glycr Technologies Ltd. All rights reserved.</p>
+    <div class="footer-bottom-links">
+      <a href="#" onclick="app.openModal('terms-modal')">Terms</a>
+      <a href="#" onclick="app.openModal('privacy-modal')">Privacy</a>
+      <a href="#" onclick="app.openModal('cookie-modal')">Cookies</a>
+    </div>
+  </div>
+</footer>
+
 <!-- ===== MODALS ===== -->
 
+<!-- Event Detail -->
 <div id="event-modal" class="modal">
   <div class="modal-backdrop"></div>
   <div class="modal-box wide" role="dialog" aria-modal="true">
@@ -413,6 +476,7 @@
   </div>
 </div>
 
+<!-- Purchase -->
 <div id="purchase-modal" class="modal">
   <div class="modal-backdrop"></div>
   <div class="modal-box" role="dialog" aria-modal="true">
@@ -428,7 +492,14 @@
         <div class="form-field"><label class="form-label">Company Name</label><input type="text" id="company-name" placeholder="Organisation" class="input"></div>
         <div class="form-field"><label class="form-label">Billing Address</label><input type="text" id="billing-address" placeholder="Address" class="input"></div>
       </div>
-      <div class="form-field" style="margin-top:0.5rem;"><label class="form-label">PO Number (optional)</label><input type="text" id="po-number" placeholder="PO-0000" class="input"></div>
+    </div>
+    <!-- Promo Code -->
+    <div id="promo-section" style="margin:0.75rem 0;">
+      <div class="promo-input-wrap">
+        <input type="text" id="promo-code-input" class="input" placeholder="Promo / Coupon code" style="flex:1;">
+        <button type="button" class="btn btn-ghost" id="apply-promo-btn" onclick="app.applyPromoCode()"><i class="fas fa-tag"></i> Apply</button>
+      </div>
+      <div id="promo-status" style="display:none; font-size:0.78rem; margin-top:0.4rem;"></div>
     </div>
     <div id="payment-section" style="display:none;">
       <p class="form-label" style="margin-bottom:0.6rem;">Payment Method</p>
@@ -444,6 +515,11 @@
         <div class="form-field"><label class="form-label">Email</label><input type="email" id="payer-email" placeholder="your@email.com" class="input"></div>
         <div class="form-field"><label class="form-label">Phone</label><input type="tel" id="payer-phone" placeholder="+233xxxxxxxxx" class="input"></div>
       </div>
+      <div id="price-summary" class="price-summary" style="display:none; margin-bottom:0.75rem;">
+        <div class="price-row"><span>Subtotal</span><span id="price-subtotal">₵0</span></div>
+        <div class="price-row discount-row" id="discount-row" style="display:none;"><span>Discount (<span id="discount-label">—</span>)</span><span id="price-discount" style="color:var(--mint);">-₵0</span></div>
+        <div class="price-row total-row"><span><strong>Total</strong></span><span id="price-total" style="color:var(--teal); font-weight:700;">₵0</span></div>
+      </div>
       <div id="card-element" style="display:none; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:1rem; margin-bottom:0.75rem; font-size:0.82rem; color:var(--muted);">Stripe card element</div>
       <label class="checkbox-row" style="margin-bottom:1rem;"><input type="checkbox" id="set-reminder"> Set reminder (SMS / Email)</label>
       <button class="btn btn-primary btn-block" id="pay-btn">Complete Purchase</button>
@@ -452,11 +528,30 @@
   </div>
 </div>
 
+<!-- Ticket (QR + PDF download) -->
+<div id="ticket-modal" class="modal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:400px;">
+    <button class="modal-close" aria-label="Close">&times;</button>
+    <div class="ticket-display">
+      <h3><i class="fas fa-ticket-alt"></i> Your Ticket</h3>
+      <div id="ticket-canvas" class="ticket-canvas"></div>
+      <p id="ticket-id" class="ticket-id-mono"></p>
+      <div style="display:flex; gap:0.5rem; margin-top:0.75rem; flex-direction:column;">
+        <button class="btn btn-primary btn-block" id="download-ticket-pdf"><i class="fas fa-file-pdf"></i> Download PDF Ticket</button>
+        <button class="btn btn-outline btn-block" id="validate-ticket">Validate at Door</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Waitlist -->
 <div id="waitlist-modal" class="modal">
   <div class="modal-backdrop"></div>
   <div class="modal-box" role="dialog" aria-modal="true">
     <div class="modal-header"><h3 class="modal-title" id="waitlist-title">Join Waitlist</h3><button class="modal-close" aria-label="Close">&times;</button></div>
-    <form id="waitlist-form" class="form">
+    <p style="font-size:0.83rem; color:var(--muted); margin-bottom:1.25rem;">We'll notify you instantly when a ticket becomes available.</p>
+    <form id="waitlist-form" class="form" onsubmit="app.joinWaitlist(); return false;">
       <div class="form-field"><label class="form-label">Full Name</label><input type="text" id="waitlist-name" placeholder="Your name" class="input" required></div>
       <div class="form-row">
         <div class="form-field"><label class="form-label">Email</label><input type="email" id="waitlist-email" placeholder="your@email.com" class="input" required></div>
@@ -468,6 +563,7 @@
   </div>
 </div>
 
+<!-- Auth -->
 <div id="auth-modal" class="modal">
   <div class="modal-backdrop"></div>
   <div class="modal-box" role="dialog" aria-modal="true" style="max-width:460px;">
@@ -497,6 +593,7 @@
   </div>
 </div>
 
+<!-- Forgot password -->
 <div id="forgot-password-modal" class="modal">
   <div class="modal-backdrop"></div>
   <div class="modal-box" role="dialog" aria-modal="true" style="max-width:460px;">
@@ -509,6 +606,7 @@
   </div>
 </div>
 
+<!-- Reset password -->
 <div id="reset-password-modal" class="modal">
   <div class="modal-backdrop"></div>
   <div class="modal-box" role="dialog" aria-modal="true" style="max-width:460px;">
@@ -527,6 +625,7 @@
   </div>
 </div>
 
+<!-- Profile edit -->
 <div id="profile-edit-modal" class="modal">
   <div class="modal-backdrop"></div>
   <div class="modal-box" role="dialog" aria-modal="true">
@@ -540,7 +639,7 @@
   </div>
 </div>
 
-<!-- Event Form with Google Maps -->
+<!-- Event Form -->
 <div id="event-form-modal" class="modal">
   <div class="modal-backdrop"></div>
   <div class="modal-box wide" role="dialog" aria-modal="true">
@@ -561,7 +660,7 @@
       </div>
       <div class="form-field"><label class="form-label">Description</label><textarea id="event-desc" placeholder="Tell attendees what makes this special…" class="input" rows="3" required></textarea></div>
       <div class="form-row">
-        <div class="form-field"><label class="form-label">Date & Time</label><input type="datetime-local" id="event-date" class="input" required></div>
+        <div class="form-field"><label class="form-label">Event Date & Time</label><input type="datetime-local" id="event-date" class="input" required></div>
         <div class="form-field"><label class="form-label">Venue Name</label><input type="text" id="event-venue" placeholder="Venue" class="input" required></div>
       </div>
       <div class="form-row">
@@ -574,16 +673,21 @@
         </div>
       </div>
 
-      <!-- Google Maps Location Picker -->
+      <!-- Scheduled Publish -->
+      <div class="form-field">
+        <label class="form-label"><i class="fas fa-clock"></i> Schedule Publication (optional)</label>
+        <input type="datetime-local" id="event-publish-at" class="input">
+        <p style="font-size:0.73rem; color:var(--muted); margin-top:0.3rem;">Leave empty to publish immediately. If set, the event will go live at the selected date/time.</p>
+      </div>
+
+      <!-- Google Maps -->
       <div class="form-field">
         <label class="form-label"><i class="fas fa-map-marker-alt"></i> Maps Location (optional)</label>
         <div class="maps-search-wrap">
           <input type="text" id="maps-search-input" class="input" placeholder="Search for your venue on Google Maps…" autocomplete="off">
           <button type="button" class="btn btn-ghost" id="maps-search-btn" style="padding:0.55rem 1rem;"><i class="fas fa-search"></i></button>
         </div>
-        <div id="maps-container" class="maps-container">
-          <div id="maps-map"></div>
-        </div>
+        <div id="maps-container" class="maps-container"><div id="maps-map"></div></div>
         <div id="maps-selected-info" class="maps-selected-info" style="display:none;">
           <i class="fas fa-map-marker-alt"></i>
           <span id="maps-selected-address">—</span>
@@ -598,9 +702,19 @@
         <div class="form-field"><label class="form-label">Organiser Email</label><input type="email" id="organizer-email" placeholder="you@email.com" class="input" required></div>
         <div class="form-field"><label class="form-label">Organiser Phone</label><input type="tel" id="organizer-phone" placeholder="+233xxxxxxxxx" class="input" required></div>
       </div>
-      <div class="form-field"><label class="form-label">Event Image</label><label class="file-drop" for="event-image"><input type="file" id="event-image" accept="image/*">Click to upload image (JPG, PNG, WebP)</label></div>
+      <div class="form-field"><label class="form-label">Event Image</label>
+        <label class="file-drop" for="event-image"><input type="file" id="event-image" accept="image/*">Click to upload image (JPG, PNG, WebP)</label>
+      </div>
+
+      <!-- Ticket Types -->
       <div style="margin-top:0.25rem;">
         <p class="form-label" style="margin-bottom:0.75rem;">Ticket Types</p>
+        <div class="ticket-type-headers">
+          <span>Type</span><span>Price (₵)</span><span>Capacity</span>
+          <span>Early Bird ₵</span><span>Early Bird End</span>
+          <span>Min Qty</span><span>Discount %</span>
+          <span></span>
+        </div>
         <div id="ticket-types-form"></div>
         <button type="button" class="btn btn-ghost" id="add-ticket-type" style="margin-top:0.6rem; font-size:0.8rem;"><i class="fas fa-plus"></i> Add Ticket Type</button>
       </div>
@@ -609,19 +723,7 @@
   </div>
 </div>
 
-<div id="ticket-modal" class="modal">
-  <div class="modal-backdrop"></div>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:380px;">
-    <button class="modal-close" aria-label="Close">&times;</button>
-    <div class="ticket-display">
-      <h3><i class="fas fa-ticket-alt"></i> Your Ticket</h3>
-      <div id="ticket-canvas" class="ticket-canvas"></div>
-      <p id="ticket-id" class="ticket-id-mono"></p>
-      <button class="btn btn-outline btn-block" id="validate-ticket">Validate at Door</button>
-    </div>
-  </div>
-</div>
-
+<!-- Waitlist View (organizer) -->
 <div id="waitlist-view-modal" class="modal">
   <div class="modal-backdrop"></div>
   <div class="modal-box" role="dialog" aria-modal="true">
@@ -631,6 +733,7 @@
   </div>
 </div>
 
+<!-- Cancel event -->
 <div id="cancel-event-modal" class="modal">
   <div class="modal-backdrop"></div>
   <div class="modal-box" role="dialog" aria-modal="true" style="max-width:420px;">
@@ -643,6 +746,7 @@
   </div>
 </div>
 
+<!-- Payout request -->
 <div id="payout-modal" class="modal">
   <div class="modal-backdrop"></div>
   <div class="modal-box" role="dialog" aria-modal="true">
@@ -678,6 +782,7 @@
   </div>
 </div>
 
+<!-- Settings -->
 <div id="settings-modal" class="modal">
   <div class="modal-backdrop"></div>
   <div class="modal-box" role="dialog" aria-modal="true">
@@ -702,19 +807,194 @@
   </div>
 </div>
 
-<!--
-  Replace YOUR_MAPS_API_KEY with a real Google Maps API key that has
-  Maps JavaScript API + Places API enabled.
--->
+<!-- REFUND REQUEST MODAL (Customer) -->
+<div id="refund-request-modal" class="modal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:500px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-undo" style="color:var(--coral);"></i> Request Refund</h3>
+      <button class="modal-close" aria-label="Close">&times;</button>
+    </div>
+    <div style="padding:0.75rem 1rem; background:var(--bg-3); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:1.25rem;">
+      <div style="font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.3rem;">Ticket</div>
+      <div id="refund-ticket-info" style="font-size:0.88rem; color:var(--bright); font-weight:600;"></div>
+    </div>
+    <input type="hidden" id="refund-ticket-id">
+    <form class="form" onsubmit="app.submitRefundRequest(event)">
+      <div class="form-field">
+        <label class="form-label">Reason for Refund <span style="color:var(--coral);">*</span></label>
+        <select id="refund-reason-select" class="input" required>
+          <option value="">Select a reason…</option>
+          <option value="event_cancelled">Event was cancelled</option>
+          <option value="cant_attend">Can no longer attend</option>
+          <option value="duplicate_purchase">Duplicate purchase</option>
+          <option value="wrong_ticket">Wrong ticket type purchased</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Additional Details</label>
+        <textarea id="refund-reason-text" class="input" rows="3" placeholder="Please provide more details…" required></textarea>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Refund Amount (optional — leave blank for full refund)</label>
+        <input type="number" id="refund-amount" class="input" placeholder="e.g. 50.00" min="0" step="0.01">
+        <p style="font-size:0.73rem; color:var(--muted); margin-top:0.3rem;">Leave empty to request a full refund.</p>
+      </div>
+      <button type="submit" class="btn btn-coral btn-block"><i class="fas fa-paper-plane"></i> Submit Refund Request</button>
+    </form>
+    <div id="refund-request-status" class="status-msg" style="display:none; margin-top:0.75rem;"></div>
+  </div>
+</div>
+
+<!-- ORGANIZER REFUND REQUESTS MODAL -->
+<div id="org-refunds-modal" class="modal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box wide" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-undo" style="color:var(--coral);"></i> Refund Requests</h3>
+      <button class="modal-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="page-filters" style="margin-bottom:1.25rem;">
+      <div class="filter-group">
+        <label class="filter-label">Status</label>
+        <select id="org-refund-filter" class="filter-input" onchange="app.loadOrganizerRefunds()">
+          <option value="all">All</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+    </div>
+    <div id="org-refunds-list"><div class="loading-placeholder"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- COUPON MANAGER MODAL -->
+<div id="coupons-modal" class="modal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box wide" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-tag" style="color:var(--teal);"></i> Coupon / Promo Codes</h3>
+      <button class="modal-close" aria-label="Close">&times;</button>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+      <div>
+        <h4 style="font-family:'Syne',sans-serif; font-size:1rem; color:var(--bright); margin-bottom:1rem;">Create New Code</h4>
+        <form class="form" onsubmit="app.createCoupon(event)">
+          <div class="form-field">
+            <label class="form-label">Code <span style="color:var(--coral);">*</span></label>
+            <div style="display:flex; gap:0.5rem;">
+              <input type="text" id="coupon-code" class="input" placeholder="e.g. SAVE20" style="text-transform:uppercase;" required>
+              <button type="button" class="btn btn-ghost" onclick="app.generateCouponCode()" style="padding:0.55rem 0.8rem;"><i class="fas fa-dice"></i></button>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label class="form-label">Discount Type</label>
+              <select id="coupon-type" class="input" required>
+                <option value="percentage">Percentage (%)</option>
+                <option value="fixed">Fixed Amount (₵)</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Discount Value</label>
+              <input type="number" id="coupon-value" class="input" placeholder="20" min="1" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label class="form-label">Expiry Date</label>
+              <input type="date" id="coupon-expiry" class="input" required>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Usage Limit</label>
+              <input type="number" id="coupon-limit" class="input" placeholder="100" min="1">
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Applicable Events (optional)</label>
+            <select id="coupon-event" class="input"><option value="">All my events</option></select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-plus"></i> Create Code</button>
+          <div id="coupon-create-status" class="status-msg" style="display:none; margin-top:0.5rem;"></div>
+        </form>
+      </div>
+      <div>
+        <h4 style="font-family:'Syne',sans-serif; font-size:1rem; color:var(--bright); margin-bottom:1rem;">My Codes</h4>
+        <div id="coupons-list" style="max-height:420px; overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LEGAL MODALS -->
+<div id="terms-modal" class="modal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box wide" role="dialog" aria-modal="true">
+    <div class="modal-header"><h3 class="modal-title">Terms of Service</h3><button class="modal-close" aria-label="Close">&times;</button></div>
+    <div class="legal-content">
+      <p><strong>Last updated:</strong> <span id="terms-date"></span></p>
+      <h4>1. Acceptance of Terms</h4><p>By accessing or using Glycr, you agree to be bound by these Terms of Service. If you do not agree, please do not use our platform.</p>
+      <h4>2. Use of the Platform</h4><p>You may use Glycr only for lawful purposes and in accordance with these Terms. You agree not to use Glycr to create or sell fraudulent tickets, misrepresent events, or engage in any harmful conduct.</p>
+      <h4>3. Organizer Responsibilities</h4><p>Organizers are solely responsible for the events they create, including compliance with local laws, accurate event details, and honouring tickets sold through the platform.</p>
+      <h4>4. Platform Fees</h4><p>Glycr charges a platform fee on ticket sales. Current fee rates are displayed on your dashboard. Fees are subject to change with 30 days' notice.</p>
+      <h4>5. Refunds & Cancellations</h4><p>Refund policies are set by event organizers. Glycr facilitates refunds but is not responsible for refund disputes between organizers and attendees.</p>
+      <h4>6. Intellectual Property</h4><p>All content on Glycr, including logos, designs, and software, is owned by Glycr Technologies Ltd and protected by copyright law.</p>
+      <h4>7. Limitation of Liability</h4><p>Glycr is not liable for any indirect, incidental, or consequential damages arising from your use of the platform.</p>
+      <h4>8. Governing Law</h4><p>These Terms are governed by the laws of the Republic of Ghana.</p>
+    </div>
+  </div>
+</div>
+
+<div id="privacy-modal" class="modal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box wide" role="dialog" aria-modal="true">
+    <div class="modal-header"><h3 class="modal-title">Privacy Policy</h3><button class="modal-close" aria-label="Close">&times;</button></div>
+    <div class="legal-content">
+      <p><strong>Last updated:</strong> <span id="privacy-date"></span></p>
+      <h4>1. Information We Collect</h4><p>We collect information you provide (name, email, phone), payment data, and usage data when you interact with Glycr.</p>
+      <h4>2. How We Use Your Information</h4><p>We use your data to process ticket purchases, send event notifications, improve our platform, and comply with legal obligations.</p>
+      <h4>3. Data Sharing</h4><p>We share your data with event organizers (for events you attend), payment processors, and as required by law. We do not sell your personal data.</p>
+      <h4>4. Data Security</h4><p>We implement industry-standard security measures including encryption and secure data storage to protect your information.</p>
+      <h4>5. Your Rights</h4><p>You have the right to access, correct, or delete your personal data. Contact us at privacy@glycr.com to exercise these rights.</p>
+      <h4>6. Cookies</h4><p>We use cookies to improve your experience. See our Cookie Policy for details.</p>
+      <h4>7. Contact</h4><p>For privacy questions, contact us at privacy@glycr.com</p>
+    </div>
+  </div>
+</div>
+
+<div id="refund-policy-modal" class="modal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box wide" role="dialog" aria-modal="true">
+    <div class="modal-header"><h3 class="modal-title">Refund Policy</h3><button class="modal-close" aria-label="Close">&times;</button></div>
+    <div class="legal-content">
+      <h4>General Refund Policy</h4><p>Refund eligibility is determined by the event organizer's policy set at the time of purchase. Glycr facilitates but does not guarantee refunds.</p>
+      <h4>Event Cancellations</h4><p>If an organizer cancels an event, all ticket holders are entitled to a full refund. Glycr will process these automatically within 5–7 business days.</p>
+      <h4>Attendee-Initiated Refunds</h4><p>Refund requests must be submitted through your Profile > Purchase History before the refund window closes. The organizer reviews and approves/rejects each request.</p>
+      <h4>Processing Time</h4><p>Approved refunds are processed within 5–10 business days depending on payment method.</p>
+    </div>
+  </div>
+</div>
+
+<div id="cookie-modal" class="modal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:500px;">
+    <div class="modal-header"><h3 class="modal-title">Cookie Policy</h3><button class="modal-close" aria-label="Close">&times;</button></div>
+    <div class="legal-content">
+      <h4>What are Cookies?</h4><p>Cookies are small text files stored on your device when you visit Glycr.</p>
+      <h4>How We Use Cookies</h4><p>We use cookies for authentication, preferences, analytics, and to improve your experience on the platform.</p>
+      <h4>Managing Cookies</h4><p>You can disable cookies in your browser settings, but this may affect platform functionality.</p>
+    </div>
+  </div>
+</div>
+
 <script>
   window.initGlycrMaps = function() {
-    if (window.app && typeof window.app.initMaps === 'function') {
-      window.app.initMaps();
-    }
+    if (window.app && typeof window.app.initMaps === 'function') window.app.initMaps();
   };
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_MAPS_API_KEY&libraries=places&callback=initGlycrMaps" async defer></script>
-
 <script src="js/app.js"></script>
 </body>
 </html>
