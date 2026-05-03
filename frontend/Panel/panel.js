@@ -17,6 +17,7 @@ let waitlist        = [];
 let logs            = [];
 let serviceRequests = [];
 let messages        = [];
+let transactions    = [];
 let stats           = {};
 let platformFeePercent = 3;
 
@@ -30,6 +31,7 @@ const selectedIds = {
   waitlist: new Set(),
   'service-requests': new Set(),
   messages: new Set(),
+  transactions: new Set(),
 };
 
 // ---------- SORT STATE ----------
@@ -39,10 +41,12 @@ const sortState = {};
 const pageState = {
   users: 1, events: 1, tickets: 1, payouts: 1,
   refunds: 1, waitlist: 1, 'service-requests': 1, messages: 1,
+  transactions: 1,
 };
 const perPage = {
   users: 20, events: 20, tickets: 20, payouts: 20,
   refunds: 20, waitlist: 20, 'service-requests': 20, messages: 20,
+  transactions: 20,
 };
 
 // ---------- CHART INSTANCES ----------
@@ -53,7 +57,6 @@ let currentChartPeriod = 'daily';
 
 /* =============================================
    CUSTOM MODAL DIALOGS
-   Replaces window.confirm / window.alert / window.prompt
 ============================================= */
 let _customConfirmCallback = null;
 let _customAlertCallback   = null;
@@ -279,7 +282,6 @@ function forceLogout(reason) {
   document.getElementById('login-page').style.display  = 'flex';
   document.getElementById('login-password').value      = '';
   document.getElementById('login-error').style.display = 'none';
-  // Use custom alert instead of native alert()
   customAlert(reason, 'Session Ended');
 }
 
@@ -401,7 +403,6 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Export modal radio listeners
   document.querySelectorAll('input[name="export-range"]').forEach(r =>
     r.addEventListener('change', () => {
       const isCustom = document.querySelector('input[name="export-range"]:checked')?.value === 'custom';
@@ -412,11 +413,7 @@ window.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('input[name="export-format"]').forEach(r => r.addEventListener('change', updateExportPreview));
   document.getElementById('export-date-from')?.addEventListener('change', updateExportPreview);
   document.getElementById('export-date-to')?.addEventListener('change',   updateExportPreview);
-
-  // Password strength
   document.getElementById('new-password')?.addEventListener('input', checkPasswordStrength);
-
-  // Broadcast audience radios — wired after DOM ready
   document.querySelectorAll('input[name="broadcast-audience"]').forEach(r =>
     r.addEventListener('change', updateBroadcastAudiencePreview)
   );
@@ -424,7 +421,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('login-page').style.display !== 'none') handleLogin();
-  // Allow Enter to submit custom prompt
   if (e.key === 'Enter' && document.getElementById('custom-prompt-modal')?.classList.contains('show')) {
     _customPromptResolve(document.getElementById('custom-prompt-input').value);
   }
@@ -599,6 +595,7 @@ function showTab(tab, el) {
   if (tab === 'waitlist')         renderWaitlist();
   if (tab === 'refunds')          renderRefunds();
   if (tab === 'service-requests') renderServiceRequests();
+  if (tab === 'transactions')     { renderTransactions(); renderTransactionSummaryCards(); }
   if (tab === 'messages')         { renderMessages(); updateMessageStats(); updateBroadcastAudiencePreview(); }
   if (tab === 'reports')          { renderReports(); renderCharts(); }
 }
@@ -729,6 +726,7 @@ async function loadData() {
     waitlist        = normalize(await apiRequest('/admin/waitlists'));
     serviceRequests = normalize(await apiRequest('/admin/service-requests'));
     await loadMessages();
+    await loadTransactions();
     await loadLogs();
     calculateStats();
     renderDashboard();
@@ -788,6 +786,10 @@ function renderDashboard() {
   setText('open-sr-count',          stats.openServiceRequests);
   const feeEl = document.getElementById('stat-platform-fee');
   if (feeEl) feeEl.textContent = `₵${stats.platformFeeAmount.toFixed(2)} (${stats.platformFeeRate}%)`;
+
+  // update transactions quick count from dashboard
+  const txnCount = document.getElementById('quick-transactions-count');
+  if (txnCount) txnCount.textContent = transactions.length;
 }
 
 function setText(id, val) {
@@ -824,6 +826,7 @@ function _rerenderTable(key) {
     waitlist:           renderWaitlist,
     'service-requests': renderServiceRequests,
     messages:           renderMessages,
+    transactions:       renderTransactions,
   };
   if (map[key]) map[key]();
 }
@@ -899,6 +902,7 @@ function getFilteredData(tableKey) {
     waitlist:           getFilteredWaitlist,
     'service-requests': getFilteredServiceRequests,
     messages:           getFilteredMessages,
+    transactions:       getFilteredTransactions,
   };
   return map[tableKey] ? map[tableKey]() : [];
 }
@@ -1965,10 +1969,363 @@ function viewEvent(eventId) {
 }
 
 /* =============================================
+   TRANSACTIONS
+============================================= */
+
+/**
+ * Derive a synthetic transaction ledger from tickets, payouts and refunds
+ * when the backend does not expose a dedicated /admin/transactions endpoint.
+ * The backend endpoint is tried first; on failure we fall back gracefully.
+ */
+function _buildTransactionsFromData() {
+  const txns = [];
+
+  // 1. Ticket purchases → credit
+  tickets.forEach(t => {
+    if (!t.price || t.price === 0) return;
+    const user = resolveUserForTicket(t);
+    const ev   = resolveEventForTicket(t);
+    txns.push({
+      id:         `txn_tkt_${t.id}`,
+      type:       'credit',
+      category:   'ticket_purchase',
+      amount:     t.price,
+      status:     'success',
+      method:     t.paymentMethod || 'card',
+      userId:     t.userId?.id || t.userId?._id?.toString() || t.userId || '',
+      userName:   user?.name || t.userEmail || 'Unknown',
+      userEmail:  t.userEmail || user?.email || '',
+      reference:  String(t.id).substring(0, 12).toUpperCase(),
+      description:`Ticket purchase — ${ev?.title || 'Event'}`,
+      eventTitle: ev?.title || '',
+      ticketId:   t.id,
+      createdAt:  t.purchasedAt || t.createdAt || new Date().toISOString(),
+    });
+  });
+
+  // 2. Approved refunds → debit
+  refunds.filter(r => r.status === 'approved').forEach(r => {
+    const user = users.find(u => u.id === (r.userId?.id || r.userId?._id?.toString() || r.userId));
+    txns.push({
+      id:         `txn_ref_${r.id}`,
+      type:       'debit',
+      category:   'refund',
+      amount:     r.amount || 0,
+      status:     'success',
+      method:     'system',
+      userId:     r.userId?.id || r.userId?._id?.toString() || r.userId || '',
+      userName:   r.userName || user?.name || 'Unknown',
+      userEmail:  r.userEmail || user?.email || '',
+      reference:  String(r.id).substring(0, 12).toUpperCase(),
+      description:`Refund — ${r.eventTitle || 'Event'}`,
+      eventTitle: r.eventTitle || '',
+      createdAt:  r.resolvedAt || r.requestedAt || new Date().toISOString(),
+    });
+  });
+
+  // 3. Completed payouts → debit
+  payouts.filter(p => p.status === 'completed').forEach(p => {
+    const org = users.find(u => u.id === (p.organizerId?.id || p.organizerId?._id?.toString()));
+    txns.push({
+      id:         `txn_pay_${p.id}`,
+      type:       'debit',
+      category:   'payout',
+      amount:     p.amount,
+      status:     'success',
+      method:     p.method || 'momo',
+      userId:     p.organizerId?.id || p.organizerId?._id?.toString() || '',
+      userName:   org?.name || p.email || 'Unknown',
+      userEmail:  p.email || org?.email || '',
+      reference:  String(p.id).substring(0, 12).toUpperCase(),
+      description:`Organizer payout — ${p.method?.toUpperCase() || 'MOMO'}`,
+      eventTitle: '',
+      createdAt:  p.completedAt || p.requestedAt || new Date().toISOString(),
+    });
+  });
+
+  // Sort newest first
+  txns.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return txns;
+}
+
+async function loadTransactions() {
+  try {
+    const result = await apiRequest('/admin/transactions');
+    const normalize = arr => arr.map(r => ({ ...r, id: r.id || r._id?.toString() }));
+    transactions = normalize(result.transactions || result || []);
+    if (!transactions.length) throw new Error('empty');
+  } catch {
+    // Fall back to synthesising from existing data
+    transactions = _buildTransactionsFromData();
+  }
+}
+
+async function refreshTransactions() {
+  try {
+    const result = await apiRequest('/admin/transactions');
+    const normalize = arr => arr.map(r => ({ ...r, id: r.id || r._id?.toString() }));
+    transactions = normalize(result.transactions || result || []);
+  } catch {
+    transactions = _buildTransactionsFromData();
+  }
+  renderTransactions();
+  renderTransactionSummaryCards();
+  toast.info('Refreshed', 'Transaction ledger is up to date.');
+}
+
+function getTransactionSummaryStats() {
+  const filtered = getFilteredTransactions();
+  const credits  = filtered.filter(t => t.type === 'credit').reduce((s, t) => s + (t.amount || 0), 0);
+  const debits   = filtered.filter(t => t.type === 'debit').reduce((s, t) => s + (t.amount || 0), 0);
+  return { credits, debits, net: credits - debits, count: filtered.length };
+}
+
+function renderTransactionSummaryCards() {
+  // Only update the *all-data* summary (top cards, not filtered, to give global picture)
+  const totalCredits = transactions.filter(t => t.type === 'credit').reduce((s, t) => s + (t.amount || 0), 0);
+  const totalDebits  = transactions.filter(t => t.type === 'debit').reduce((s, t) => s + (t.amount || 0), 0);
+  const net          = totalCredits - totalDebits;
+  setText('txn-stat-credits', `₵${totalCredits.toFixed(2)}`);
+  setText('txn-stat-debits',  `₵${totalDebits.toFixed(2)}`);
+  setText('txn-stat-net',     `₵${net.toFixed(2)}`);
+  setText('txn-stat-count',   transactions.length);
+}
+
+function getFilteredTransactions() {
+  const search   = (document.getElementById('txn-search')?.value || '').toLowerCase();
+  const type     = document.getElementById('txn-type-filter')?.value     || 'all';
+  const status   = document.getElementById('txn-status-filter')?.value   || 'all';
+  const category = document.getElementById('txn-category-filter')?.value || 'all';
+  const dfrom    = document.getElementById('txn-date-from')?.value;
+  const dto      = document.getElementById('txn-date-to')?.value;
+
+  return transactions.filter(t => {
+    const mSearch = !search
+      || String(t.id).toLowerCase().includes(search)
+      || (t.userName    || '').toLowerCase().includes(search)
+      || (t.userEmail   || '').toLowerCase().includes(search)
+      || (t.reference   || '').toLowerCase().includes(search)
+      || (t.description || '').toLowerCase().includes(search);
+
+    return mSearch
+      && (type     === 'all' || t.type     === type)
+      && (status   === 'all' || t.status   === status)
+      && (category === 'all' || t.category === category)
+      && applyDateRangeFilter(t.createdAt, dfrom, dto);
+  });
+}
+
+function filterTransactions() {
+  pageState.transactions = 1;
+  renderTransactions();
+}
+
+function renderTransactions() {
+  const tb      = document.getElementById('transactions-table');
+  if (!tb) return;
+
+  const filtered = getFilteredTransactions();
+  const sorted   = applySorting(filtered, 'transactions');
+  const { rows, page, totalPages, total, pp } = paginate(sorted, 'transactions');
+
+  // Update summary cards based on full filtered set (not just current page)
+  renderTransactionSummaryCards();
+
+  if (!rows.length) {
+    tb.innerHTML = `<tr><td colspan="10" class="empty-state">
+      <i class="fa-solid fa-arrow-right-arrow-left" style="font-size:1.5rem;display:block;margin-bottom:0.5rem;"></i>
+      No transactions found
+    </td></tr>`;
+    renderPaginationBar('transactions-pagination', 'transactions', 0, 1, 1, pp);
+    return;
+  }
+
+  tb.innerHTML = rows.map(txn => {
+    const isCredit  = txn.type === 'credit';
+    const shortId   = String(txn.id).substring(0, 14);
+    const dateStr   = new Date(txn.createdAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+    const timeStr   = new Date(txn.createdAt).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+
+    // Type badge
+    const typeBadge = isCredit
+      ? `<span class="txn-type-badge txn-type-credit"><i class="fa-solid fa-arrow-down-to-line"></i> Credit</span>`
+      : `<span class="txn-type-badge txn-type-debit"><i class="fa-solid fa-arrow-up-from-line"></i> Debit</span>`;
+
+    // Category pill
+    const catLabels = {
+      ticket_purchase: ['fa-solid fa-ticket',              '#6366f1', 'Ticket Purchase'],
+      refund:          ['fa-solid fa-rotate-left',          '#ef4444', 'Refund'],
+      payout:          ['fa-solid fa-money-bill-transfer',  '#8b5cf6', 'Payout'],
+      top_up:          ['fa-solid fa-circle-plus',          '#10b981', 'Top Up'],
+      withdrawal:      ['fa-solid fa-circle-minus',         '#f59e0b', 'Withdrawal'],
+    };
+    const [catIcon, catColor, catLabel] = catLabels[txn.category] || ['fa-solid fa-circle-question', '#94a3b8', txn.category || 'Other'];
+    const catPill = `<span class="txn-category-pill" style="color:${catColor};background:${catColor}1a;border-color:${catColor}33;">
+      <i class="${catIcon}"></i> ${catLabel}
+    </span>`;
+
+    // Status badge
+    const statusMap = {
+      success: ['badge-active',    'fa-circle-check',       'Success'],
+      pending: ['badge-pending',   'fa-clock',              'Pending'],
+      failed:  ['badge-cancelled', 'fa-circle-xmark',       'Failed'],
+    };
+    const [sBadge, sIcon, sLabel] = statusMap[txn.status] || statusMap.success;
+
+    // Amount styling
+    const amtColor  = isCredit ? '#34d399' : '#f87171';
+    const amtPrefix = isCredit ? '+' : '−';
+
+    // Payment method icon
+    const methodIcons = {
+      card:   'fa-solid fa-credit-card',
+      momo:   'fa-solid fa-mobile-screen-button',
+      bank:   'fa-solid fa-building-columns',
+      cash:   'fa-solid fa-money-bill',
+      system: 'fa-solid fa-gear',
+    };
+    const methodIcon  = methodIcons[txn.method] || 'fa-solid fa-credit-card';
+    const methodLabel = (txn.method || 'card').toUpperCase();
+
+    const sel = selectedIds.transactions.has(txn.id);
+
+    return `
+      <tr class="${sel ? 'row-selected' : ''}">
+        <td><input type="checkbox" class="row-checkbox" data-id="${txn.id}" ${sel ? 'checked' : ''} onchange="toggleRowSelect('transactions','${txn.id}',this)"></td>
+        <td>
+          <div class="txn-id" title="${txn.id}">${shortId}…</div>
+          ${txn.reference ? `<div class="txn-ref"><i class="fa-solid fa-hashtag" style="font-size:0.6rem;margin-right:0.2rem;"></i>${txn.reference}</div>` : ''}
+        </td>
+        <td>${typeBadge}</td>
+        <td>${catPill}</td>
+        <td>
+          <div class="txn-user-name">${txn.userName || '—'}</div>
+          <div class="txn-user-email">${txn.userEmail || '—'}</div>
+        </td>
+        <td>
+          <div class="txn-amount" style="color:${amtColor};">${amtPrefix}₵${(txn.amount || 0).toFixed(2)}</div>
+        </td>
+        <td><span class="badge ${sBadge}"><i class="fa-solid ${sIcon}"></i> ${sLabel}</span></td>
+        <td>
+          <div class="txn-method"><i class="${methodIcon}" style="margin-right:0.3rem;color:#64748b;"></i>${methodLabel}</div>
+        </td>
+        <td>
+          <div style="font-size:0.875rem;">${dateStr}</div>
+          <div style="font-size:0.72rem;color:#475569;">${timeStr}</div>
+        </td>
+        <td>
+          <div class="actions">
+            <button class="btn-icon" style="background:#6366f1;" onclick="viewTransaction('${txn.id}')" title="View Details"><i class="fa-solid fa-eye"></i></button>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+
+  renderPaginationBar('transactions-pagination', 'transactions', total, page, totalPages, pp);
+}
+
+function viewTransaction(txnId) {
+  const txn = transactions.find(t => t.id === txnId);
+  if (!txn) return;
+
+  const isCredit = txn.type === 'credit';
+  const amtColor = isCredit ? '#34d399' : '#f87171';
+  const amtPrefix = isCredit ? '+' : '−';
+
+  const catLabels = {
+    ticket_purchase: ['fa-solid fa-ticket',              'Ticket Purchase'],
+    refund:          ['fa-solid fa-rotate-left',         'Refund'],
+    payout:          ['fa-solid fa-money-bill-transfer', 'Payout'],
+    top_up:          ['fa-solid fa-circle-plus',         'Top Up'],
+    withdrawal:      ['fa-solid fa-circle-minus',        'Withdrawal'],
+  };
+  const [catIcon, catLabel] = catLabels[txn.category] || ['fa-solid fa-circle-question', txn.category || 'Other'];
+
+  const statusMap = {
+    success: ['badge-active',    'fa-circle-check',  'Success'],
+    pending: ['badge-pending',   'fa-clock',         'Pending'],
+    failed:  ['badge-cancelled', 'fa-circle-xmark',  'Failed'],
+  };
+  const [sBadge, sIcon, sLabel] = statusMap[txn.status] || statusMap.success;
+
+  const methodIcons = {
+    card: 'fa-solid fa-credit-card', momo: 'fa-solid fa-mobile-screen-button',
+    bank: 'fa-solid fa-building-columns', cash: 'fa-solid fa-money-bill', system: 'fa-solid fa-gear',
+  };
+  const methodIcon = methodIcons[txn.method] || 'fa-solid fa-credit-card';
+
+  document.getElementById('transaction-modal-body').innerHTML = `
+    <div style="display:flex;align-items:center;gap:1rem;padding:1rem;background:#0f172a;border-radius:0.75rem;margin-bottom:1.25rem;">
+      <div style="width:3rem;height:3rem;border-radius:50%;background:${isCredit ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <i class="fa-solid ${isCredit ? 'fa-arrow-down-to-line' : 'fa-arrow-up-from-line'}" style="color:${amtColor};font-size:1.2rem;"></i>
+      </div>
+      <div>
+        <div style="font-size:1.75rem;font-weight:800;color:${amtColor};">${amtPrefix}₵${(txn.amount || 0).toFixed(2)}</div>
+        <div style="font-size:0.8rem;color:#94a3b8;">${txn.description || catLabel}</div>
+      </div>
+      <div style="margin-left:auto;">
+        <span class="badge ${sBadge}"><i class="fa-solid ${sIcon}"></i> ${sLabel}</span>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <div class="detail-item" style="grid-column:span 2;">
+        <div class="detail-label"><i class="fa-solid fa-fingerprint"></i> Transaction ID</div>
+        <div class="detail-value" style="font-family:monospace;font-size:0.8rem;word-break:break-all;">${txn.id}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label"><i class="fa-solid fa-arrow-right-arrow-left"></i> Type</div>
+        <div class="detail-value" style="text-transform:capitalize;">${txn.type}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label"><i class="${catIcon}"></i> Category</div>
+        <div class="detail-value">${catLabel}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label"><i class="${methodIcon}"></i> Payment Method</div>
+        <div class="detail-value" style="text-transform:uppercase;">${txn.method || '—'}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label"><i class="fa-solid fa-hashtag"></i> Reference</div>
+        <div class="detail-value" style="font-family:monospace;">${txn.reference || '—'}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label"><i class="fa-regular fa-calendar"></i> Date &amp; Time</div>
+        <div class="detail-value">${new Date(txn.createdAt).toLocaleString()}</div>
+      </div>
+      ${txn.eventTitle ? `
+      <div class="detail-item">
+        <div class="detail-label"><i class="fa-regular fa-calendar-check"></i> Event</div>
+        <div class="detail-value">${txn.eventTitle}</div>
+      </div>` : '<div></div>'}
+    </div>
+
+    <div style="padding:1rem;background:#0f172a;border-radius:0.5rem;margin-top:1rem;">
+      <h4 style="font-weight:700;margin-bottom:0.75rem;font-size:0.875rem;"><i class="fa-regular fa-user" style="color:#6366f1;margin-right:0.4rem;"></i>${isCredit ? 'Customer' : 'Recipient / Organizer'}</h4>
+      <div style="font-size:0.875rem;line-height:1.8;color:#94a3b8;">
+        <div><i class="fa-regular fa-user" style="margin-right:0.3rem;"></i>${txn.userName || '—'}</div>
+        <div><i class="fa-regular fa-envelope" style="margin-right:0.3rem;"></i>${txn.userEmail || '—'}</div>
+        ${txn.userId ? `<div style="font-size:0.72rem;margin-top:0.25rem;"><i class="fa-solid fa-fingerprint" style="margin-right:0.3rem;color:#475569;"></i>${txn.userId}</div>` : ''}
+      </div>
+    </div>
+
+    ${txn.ticketId ? `
+    <div style="padding:1rem;background:#0f172a;border-radius:0.5rem;margin-top:1rem;">
+      <h4 style="font-weight:700;margin-bottom:0.5rem;font-size:0.875rem;"><i class="fa-solid fa-ticket" style="color:#6366f1;margin-right:0.4rem;"></i>Related Ticket</h4>
+      <div style="font-family:monospace;font-size:0.8rem;color:#94a3b8;">${txn.ticketId}</div>
+      <button class="btn btn-primary" style="margin-top:0.75rem;font-size:0.78rem;padding:0.4rem 0.8rem;" onclick="closeModal('transaction-modal');viewTicket('${txn.ticketId}');">
+        <i class="fa-solid fa-eye"></i> View Ticket
+      </button>
+    </div>` : ''}`;
+
+  addLog('system', `Viewed transaction details`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, txnId, amount: txn.amount, type: txn.type });
+  openModal('transaction-modal');
+}
+
+/* =============================================
    REPORTS + CHARTS
 ============================================= */
 function renderReports() {
-  // Revenue by category
   const byCategory = events.reduce((acc, ev) => {
     const rev = tickets.filter(t => (t.eventId?.id||t.eventId?._id?.toString()) === ev.id).reduce((s,t) => s+(t.price||0), 0);
     acc[ev.category] = (acc[ev.category] || 0) + rev;
@@ -1979,7 +2336,6 @@ function renderReports() {
   const catEl = document.getElementById('revenue-by-category');
   if (catEl) catEl.innerHTML = catHTML || '<div class="empty-state"><i class="fa-solid fa-chart-pie" style="display:block;font-size:1.5rem;margin-bottom:0.5rem;"></i>No data</div>';
 
-  // Top organizers
   const byOrg = events.reduce((acc, ev) => {
     const rev = tickets.filter(t => (t.eventId?.id||t.eventId?._id?.toString()) === ev.id).reduce((s,t) => s+(t.price||0), 0);
     const org = users.find(u => u.id === (ev.organizerId?.id||ev.organizerId?._id?.toString()));
@@ -1993,7 +2349,6 @@ function renderReports() {
   const orgEl = document.getElementById('top-organizers');
   if (orgEl) orgEl.innerHTML = orgHTML || '<div class="empty-state"><i class="fa-solid fa-trophy" style="display:block;font-size:1.5rem;margin-bottom:0.5rem;"></i>No data</div>';
 
-  // Platform stats
   const totalRevenue = tickets.reduce((s,t) => s+(t.price||0), 0);
   setText('avg-ticket-price',  `₵${tickets.length > 0 ? (totalRevenue/tickets.length).toFixed(2) : '0.00'}`);
   setText('avg-event-revenue', `₵${events.length  > 0 ? (totalRevenue/events.length).toFixed(2)  : '0.00'}`);
@@ -2002,8 +2357,6 @@ function renderReports() {
   setText('total-refunded',    `₵${stats.totalRefunded.toFixed(2)}`);
 }
 
-/* ---- CHART HELPERS ---- */
-
 function setChartPeriod(period, btn) {
   currentChartPeriod = period;
   document.querySelectorAll('.chart-period-btn').forEach(b => b.classList.remove('active'));
@@ -2011,12 +2364,6 @@ function setChartPeriod(period, btn) {
   renderCharts();
 }
 
-/**
- * Groups an array of items by period (daily/weekly/monthly).
- * dateField: key on each item containing the ISO date string.
- * valueField: key for numeric value (or null for counting items).
- * Returns { labels: string[], values: number[] }
- */
 function groupByPeriod(items, dateField, valueField, period, numBuckets) {
   const now   = new Date();
   const buckets = [];
@@ -2068,17 +2415,15 @@ function groupByPeriod(items, dateField, valueField, period, numBuckets) {
 }
 
 function renderCharts() {
-  if (typeof Chart === 'undefined') return; // Chart.js not loaded yet
+  if (typeof Chart === 'undefined') return;
 
   const numBuckets = currentChartPeriod === 'daily' ? 14 : currentChartPeriod === 'weekly' ? 12 : currentChartPeriod === 'monthly' ? 6 : 5;
-  // ---- Chart defaults ----
   Chart.defaults.color = '#94a3b8';
   Chart.defaults.font.family = "'Inter', sans-serif";
 
   const gridColor  = 'rgba(51,65,85,0.6)';
   const tickColor  = '#64748b';
 
-  // ---- 1. Revenue Over Time ----
   const revData = groupByPeriod(tickets, 'purchasedAt', 'price', currentChartPeriod, numBuckets);
   const totalRev = revData.values.reduce((a,b) => a+b, 0);
   setText('chart-revenue-total', `₵${totalRev.toFixed(2)} total`);
@@ -2110,27 +2455,20 @@ function renderCharts() {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#1e293b',
-            borderColor: '#334155',
-            borderWidth: 1,
-            titleColor: '#f1f5f9',
-            bodyColor: '#94a3b8',
+            backgroundColor: '#1e293b', borderColor: '#334155', borderWidth: 1,
+            titleColor: '#f1f5f9', bodyColor: '#94a3b8',
             callbacks: { label: ctx => ` ₵${ctx.parsed.y.toFixed(2)}` }
           }
         },
         scales: {
           x: { grid: { color: gridColor }, ticks: { color: tickColor, maxTicksLimit: 8 } },
-          y: {
-            grid: { color: gridColor }, ticks: { color: tickColor, callback: v => `₵${v}` },
-            beginAtZero: true,
-          }
+          y: { grid: { color: gridColor }, ticks: { color: tickColor, callback: v => `₵${v}` }, beginAtZero: true }
         }
       }
     });
   }
 
-  // ---- 2. Ticket Sales ----
-  const tixData = groupByPeriod(tickets, 'purchasedAt', null, currentChartPeriod, numBuckets);
+  const tixData  = groupByPeriod(tickets, 'purchasedAt', null, currentChartPeriod, numBuckets);
   const totalTix = tixData.values.reduce((a,b) => a+b, 0);
   setText('chart-tickets-total', `${totalTix} tickets`);
 
@@ -2142,28 +2480,14 @@ function renderCharts() {
       data: {
         labels: tixData.labels,
         datasets: [{
-          label: 'Tickets Sold',
-          data: tixData.values,
-          backgroundColor: 'rgba(139,92,246,0.7)',
-          borderColor: '#8b5cf6',
-          borderWidth: 1,
-          borderRadius: 4,
-          hoverBackgroundColor: '#8b5cf6',
+          label: 'Tickets Sold', data: tixData.values,
+          backgroundColor: 'rgba(139,92,246,0.7)', borderColor: '#8b5cf6',
+          borderWidth: 1, borderRadius: 4, hoverBackgroundColor: '#8b5cf6',
         }]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#1e293b',
-            borderColor: '#334155',
-            borderWidth: 1,
-            titleColor: '#f1f5f9',
-            bodyColor: '#94a3b8',
-          }
-        },
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1e293b', borderColor: '#334155', borderWidth: 1, titleColor: '#f1f5f9', bodyColor: '#94a3b8' } },
         scales: {
           x: { grid: { display: false }, ticks: { color: tickColor, maxTicksLimit: 8 } },
           y: { grid: { color: gridColor }, ticks: { color: tickColor }, beginAtZero: true }
@@ -2172,14 +2496,8 @@ function renderCharts() {
     });
   }
 
-  // ---- 3. User Growth (cumulative) ----
-  // Build cumulative from raw user counts per period
   const rawUserData = groupByPeriod(users, 'createdAt', null, currentChartPeriod, numBuckets);
-  // cumulative sum
-  const cumulativeUsers = rawUserData.values.reduce((acc, val, i) => {
-    acc.push((acc[i - 1] || 0) + val);
-    return acc;
-  }, []);
+  const cumulativeUsers = rawUserData.values.reduce((acc, val, i) => { acc.push((acc[i - 1] || 0) + val); return acc; }, []);
   const totalNewUsers = rawUserData.values.reduce((a,b) => a+b, 0);
   setText('chart-users-total', `+${totalNewUsers} new`);
 
@@ -2192,50 +2510,27 @@ function renderCharts() {
         labels: rawUserData.labels,
         datasets: [
           {
-            label: 'Total Users',
-            data: cumulativeUsers,
-            borderColor: '#06b6d4',
-            backgroundColor: 'rgba(6,182,212,0.1)',
-            borderWidth: 2.5,
-            pointBackgroundColor: '#06b6d4',
-            pointRadius: 3,
-            pointHoverRadius: 6,
-            fill: true,
-            tension: 0.4,
-            yAxisID: 'y',
+            label: 'Total Users', data: cumulativeUsers,
+            borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)',
+            borderWidth: 2.5, pointBackgroundColor: '#06b6d4', pointRadius: 3, pointHoverRadius: 6,
+            fill: true, tension: 0.4, yAxisID: 'y',
           },
           {
-            label: 'New Registrations',
-            data: rawUserData.values,
-            borderColor: 'rgba(6,182,212,0.4)',
-            backgroundColor: 'transparent',
-            borderWidth: 1.5,
-            borderDash: [4,3],
-            pointRadius: 2,
-            tension: 0.4,
-            yAxisID: 'y1',
+            label: 'New Registrations', data: rawUserData.values,
+            borderColor: 'rgba(6,182,212,0.4)', backgroundColor: 'transparent',
+            borderWidth: 1.5, borderDash: [4,3], pointRadius: 2, tension: 0.4, yAxisID: 'y1',
           }
         ]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: true, maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: {
-            display: true,
-            labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 }
-          },
-          tooltip: {
-            backgroundColor: '#1e293b',
-            borderColor: '#334155',
-            borderWidth: 1,
-            titleColor: '#f1f5f9',
-            bodyColor: '#94a3b8',
-          }
+          legend: { display: true, labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 } },
+          tooltip: { backgroundColor: '#1e293b', borderColor: '#334155', borderWidth: 1, titleColor: '#f1f5f9', bodyColor: '#94a3b8' }
         },
         scales: {
-          x: { grid: { color: gridColor }, ticks: { color: tickColor, maxTicksLimit: 8 } },
+          x:  { grid: { color: gridColor }, ticks: { color: tickColor, maxTicksLimit: 8 } },
           y:  { grid: { color: gridColor }, ticks: { color: tickColor }, beginAtZero: true, position: 'left' },
           y1: { grid: { display: false },   ticks: { color: tickColor }, beginAtZero: true, position: 'right' },
         }
@@ -2245,7 +2540,7 @@ function renderCharts() {
 }
 
 /* =============================================
-   MESSAGE MANAGEMENT (FIXED)
+   MESSAGE MANAGEMENT
 ============================================= */
 const BROADCAST_TEMPLATES = {
   maintenance: {
@@ -2320,7 +2615,6 @@ function clearMessageRecipient() {
   document.getElementById('msg-recipient-search').value = '';
 }
 
-// Close dropdown when clicking outside compose modal
 document.addEventListener('click', e => {
   const wrap = document.getElementById('compose-message-modal');
   if (!wrap?.contains(e.target)) {
@@ -2342,24 +2636,14 @@ async function submitDirectMessage() {
 
   const recipient = users.find(u => u.id === recipientId);
   const msgRecord = {
-    id:             `msg_${Date.now()}`,
-    type:           'direct',
-    audience:       'individual',
-    subject,
-    body,
-    channel,
-    recipientId,
-    recipientName:  recipient?.name  || 'User',
-    recipientEmail: recipient?.email || '',
-    sentAt:         new Date().toISOString(),
-    sentBy:         currentAdmin.name,
-    recipientCount: 1,
+    id: `msg_${Date.now()}`, type: 'direct', audience: 'individual',
+    subject, body, channel, recipientId,
+    recipientName: recipient?.name || 'User', recipientEmail: recipient?.email || '',
+    sentAt: new Date().toISOString(), sentBy: currentAdmin.name, recipientCount: 1,
   };
   try { await apiRequest('/admin/messages', { method: 'POST', body: JSON.stringify(msgRecord) }); } catch {}
   messages.unshift(msgRecord);
-  await addLog('system', `Direct message sent to ${recipient?.email}`, {
-    adminName: currentAdmin.name, adminRole: currentAdmin.role, subject, channel, recipientEmail: recipient?.email,
-  });
+  await addLog('system', `Direct message sent to ${recipient?.email}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, subject, channel, recipientEmail: recipient?.email });
   document.getElementById('msg-direct-subject').value = '';
   document.getElementById('msg-direct-body').value    = '';
   clearMessageRecipient();
@@ -2381,21 +2665,12 @@ async function submitBroadcast() {
 
   const count = getBroadcastRecipientCount();
   const msgRecord = {
-    id:             `bcast_${Date.now()}`,
-    type:           'broadcast',
-    audience,
-    subject,
-    body,
-    channel,
-    sentAt:         new Date().toISOString(),
-    sentBy:         currentAdmin.name,
-    recipientCount: count,
+    id: `bcast_${Date.now()}`, type: 'broadcast', audience, subject, body, channel,
+    sentAt: new Date().toISOString(), sentBy: currentAdmin.name, recipientCount: count,
   };
   try { await apiRequest('/admin/messages/broadcast', { method: 'POST', body: JSON.stringify(msgRecord) }); } catch {}
   messages.unshift(msgRecord);
-  await addLog('system', `Broadcast sent to ${count} users (${audience})`, {
-    adminName: currentAdmin.name, adminRole: currentAdmin.role, subject, channel, audience, count,
-  });
+  await addLog('system', `Broadcast sent to ${count} users (${audience})`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, subject, channel, audience, count });
   document.getElementById('broadcast-subject').value = '';
   document.getElementById('broadcast-body').value    = '';
   closeModal('broadcast-modal');
@@ -2408,10 +2683,8 @@ function viewMessage(msgId) {
   const msg = messages.find(m => m.id === msgId);
   if (!msg) return;
   const audienceMap = {
-    all_users:  'All Users',
-    organizers: 'Organizers Only',
-    customers:  'Customers Only',
-    both:       'Organizers & Customers',
+    all_users: 'All Users', organizers: 'Organizers Only',
+    customers: 'Customers Only', both: 'Organizers & Customers',
     individual: msg.recipientName || 'Individual User',
   };
   const channelIcon = { email:'fa-envelope', sms:'fa-mobile-screen-button', both:'fa-satellite-dish' };
@@ -2446,15 +2719,8 @@ function getFilteredMessages() {
   const dfrom    = document.getElementById('msg-date-from')?.value;
   const dto      = document.getElementById('msg-date-to')?.value;
   return messages.filter(m => {
-    const mSearch = !search
-      || m.subject.toLowerCase().includes(search)
-      || (m.recipientName  || '').toLowerCase().includes(search)
-      || (m.recipientEmail || '').toLowerCase().includes(search);
-    return mSearch
-      && (type     === 'all' || m.type     === type)
-      && (audience === 'all' || m.audience === audience)
-      && (channel  === 'all' || m.channel  === channel)
-      && applyDateRangeFilter(m.sentAt, dfrom, dto);
+    const mSearch = !search || m.subject.toLowerCase().includes(search) || (m.recipientName||'').toLowerCase().includes(search) || (m.recipientEmail||'').toLowerCase().includes(search);
+    return mSearch && (type === 'all' || m.type === type) && (audience === 'all' || m.audience === audience) && (channel === 'all' || m.channel === channel) && applyDateRangeFilter(m.sentAt, dfrom, dto);
   });
 }
 
@@ -2473,10 +2739,7 @@ function renderMessages() {
     return;
   }
 
-  const audienceMap = {
-    all_users:'All Users', organizers:'Organizers Only',
-    customers:'Customers Only', both:'Org. & Customers', individual:'',
-  };
+  const audienceMap = { all_users:'All Users', organizers:'Organizers Only', customers:'Customers Only', both:'Org. & Customers', individual:'' };
   const channelIcon = { email:'fa-envelope', sms:'fa-mobile-screen-button', both:'fa-satellite-dish' };
 
   tb.innerHTML = rows.map(m => {
@@ -2498,22 +2761,12 @@ function renderMessages() {
           <div style="font-size:0.72rem;color:#94a3b8;">by ${m.sentBy}</div>
         </td>
         <td><div class="msg-audience-badge">${recipientLabel}</div></td>
-        <td>
-          <span class="msg-channel-pill msg-channel-${m.channel}">
-            <i class="fa-solid ${channelIcon[m.channel] || 'fa-envelope'}"></i> ${m.channel}
-          </span>
-        </td>
-        <td>
-          <span class="msg-type-badge msg-type-${m.type}">
-            ${m.type === 'broadcast' ? '<i class="fa-solid fa-bullhorn"></i> Broadcast' : '<i class="fa-solid fa-paper-plane"></i> Direct'}
-          </span>
-        </td>
-        <td>
-          <div class="actions">
-            <button class="btn-icon" style="background:#6366f1;" onclick="viewMessage('${m.id}')" title="View"><i class="fa-solid fa-eye"></i></button>
-            <button class="btn-icon" style="background:#ef4444;" onclick="deleteMessage('${m.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
-          </div>
-        </td>
+        <td><span class="msg-channel-pill msg-channel-${m.channel}"><i class="fa-solid ${channelIcon[m.channel] || 'fa-envelope'}"></i> ${m.channel}</span></td>
+        <td><span class="msg-type-badge msg-type-${m.type}">${m.type === 'broadcast' ? '<i class="fa-solid fa-bullhorn"></i> Broadcast' : '<i class="fa-solid fa-paper-plane"></i> Direct'}</span></td>
+        <td><div class="actions">
+          <button class="btn-icon" style="background:#6366f1;" onclick="viewMessage('${m.id}')" title="View"><i class="fa-solid fa-eye"></i></button>
+          <button class="btn-icon" style="background:#ef4444;" onclick="deleteMessage('${m.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+        </div></td>
       </tr>`;
   }).join('');
 
@@ -2522,17 +2775,12 @@ function renderMessages() {
 
 async function deleteMessage(msgId) {
   const msg = messages.find(m => m.id === msgId);
-  const ok  = await customConfirm(
-    `Delete message "${msg?.subject || 'this message'}"? This cannot be undone.`,
-    'Delete Message', 'Delete', '#ef4444'
-  );
+  const ok  = await customConfirm(`Delete message "${msg?.subject || 'this message'}"? This cannot be undone.`, 'Delete Message', 'Delete', '#ef4444');
   if (!ok) return;
   try { await apiRequest(`/admin/messages/${msgId}`, { method: 'DELETE' }); } catch {}
   const idx = messages.findIndex(m => m.id === msgId);
   if (idx !== -1) messages.splice(idx, 1);
-  await addLog('system', `Message deleted: ${msg?.subject}`, {
-    adminName: currentAdmin.name, adminRole: currentAdmin.role, msgId,
-  });
+  await addLog('system', `Message deleted: ${msg?.subject}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, msgId });
   renderMessages();
   updateMessageStats();
   toast.success('Message deleted', 'The message record has been removed.');
@@ -2548,9 +2796,7 @@ async function bulkDeleteMessages() {
       const idx = messages.findIndex(m => m.id === id);
       if (idx !== -1) { messages.splice(idx, 1); ok++; }
     }
-    await addLog('system', `Bulk deleted ${ok} message(s)`, {
-      adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok,
-    });
+    await addLog('system', `Bulk deleted ${ok} message(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
     selectedIds.messages.clear();
     renderMessages();
     updateMessageStats();
@@ -2573,7 +2819,6 @@ async function loadMessages() {
     const res = await apiRequest('/admin/messages');
     messages = (res.messages || []).map(m => ({ ...m, id: m.id || m._id?.toString() }));
   } catch {
-    // keep existing in-memory messages on failure
     if (!messages.length) messages = [];
   }
   renderMessages();
@@ -2675,11 +2920,7 @@ function getFilteredRefunds() {
   const dfrom  = document.getElementById('refund-date-from')?.value;
   const dto    = document.getElementById('refund-date-to')?.value;
   return [...refunds].sort((a,b) => new Date(b.requestedAt) - new Date(a.requestedAt)).filter(r => {
-    const mSearch = !search
-      || String(r.id).toLowerCase().includes(search)
-      || (r.userName  || '').toLowerCase().includes(search)
-      || (r.userEmail || '').toLowerCase().includes(search)
-      || (r.eventTitle|| '').toLowerCase().includes(search);
+    const mSearch = !search || String(r.id).toLowerCase().includes(search) || (r.userName||'').toLowerCase().includes(search) || (r.userEmail||'').toLowerCase().includes(search) || (r.eventTitle||'').toLowerCase().includes(search);
     return mSearch && (status === 'all' || r.status === status) && (reason === 'all' || r.reason === reason) && applyDateRangeFilter(r.requestedAt, dfrom, dto);
   });
 }
@@ -2889,13 +3130,7 @@ function getFilteredServiceRequests() {
   const dto      = document.getElementById('sr-date-to')?.value;
   return [...serviceRequests].sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt)).filter(r => {
     const emailStr = Array.isArray(r.userEmail) ? r.userEmail.join(' ') : (r.userEmail || '');
-    const mSearch = !search
-      || String(r.id).toLowerCase().includes(search)
-      || (r.requestId || '').toLowerCase().includes(search)
-      || (r.userName || '').toLowerCase().includes(search)
-      || emailStr.toLowerCase().includes(search)
-      || (r.subject  || '').toLowerCase().includes(search)
-      || (r.message  || '').toLowerCase().includes(search);
+    const mSearch = !search || String(r.id).toLowerCase().includes(search) || (r.requestId||'').toLowerCase().includes(search) || (r.userName||'').toLowerCase().includes(search) || emailStr.toLowerCase().includes(search) || (r.subject||'').toLowerCase().includes(search) || (r.message||'').toLowerCase().includes(search);
     return mSearch && (status === 'all' || r.status === status) && (category === 'all' || r.category === category) && applyDateRangeFilter(r.submittedAt, dfrom, dto);
   });
 }
@@ -3004,7 +3239,7 @@ async function bulkResolveServiceRequests() {
 const EXPORT_TYPE_LABELS = {
   users:'Users', events:'Events', revenue:'Revenue', tickets:'Tickets',
   payouts:'Payouts', refunds:'Refunds', logs:'Logs', waitlist:'Waitlist',
-  'service-requests':'Service Requests',
+  'service-requests':'Service Requests', transactions:'Transactions',
 };
 
 function openExportModal(type, selectedOnly = false) {
@@ -3050,9 +3285,9 @@ function _getExportSourceData(type) {
   const selectedOnly = document.getElementById('export-selected-only')?.value === 'true';
   const ids = selectedIds[type] || new Set();
   const sourceMap = {
-    users:              users, events: events, revenue: tickets, tickets: tickets,
-    payouts:            payouts, refunds: refunds, logs: logs,
-    waitlist:           waitlist, 'service-requests': serviceRequests,
+    users: users, events: events, revenue: tickets, tickets: tickets,
+    payouts: payouts, refunds: refunds, logs: logs,
+    waitlist: waitlist, 'service-requests': serviceRequests, transactions: transactions,
   };
   let data = sourceMap[type] || [];
   if (selectedOnly && ids.size > 0) data = data.filter(item => ids.has(item.id));
@@ -3076,7 +3311,7 @@ function _applyExportDateFilter(data, type) {
   const dateField = {
     users:'createdAt', events:'date', tickets:'purchasedAt', revenue:'purchasedAt',
     payouts:'requestedAt', refunds:'requestedAt', logs:'timestamp',
-    waitlist:'joinedAt', 'service-requests':'submittedAt',
+    waitlist:'joinedAt', 'service-requests':'submittedAt', transactions:'createdAt',
   }[type] || 'createdAt';
   return data.filter(item => {
     const d = new Date(item[dateField] || item.createdAt || item.timestamp);
@@ -3088,7 +3323,6 @@ async function executeExport() {
   const type   = document.getElementById('export-data-type').value;
   const fmt    = document.querySelector('input[name="export-format"]:checked')?.value || 'csv';
   const label  = EXPORT_TYPE_LABELS[type] || type;
-  const range  = document.querySelector('input[name="export-range"]:checked')?.value  || '24h';
   if (type === 'logs') {
     try { const r = await apiRequest('/admin/logs?limit=10000'); logs = (r.logs || logs).filter(l => !_isExcludedLog(l.message)); } catch {}
   }
@@ -3096,14 +3330,12 @@ async function executeExport() {
   const filtered = _applyExportDateFilter(rawData, type);
   if (!filtered.length) { toast.warning('No data', `No ${label} records match the selected criteria.`); return; }
   const selOnly   = document.getElementById('export-selected-only')?.value === 'true';
-  const rangeStr  = selOnly ? 'selected' : range;
+  const rangeStr  = selOnly ? 'selected' : (document.querySelector('input[name="export-range"]:checked')?.value || 'all');
   const filename  = `glycr_${type.replace('-','_')}_${rangeStr}_${new Date().toISOString().slice(0,10)}`;
   if      (fmt === 'json') exportJson(filtered, `${filename}.json`);
   else if (fmt === 'pdf')  exportPdf(filtered, type, label, `${filename}.pdf`);
   else                     exportCsvForType(filtered, type, `${filename}.csv`);
-  await addLog('system', `Exported ${filtered.length} ${label} record(s) as ${fmt.toUpperCase()}`, {
-    adminName: currentAdmin.name, adminRole: currentAdmin.role, type, format: fmt, count: filtered.length, selectedOnly: selOnly,
-  });
+  await addLog('system', `Exported ${filtered.length} ${label} record(s) as ${fmt.toUpperCase()}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, type, format: fmt, count: filtered.length, selectedOnly: selOnly });
   toast.success('Export started', `${filtered.length} ${label} record${filtered.length !== 1 ? 's' : ''} — ${fmt.toUpperCase()} downloading.`);
   closeModal('export-modal');
 }
@@ -3154,8 +3386,11 @@ function exportCsvForType(data, type, filename) {
     data.forEach(w => { csv += `"${w.id}","${w.userName||''}","${w.userEmail||''}","${w.userPhone||''}","${w.eventTitle||''}","${w.eventDate||''}",${w.position||''},"${w.joinedAt||''}",${w.notified||false}\n`; });
   } else if (type === 'service-requests') {
     csv = 'ID,UserName,UserEmail,Category,Subject,Status,SubmittedAt,ResolvedAt,ResolutionNotes\n';
-    data.forEach(r => {
-      csv += `"${r.id}","${r.userName||''}","${r.userEmail||''}","${r.category||''}","${(r.subject||'').replace(/"/g,"'")}","${r.status}","${r.submittedAt||''}","${r.resolvedAt||''}","${(r.resolutionNotes||'').replace(/"/g,"'")}"\n`;
+    data.forEach(r => { csv += `"${r.id}","${r.userName||''}","${r.userEmail||''}","${r.category||''}","${(r.subject||'').replace(/"/g,"'")}","${r.status}","${r.submittedAt||''}","${r.resolvedAt||''}","${(r.resolutionNotes||'').replace(/"/g,"'")}"\n`; });
+  } else if (type === 'transactions') {
+    csv = 'ID,Type,Category,Amount,Status,Method,UserName,UserEmail,Reference,Description,EventTitle,CreatedAt\n';
+    data.forEach(t => {
+      csv += `"${t.id}","${t.type}","${t.category||''}",${t.amount||0},"${t.status}","${t.method||''}","${t.userName||''}","${t.userEmail||''}","${t.reference||''}","${(t.description||'').replace(/"/g,"'")}","${t.eventTitle||''}","${t.createdAt||''}"\n`;
     });
   }
   downloadBlob(csv, filename, 'text/csv');
@@ -3200,14 +3435,12 @@ function closeModal(id) { document.getElementById(id)?.classList.remove('show');
 
 document.querySelectorAll('.modal').forEach(modal =>
   modal.addEventListener('click', e => {
-    // Don't close custom dialogs on backdrop click — user must press a button
     if (['custom-confirm-modal','custom-alert-modal','custom-prompt-modal'].includes(modal.id)) return;
     if (e.target === modal) modal.classList.remove('show');
   })
 );
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    // Don't close custom dialogs with Escape
     document.querySelectorAll('.modal.show').forEach(m => {
       if (!['custom-confirm-modal','custom-alert-modal','custom-prompt-modal'].includes(m.id)) {
         m.classList.remove('show');
@@ -3227,6 +3460,7 @@ function filterRefunds()         { pageState.refunds           = 1; renderRefund
 function filterWaitlist()        { pageState.waitlist          = 1; renderWaitlist();        }
 function filterServiceRequests() { pageState['service-requests'] = 1; renderServiceRequests(); }
 function filterMessages()        { pageState.messages          = 1; renderMessages();        }
+function filterTransactions()    { pageState.transactions      = 1; renderTransactions();    }
 
 /* =============================================
    INITIAL LOAD

@@ -118,6 +118,9 @@
       <div class="tab" id="tab-tickets" onclick="showTab('tickets', this)">
         <i class="fa-solid fa-ticket"></i> Tickets
       </div>
+      <div class="tab" id="tab-transactions" onclick="showTab('transactions', this)">
+        <i class="fa-solid fa-arrow-right-arrow-left"></i> Transactions
+      </div>
       <div class="tab" id="tab-payouts" onclick="showTab('payouts', this)">
         <i class="fa-solid fa-money-bill-transfer"></i> Payouts
       </div>
@@ -175,6 +178,10 @@
           <div class="quick-action" onclick="showTab('users', document.getElementById('tab-users'))">
             <span><i class="fa-solid fa-users" style="color:#6366f1; margin-right:0.5rem;"></i>Manage Users</span>
             <span id="quick-users-count">0</span>
+          </div>
+          <div class="quick-action" onclick="showTab('transactions', document.getElementById('tab-transactions'))">
+            <span><i class="fa-solid fa-arrow-right-arrow-left" style="color:#06b6d4; margin-right:0.5rem;"></i>Transactions</span>
+            <span id="quick-transactions-count">0</span>
           </div>
           <div class="quick-action" onclick="showTab('payouts', document.getElementById('tab-payouts'))">
             <span><i class="fa-solid fa-money-bill-transfer" style="color:#8b5cf6; margin-right:0.5rem;"></i>Pending Payouts</span>
@@ -371,6 +378,115 @@
         </table>
       </div>
       <div class="pagination-bar" id="tickets-pagination"></div>
+    </section>
+
+    <!-- =============================================
+         TRANSACTIONS
+    ============================================= -->
+    <section id="transactions" class="section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h2 style="font-size:2rem; font-weight:700;">Transaction Ledger</h2>
+        <div style="display:flex; gap:0.75rem;">
+          <button class="btn btn-primary" onclick="refreshTransactions()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+          <button class="btn btn-success" onclick="openExportModal('transactions')"><i class="fa-solid fa-file-export"></i> Export</button>
+        </div>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="stats-grid" style="margin-bottom:1.5rem;">
+        <div class="stat-card txn-card-credit">
+          <div class="stat-header">
+            <div class="stat-icon" style="background:rgba(16,185,129,0.12); color:#34d399;">
+              <i class="fa-solid fa-arrow-down-to-line"></i>
+            </div>
+          </div>
+          <div class="stat-value" id="txn-stat-credits" style="color:#34d399;">₵0.00</div>
+          <div class="stat-label">Total Credits (Incoming)</div>
+        </div>
+        <div class="stat-card txn-card-debit">
+          <div class="stat-header">
+            <div class="stat-icon" style="background:rgba(239,68,68,0.12); color:#f87171;">
+              <i class="fa-solid fa-arrow-up-from-line"></i>
+            </div>
+          </div>
+          <div class="stat-value" id="txn-stat-debits" style="color:#f87171;">₵0.00</div>
+          <div class="stat-label">Total Debits (Outgoing)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-icon" style="background:rgba(99,102,241,0.12); color:#818cf8;">
+              <i class="fa-solid fa-scale-balanced"></i>
+            </div>
+          </div>
+          <div class="stat-value" id="txn-stat-net" style="color:#818cf8;">₵0.00</div>
+          <div class="stat-label">Net Balance</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-icon" style="background:rgba(6,182,212,0.12); color:#22d3ee;">
+              <i class="fa-solid fa-arrow-right-arrow-left"></i>
+            </div>
+          </div>
+          <div class="stat-value" id="txn-stat-count">0</div>
+          <div class="stat-label">Total Transactions</div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters">
+        <input type="text" class="input" id="txn-search" placeholder="Search by ID, user, email..." oninput="filterTransactions()">
+        <select class="select" id="txn-type-filter" onchange="filterTransactions()">
+          <option value="all">All Types</option>
+          <option value="credit">Credit</option>
+          <option value="debit">Debit</option>
+        </select>
+        <select class="select" id="txn-status-filter" onchange="filterTransactions()">
+          <option value="all">All Status</option>
+          <option value="success">Success</option>
+          <option value="pending">Pending</option>
+          <option value="failed">Failed</option>
+        </select>
+        <select class="select" id="txn-category-filter" onchange="filterTransactions()">
+          <option value="all">All Categories</option>
+          <option value="ticket_purchase">Ticket Purchase</option>
+          <option value="refund">Refund</option>
+          <option value="payout">Payout</option>
+          <option value="top_up">Top Up</option>
+          <option value="withdrawal">Withdrawal</option>
+        </select>
+        <input type="date" class="input" id="txn-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterTransactions()">
+        <input type="date" class="input" id="txn-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterTransactions()">
+      </div>
+
+      <!-- Bulk Actions -->
+      <div class="bulk-action-bar" id="transactions-bulk-bar" style="display:none;">
+        <span id="transactions-selected-count">0 selected</span>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-success" onclick="openExportModal('transactions', true)"><i class="fa-solid fa-file-export"></i> Export Selected</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-container">
+        <table>
+          <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="transactions-select-all" onchange="toggleSelectAll('transactions')"></th>
+            <th class="sortable" onclick="sortTable('transactions','id')">Transaction ID <i class="fa-solid fa-sort sort-icon" id="sort-transactions-id"></i></th>
+            <th class="sortable" onclick="sortTable('transactions','type')">Type <i class="fa-solid fa-sort sort-icon" id="sort-transactions-type"></i></th>
+            <th class="sortable" onclick="sortTable('transactions','category')">Category <i class="fa-solid fa-sort sort-icon" id="sort-transactions-category"></i></th>
+            <th class="sortable" onclick="sortTable('transactions','userName')">User / Organizer <i class="fa-solid fa-sort sort-icon" id="sort-transactions-userName"></i></th>
+            <th class="sortable" onclick="sortTable('transactions','amount')">Amount <i class="fa-solid fa-sort sort-icon" id="sort-transactions-amount"></i></th>
+            <th class="sortable" onclick="sortTable('transactions','status')">Status <i class="fa-solid fa-sort sort-icon" id="sort-transactions-status"></i></th>
+            <th>Method</th>
+            <th class="sortable" onclick="sortTable('transactions','createdAt')">Date &amp; Time <i class="fa-solid fa-sort sort-icon" id="sort-transactions-createdAt"></i></th>
+            <th>Actions</th>
+          </tr>
+          </thead>
+          <tbody id="transactions-table"></tbody>
+        </table>
+      </div>
+      <div class="pagination-bar" id="transactions-pagination"></div>
     </section>
 
     <!-- PAYOUTS -->
@@ -598,7 +714,6 @@
         </div>
       </div>
 
-      <!-- Stats row -->
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
         <div class="stat-card" style="padding:1rem;">
           <div style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem;"><i class="fa-solid fa-paper-plane" style="color:#6366f1; margin-right:0.35rem;"></i>Total Sent</div>
@@ -618,7 +733,6 @@
         </div>
       </div>
 
-      <!-- Filter row -->
       <div class="filters">
         <input type="text" class="input" id="msg-search" placeholder="Search messages by subject or recipient..." oninput="filterMessages()">
         <select class="select" id="msg-type-filter" onchange="filterMessages()">
@@ -707,12 +821,11 @@
       </div>
     </section>
 
-    <!-- REPORTS — export cards removed, analytics charts added -->
+    <!-- REPORTS -->
     <section id="reports" class="section">
       <h2 style="font-size:2rem; font-weight:700; margin-bottom:0.5rem;">Reports &amp; Analytics</h2>
       <p style="color:#94a3b8; font-size:0.875rem; margin-bottom:1.5rem;">Use the Export button on each management tab to download data. Charts below reflect all-time platform data.</p>
 
-      <!-- Chart period controls -->
       <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1.5rem; flex-wrap:wrap;">
         <span style="font-size:0.8rem; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">Period:</span>
         <div class="chart-period-group">
@@ -723,7 +836,6 @@
         </div>
       </div>
 
-      <!-- Row 1: Revenue over time (full width) -->
       <div class="card" style="margin-bottom:1.5rem;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
           <h3 class="card-title" style="margin-bottom:0;"><i class="fa-solid fa-chart-line" style="color:#6366f1; margin-right:0.5rem;"></i>Revenue Over Time</h3>
@@ -734,7 +846,6 @@
         </div>
       </div>
 
-      <!-- Row 2: Ticket Sales + User Growth -->
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(380px, 1fr)); gap:1.5rem; margin-bottom:1.5rem;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
@@ -756,7 +867,6 @@
         </div>
       </div>
 
-      <!-- Row 3: summary stats + top organizers + revenue by category -->
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1.5rem; margin-bottom:1.5rem;">
         <div class="card">
           <h3 class="card-title"><i class="fa-solid fa-chart-pie" style="color:#6366f1; margin-right:0.5rem;"></i>Revenue by Category</h3>
@@ -768,7 +878,6 @@
         </div>
       </div>
 
-      <!-- Platform stats strip -->
       <div class="card">
         <h3 class="card-title"><i class="fa-solid fa-chart-bar" style="color:#8b5cf6; margin-right:0.5rem;"></i>Platform Statistics</h3>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1.5rem;">
@@ -802,6 +911,17 @@
 <!-- ============================================================
      MODALS
 ============================================================ -->
+
+<!-- Transaction Detail Modal -->
+<div id="transaction-modal" class="modal">
+  <div class="modal-content" style="max-width:660px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fa-solid fa-arrow-right-arrow-left" style="color:#06b6d4; margin-right:0.5rem;"></i>Transaction Details</h3>
+      <button class="modal-close" onclick="closeModal('transaction-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="transaction-modal-body"></div>
+  </div>
+</div>
 
 <!-- User Detail -->
 <div id="user-modal" class="modal">
@@ -1314,9 +1434,7 @@
   </div>
 </div>
 
-<!-- ============================================================
-     CUSTOM CONFIRM MODAL
-============================================================ -->
+<!-- Custom Confirm Modal -->
 <div id="custom-confirm-modal" class="modal">
   <div class="modal-content" style="max-width:420px;">
     <div class="modal-header">
@@ -1333,9 +1451,7 @@
   </div>
 </div>
 
-<!-- ============================================================
-     CUSTOM ALERT MODAL
-============================================================ -->
+<!-- Custom Alert Modal -->
 <div id="custom-alert-modal" class="modal">
   <div class="modal-content" style="max-width:400px;">
     <div class="modal-header">
@@ -1349,9 +1465,7 @@
   </div>
 </div>
 
-<!-- ============================================================
-     CUSTOM PROMPT MODAL
-============================================================ -->
+<!-- Custom Prompt Modal -->
 <div id="custom-prompt-modal" class="modal">
   <div class="modal-content" style="max-width:440px;">
     <div class="modal-header">
@@ -1587,6 +1701,39 @@
 
 <!-- Chart.js CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="panel.js"></script>
+<!----<script src="panel.js"></script> -->
+
+<script src="js/config/config.js"></script>
+<script src="js/ui/modal.js"></script>
+<script src="js/ui/toast.js"></script>
+<script src="js/auth/session.js"></script>
+<script src="js/config/api.js"></script>
+<script src="js/auth/rbac.js"></script>
+<script src="js/auth/auth.js"></script>
+<script src="js/config/data.js"></script>
+<script src="js/utils/log.js"></script>
+
+<!-- Utility files -->
+<script src="js/utils/sorting.js"></script>
+<script src="js/utils/pagination.js"></script>
+<script src="js/utils/date-range.js"></script>
+<script src="js/utils/bulk-selection.js"></script>
+<script src="js/utils/tab.js"></script>
+
+<!-- Modules files -->
+<script src="js/modules/users.js"></script>
+<script src="js/modules/events.js"></script>
+<script src="js/modules/tickets.js"></script>
+<script src="js/modules/payouts.js"></script>
+<script src="js/modules/refunds.js"></script>
+<script src="js/modules/waitlists.js"></script>
+<script src="js/modules/service-requests.js"></script>
+<script src="js/modules/transactions.js"></script>
+<script src="js/modules/messages.js"></script>
+<script src="js/modules/reports.js"></script>
+<script src="js/utils/export.js"></script>
+<script src="js/main.js"></script>
+
+
 </body>
 </html>
