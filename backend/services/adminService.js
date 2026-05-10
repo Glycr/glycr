@@ -17,7 +17,11 @@ class AdminService {
       Payout.find(),
     ]);
 
-    const totalRevenue = allTickets.reduce((sum, t) => sum + t.price, 0);
+    // Exclude cancelled and refunded tickets from revenue
+    const totalRevenue = allTickets
+      .filter(t => t.status === 'active' || t.status === 'used')
+      .reduce((sum, t) => sum + t.price, 0);
+
     const liveEvents = allEvents.filter(e => e.isPublished && !e.isCancelled && new Date(e.date) > new Date()).length;
     const flaggedEvents = allEvents.filter(e => e.flagged).length;
     const pendingPayouts = allPayouts.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
@@ -178,9 +182,8 @@ class AdminService {
       .sort({ joinedAt: -1 })
       .lean();
 
-    // Filter out entries where the event was deleted
     return entries
-      .filter(entry => entry.eventId != null)  // <-- add this
+      .filter(entry => entry.eventId != null)
       .map(entry => ({
         id: entry._id.toString(),
         userId: null,
@@ -217,17 +220,12 @@ class AdminService {
     if (!entry) throw new Error('Waitlist entry not found');
 
     const event = entry.eventId;
-
-    // Access the Map correctly
     const ticketTypes = event.ticketTypes;
     if (!ticketTypes || !(ticketTypes instanceof Map)) {
       throw new Error('Event ticket types are corrupted');
     }
 
-    // Normalize the requested ticket type (trim, lower case)
     const normalizedType = ticketType.trim().toLowerCase();
-
-    // Find the actual key in the Map (case‑insensitive)
     let matchedKey = null;
     for (const [key, value] of ticketTypes.entries()) {
       if (key.toLowerCase() === normalizedType) {
@@ -243,7 +241,6 @@ class AdminService {
     const typeData = ticketTypes.get(matchedKey);
     if (typeData.sold >= typeData.capacity) throw new Error('Tickets sold out');
 
-    // Find or create user
     let user = await User.findOne({ email: entry.email });
     if (!user) {
       user = new User({
@@ -261,7 +258,7 @@ class AdminService {
       id: ticketId,
       eventId: event._id,
       userId: user._id,
-      ticketType: matchedKey, // use the original key from the Map
+      ticketType: matchedKey,
       price: typeData.price,
       userEmail: entry.email,
       userPhone: entry.phone,
@@ -270,15 +267,12 @@ class AdminService {
     });
     await ticket.save();
 
-    // Update sold count and save event
     typeData.sold += 1;
     event.markModified('ticketTypes');
     await event.save();
 
-    // Remove from waitlist
     await Waitlist.findByIdAndDelete(entryId);
 
-    // Notifications (non-blocking)
     sendEmail(entry.email, `Your ticket for ${event.title}`, `<p>Ticket ID: ${ticketId}</p>`).catch(e => console.error(e));
     sendSMS(entry.phone, `Glycr: Your ${matchedKey} ticket is ready. ID: ${ticketId}`).catch(e => console.error(e));
 

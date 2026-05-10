@@ -19,16 +19,26 @@ class TicketService {
     const available = typeData.capacity - sold;
     if (quantity > available) throw new Error('Not enough tickets available');
 
+    // --- Early bird pricing ---
+    const now = new Date();
     let pricePerTicket = typeData.price;
-    let discount = 0;
-    if (quantity >= 5) {
-      discount = (typeData.groupDiscount || 10) / 100;
-      pricePerTicket = pricePerTicket * (1 - discount);
+    const earlyBirdEnd = typeData.earlyBirdEnd;
+    if (earlyBirdEnd && now < new Date(earlyBirdEnd) && typeData.earlyBirdPrice !== undefined) {
+      pricePerTicket = typeData.earlyBirdPrice;
     }
 
+    // --- Group discount (only if configured) ---
+    const minQty = typeData.groupDiscountMinQty || 5;
+    const discPct = typeData.groupDiscount || 0;
+    if (discPct > 0 && quantity >= minQty) {
+      pricePerTicket = pricePerTicket * (1 - discPct / 100);
+    }
+
+    // Update sold count
     typeData.sold = sold + quantity;
     await event.save();
 
+    // Create tickets
     const purchasedTickets = [];
     for (let i = 0; i < quantity; i++) {
       const ticketId = uuidv4();
@@ -50,20 +60,20 @@ class TicketService {
       purchasedTickets.push(ticket);
     }
 
+    // Send notifications (unchanged)
     for (const ticket of purchasedTickets) {
       const emailHtml = `
-        <h2>Your Glycr Ticket</h2>
-        <p>Thank you for purchasing a ticket to <strong>${event.title}</strong>.</p>
-        <p>Ticket ID: ${ticket.id}</p>
-        <p>Type: ${ticket.ticketType.toUpperCase()}</p>
-        <p>Price: ₵${ticket.price}</p>
-        <p>Date: ${new Date(event.date).toLocaleString()}</p>
-        <p>Venue: ${event.venue}, ${event.location}</p>
-        <p>Present this QR code at the entrance.</p>
-      `;
+      <h2>Your Glycr Ticket</h2>
+      <p>Thank you for purchasing a ticket to <strong>${event.title}</strong>.</p>
+      <p>Ticket ID: ${ticket.id}</p>
+      <p>Type: ${ticket.ticketType.toUpperCase()}</p>
+      <p>Price: ₵${ticket.price}</p>
+      <p>Date: ${new Date(event.date).toLocaleString()}</p>
+      <p>Venue: ${event.venue}, ${event.location}</p>
+      <p>Present this QR code at the entrance.</p>
+    `;
       const emailText = `Your Glycr Ticket for ${event.title}. Ticket ID: ${ticket.id}. Price: ₵${ticket.price}. Date: ${new Date(event.date).toLocaleString()}. Venue: ${event.venue}, ${event.location}.`;
       const smsText = `Glycr: Your ticket for ${event.title} (${ticket.ticketType}) is confirmed. Ticket ID: ${ticket.id}. Show this QR code at the entrance.`;
-
       await sendEmail(ticket.userEmail, `Your Ticket for ${event.title}`, emailHtml, emailText).catch(err => console.error('Email send failed', err));
       await sendSMS(ticket.userPhone, smsText).catch(err => console.error('SMS send failed', err));
     }
