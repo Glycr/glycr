@@ -1,0 +1,63 @@
+/* =============================================
+   PASSWORD STRENGTH
+============================================= */
+.strength-weak   { background: var(--color-danger) !important; width: 33% !important; }
+.strength-medium { background: var(--color-warning) !important; width: 66% !important; }
+.strength-strong { background: var(--color-success) !important; width: 100% !important; }
+
+
+/* =============================================
+   PROFILE / SETTINGS MODAL
+============================================= */
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settings-row:last-child { border-bottom: none; }
+.settings-label { font-size: var(--text-sm); color: var(--color-text-muted); }
+.settings-value { font-size: var(--text-sm); color: var(--color-text-primary); font-weight: var(--fw-medium); }
+
+.settings-input {
+  padding: 0.5rem 0.75rem;
+  background: var(--color-bg-base);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm-med);
+  font-family: var(--font-sans);
+  width: 200px;
+  transition: border-color var(--transition-base);
+}
+
+.settings-input:focus { outline: none; border-color: var(--color-brand); }
+textarea.settings-input { vertical-align: top; }
+
+.toggle-switch { position: relative; width: 2.5rem; height: 1.4rem; cursor: pointer; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg-raised);
+  border-radius: var(--radius-pill);
+  transition: background var(--transition-base);
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 1rem;
+  height: 1rem;
+  top: 0.2rem;
+  left: 0.2rem;
+  background: white;
+  border-radius: 50%;
+  transition: transform var(--transition-base);
+}
+
+.toggle-switch input:checked + .toggle-slider { background: var(--color-brand); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(1.1rem); }

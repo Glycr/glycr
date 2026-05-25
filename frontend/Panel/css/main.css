@@ -1,0 +1,41 @@
+/* ----- Base ----*/
+@import "base/variables.css";
+@import "base/reset.css";
+@import "base/responsive.css";
+
+/*----Auth-----*/
+@import "auth/auth.css";
+@import "auth/login.css";
+@import "auth/session.css";
+
+/*-----UI-------*/
+@import "ui/toasts.css";
+@import "ui/modals.css";
+@import "ui/charts.css";
+
+/*-----Components----------*/
+@import "components/header.css";
+@import "components/sections.css";
+@import "components/stats.css";
+@import "components/cards.css";
+@import "components/buttons.css";
+@import "components/badges.css";
+
+
+/*--------Util---------*/
+@import "util/tab.css";
+@import "util/table.css";
+@import "util/pagination.css";
+@import "util/utils.css";
+@import "util/bulk-selection.css";
+@import "util/export.css";
+@import "util/filters.css";
+
+/*-------Pages---------*/
+@import "pages/logs.css";
+@import "pages/refunds.css";
+@import "pages/reports.css";
+@import "pages/transactions.css";
+@import "pages/service-requests.css";
+@import "pages/waitlists.css";
+@import "pages/messages.css";

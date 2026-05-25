@@ -1,0 +1,52 @@
+/* =============================================
+   BUTTONS
+============================================= */
+.btn {
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: all var(--transition-slow);
+  border: none;
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-primary { background: var(--color-brand); color: white; }
+.btn-primary:hover { background: var(--color-brand-dark); }
+
+.btn-success { background: var(--color-success); color: white; }
+.btn-success:hover { background: var(--color-success-dark); }
+
+.btn-warning { background: var(--color-warning); color: white; }
+.btn-warning:hover { background: var(--color-warning-dark); }
+
+.btn-danger { background: var(--color-danger); color: white; }
+.btn-danger:hover { background: var(--color-danger-dark); }
+
+.btn-cyan { background: var(--color-cyan-dark); color: white; }
+.btn-cyan:hover { background: var(--color-cyan-darker); }
+
+/* =============================================
+   ACTIONS / BTN-ICON
+============================================= */
+.actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+.btn-icon {
+  padding: 0.5rem 0.65rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  color: white;
+  font-size: var(--text-sm-med);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon:hover { opacity: 0.8; transform: scale(1.05); }

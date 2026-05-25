@@ -1,0 +1,46 @@
+/* =============================================
+   PAGINATION
+============================================= */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 0;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.pagination-info { font-size: var(--text-sm-med); color: var(--color-text-muted); }
+
+.pagination-controls { display: flex; gap: 0.35rem; align-items: center; }
+
+.page-btn {
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-label);
+  font-size: var(--text-sm-med);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-btn:hover  { background: var(--color-bg-raised); color: var(--color-text-primary); }
+.page-btn.active { background: var(--color-brand); border-color: var(--color-brand); color: white; }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.per-page-select {
+  padding: 0.3rem 0.6rem;
+  background: var(--color-bg-base);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm-soft);
+  font-family: var(--font-sans);
+}

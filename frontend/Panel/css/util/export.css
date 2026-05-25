@@ -1,0 +1,58 @@
+/* =============================================
+   EXPORT MODAL STYLES
+============================================= */
+.export-format-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+
+.export-format-option { display: flex; cursor: pointer; }
+.export-format-option input[type="radio"] { display: none; }
+
+.export-format-option span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.75rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm-soft);
+  color: var(--color-text-muted);
+  background: var(--color-bg-base);
+  transition: all 0.18s;
+  text-align: center;
+}
+
+.export-format-option span i { font-size: var(--text-lg-icon); }
+.export-format-option input:checked + span { border-color: var(--color-brand); background: var(--color-brand-bg2); color: var(--color-brand-light); }
+.export-format-option:hover span { border-color: var(--color-border-hover); color: var(--color-text-primary); }
+
+.export-range-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+}
+
+.export-range-option { display: flex; cursor: pointer; }
+.export-range-option input[type="radio"] { display: none; }
+
+.export-range-option span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm-soft);
+  color: var(--color-text-muted);
+  background: var(--color-bg-base);
+  transition: all 0.18s;
+  text-align: center;
+}
+
+.export-range-option input:checked + span { border-color: var(--color-brand); background: var(--color-brand-bg2); color: var(--color-brand-light); }
+.export-range-option:hover span { border-color: var(--color-border-hover); color: var(--color-text-primary); }

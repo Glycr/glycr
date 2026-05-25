@@ -1,0 +1,23 @@
+/* =============================================
+   RESPONSIVE
+============================================= */
+@media (max-width: 768px) {
+  .tabs-content   { overflow-x: auto; gap: 0; }
+  .tab            { padding: 1rem; font-size: var(--text-sm-med); gap: 0.3rem; }
+  .detail-grid    { grid-template-columns: 1fr; }
+  .stats-grid     { grid-template-columns: 1fr; }
+  .filters,
+  .log-filters-row { flex-direction: column; }
+  .input          { min-width: 100%; }
+  .log-item       { flex-wrap: wrap; }
+  .event-table-meta       { flex-direction: column; gap: 0.25rem; }
+  .ticket-table-event-meta { flex-direction: column; gap: 0.15rem; }
+  .export-format-grid     { grid-template-columns: repeat(3, 1fr); }
+  .export-range-grid      { grid-template-columns: 1fr 1fr; }
+  #toast-container        { width: calc(100vw - 2rem); right: 1rem; }
+  .bulk-action-bar        { flex-direction: column; align-items: flex-start; }
+  .pagination-bar         { justify-content: center; }
+  .header-content         { padding: 1rem; }
+  .session-timer-display  { display: none; }
+  .chart-period-group     { flex-wrap: wrap; }
+}

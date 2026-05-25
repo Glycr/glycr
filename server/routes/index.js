@@ -12,7 +12,7 @@ const analyticsRoutes = require('./analytics');
 const refundRoutes = require('./refunds');
 const serviceRequestRoutes = require('./serviceRequests');
 const messageRoutes = require('./messages');
-
+const couponRoutes = require('./coupons');
 
 
 
@@ -27,11 +27,12 @@ router.use(ticketRoutes);
 router.use(serviceRequestRoutes);
 router.use(waitlistRoutes);
 router.use(payoutRoutes);
-router.use( userSettingsRoutes);
+router.use(userSettingsRoutes);
 router.use(notificationRoutes);
 router.use(analyticsRoutes);
 router.use(refundRoutes);
 router.use(messageRoutes);
+router.use(couponRoutes);
 router.use(adminRoutes);
 
 

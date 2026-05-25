@@ -1,0 +1,33 @@
+/* =============================================
+   DETAIL GRID / ITEMS
+============================================= */
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.detail-item  { background: var(--color-bg-base); padding: 1rem; border-radius: var(--radius-md); }
+.detail-label { color: var(--color-text-muted); font-size: var(--text-sm-minus); margin-bottom: 0.25rem; }
+.detail-value { font-weight: var(--fw-semibold); }
+
+/* =============================================
+   EMPTY STATE
+============================================= */
+.empty-state { text-align: center; padding: 3rem; color: var(--color-text-muted); }
+
+.event-item   { background: var(--color-bg-base); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; }
+.event-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem; }
+.payout-item  { background: var(--color-bg-base); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; }
+.payout-header  { display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem; }
+.payout-amount  { font-size: var(--text-lg); font-weight: var(--fw-bold); margin-bottom: 0.5rem; }
+.payout-details { font-size: var(--text-sm); color: var(--color-text-muted); }
+.payout-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+
+/* =============================================
+   INFO BOX
+============================================= */
+.info-box { padding: 1rem; border-radius: var(--radius-md); margin-top: 1rem; font-size: var(--text-sm); }
+.info-box.success { background: var(--color-success-bg); border: 1px solid var(--color-success-border); color: var(--color-success-text); }
+.info-box.error   { background: var(--color-danger-bg);  border: 1px solid var(--color-danger-border); color: var(--color-danger-text); }

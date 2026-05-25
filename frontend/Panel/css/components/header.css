@@ -1,0 +1,104 @@
+/* =============================================
+   HEADER
+============================================= */
+.header {
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.header-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-left { display: flex; align-items: center; gap: 1rem; }
+
+.logo {
+  font-size: var(--text-2xl);
+  font-weight: var(--fw-extrabold);
+  background: linear-gradient(135deg, var(--color-brand), var(--color-violet));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle { font-size: var(--text-sm); color: var(--color-text-muted); }
+
+.profile-dropdown-wrap { position: relative; }
+
+.profile-icon-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-brand), var(--color-violet));
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: var(--text-base);
+  transition: opacity var(--transition-base);
+}
+
+.profile-icon-btn:hover { opacity: 0.85; }
+
+.profile-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  min-width: 180px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  z-index: 200;
+}
+
+.profile-dropdown.open { display: block; }
+
+.profile-dropdown-header {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.profile-dropdown-name { font-weight: var(--fw-semibold); font-size: var(--text-sm); color: var(--color-text-primary); }
+.profile-dropdown-role { font-size: var(--text-sm-minus); color: var(--color-text-muted); }
+
+.profile-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 1rem;
+  font-size: var(--text-sm);
+  color: var(--color-text-label);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-sans);
+}
+
+.profile-dropdown-item:hover { background: var(--color-bg-raised); color: var(--color-text-primary); }
+.profile-dropdown-item.danger { color: var(--color-danger-text); }
+.profile-dropdown-item.danger:hover { background: var(--color-danger-bg); }
+.profile-dropdown-item i { width: 14px; text-align: center; font-size: var(--text-sm-med); }
+
+.dropdown-divider { height: 1px; background: var(--color-border); margin: 0.25rem 0; }
+
+
+/* =============================================
+   ADMIN PANEL
+============================================= */
+#admin-panel { display: none; }

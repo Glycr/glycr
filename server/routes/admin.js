@@ -47,7 +47,7 @@ router.patch('/admin/events/:id/publish', auth, roleMiddleware(['admin', 'modera
 router.get('/admin/tickets', adminController.getAllTickets);
 router.patch('/admin/tickets/:id/validate', auth, roleMiddleware(['admin', 'moderator']), ticketController.validateTicket);
 router.patch('/admin/tickets/:id/cancel', auth, roleMiddleware(['admin', 'moderator']), ticketController.cancelTicket);
-
+router.get('/admin/coupons', auth, roleMiddleware(['admin']), adminController.getAllCoupons);
 
 
 // Service Request Management (admin only)

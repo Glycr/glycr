@@ -1,0 +1,54 @@
+/* =============================================
+   SERVICE REQUEST TABLE
+============================================= */
+.sr-table-id      { font-size: var(--text-sm-minus); color: var(--color-text-muted); font-family: var(--font-mono); }
+.sr-table-user    { font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--color-text-primary); margin-bottom: 0.15rem; }
+.sr-table-sub     { font-size: var(--text-sm-minus); color: var(--color-text-muted); display: flex; align-items: center; gap: 0.3rem; }
+.sr-table-subject { font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--color-text-primary); margin-bottom: 0.2rem; max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sr-table-preview { font-size: var(--text-2xs-plus); color: var(--color-text-muted); max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.sr-row-resolved         { opacity: 0.65; }
+.sr-row-resolved:hover   { opacity: 1 !important; }
+
+.sr-category-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-2xs-plus);
+  font-weight: var(--fw-semibold);
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--color-text-muted);
+  text-transform: capitalize;
+}
+
+.sr-category-pill.ticket_issue      { background: var(--color-brand-bg3);          color: var(--color-brand-light); }
+.sr-category-pill.payment_problem   { background: var(--color-success-bg2);        color: var(--color-success-text); }
+.sr-category-pill.refund_request    { background: var(--color-danger-bg2);         color: var(--color-danger-text); }
+.sr-category-pill.organizer_support { background: rgba(139, 92, 246, 0.12);        color: var(--color-violet-light); }
+.sr-category-pill.account_issue     { background: var(--color-warning-bg2);        color: var(--color-warning-text); }
+.sr-category-pill.bug_report        { background: var(--color-orange-bg);          color: var(--color-orange); }
+.sr-category-pill.other             { background: rgba(148, 163, 184, 0.1);        color: var(--color-text-muted); }
+
+.sr-message-box {
+  background: var(--color-bg-base);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  font-size: var(--text-sm);
+  color: var(--color-text-label);
+  line-height: var(--leading-relaxed);
+  margin-top: 0.5rem;
+}
+
+.sr-resolution-box {
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--leading-relaxed);
+  margin-top: 0.5rem;
+}

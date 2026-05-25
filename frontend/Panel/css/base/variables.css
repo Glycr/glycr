@@ -1,0 +1,121 @@
+/* =============================================
+   Variables
+============================================= */
+:root {
+  /* --- Backgrounds --- */
+  --color-bg-base:       #0f172a;
+  --color-bg-surface:    #1e293b;
+  --color-bg-raised:     #334155;
+  --color-bg-subtle:     #0f172a;
+
+  /* --- Borders --- */
+  --color-border:        #334155;
+  --color-border-hover:  #475569;
+
+  /* --- Text --- */
+  --color-text-primary:  #f1f5f9;
+  --color-text-label:    #cbd5e1;
+  --color-text-muted:    #94a3b8;
+  --color-text-subtle:   #475569;
+  --color-text-faint:    #64748b;
+
+  /* --- Brand / Accent --- */
+  --color-brand:         #6366f1;
+  --color-brand-dark:    #4f46e5;
+  --color-brand-light:   #818cf8;
+  --color-violet:        #8b5cf6;
+  --color-violet-light:  #c084fc;
+  --color-cyan:          #06b6d4;
+  --color-cyan-dark:     #0891b2;
+  --color-cyan-darker:   #0e7490;
+  --color-pink:          #f472b6;
+
+  /* --- Semantic: Success --- */
+  --color-success:       #10b981;
+  --color-success-dark:  #059669;
+  --color-success-text:  #34d399;
+  --color-success-bg:    rgba(16, 185, 129, 0.1);
+  --color-success-bg2:   rgba(16, 185, 129, 0.15);
+  --color-success-bg3:   rgba(16, 185, 129, 0.2);
+  --color-success-border:rgba(16, 185, 129, 0.3);
+
+  /* --- Semantic: Warning --- */
+  --color-warning:       #f59e0b;
+  --color-warning-dark:  #d97706;
+  --color-warning-text:  #fbbf24;
+  --color-warning-bg:    rgba(251, 191, 36, 0.1);
+  --color-warning-bg2:   rgba(251, 191, 36, 0.15);
+  --color-warning-bg3:   rgba(251, 191, 36, 0.2);
+  --color-warning-border:rgba(245, 158, 11, 0.4);
+
+  /* --- Semantic: Danger --- */
+  --color-danger:        #ef4444;
+  --color-danger-dark:   #dc2626;
+  --color-danger-text:   #f87171;
+  --color-danger-bg:     rgba(239, 68, 68, 0.1);
+  --color-danger-bg2:    rgba(239, 68, 68, 0.15);
+  --color-danger-bg3:    rgba(239, 68, 68, 0.2);
+  --color-danger-border: rgba(239, 68, 68, 0.3);
+
+  /* --- Semantic: Orange --- */
+  --color-orange:        #fb923c;
+  --color-orange-bg:     rgba(251, 146, 60, 0.15);
+
+  /* --- Brand alpha --- */
+  --color-brand-bg:      rgba(99, 102, 241, 0.08);
+  --color-brand-bg2:     rgba(99, 102, 241, 0.1);
+  --color-brand-bg3:     rgba(99, 102, 241, 0.12);
+  --color-brand-bg4:     rgba(99, 102, 241, 0.15);
+  --color-brand-border:  rgba(99, 102, 241, 0.25);
+
+  /* --- Font Families --- */
+  --font-sans:  'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:  ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
+
+  /* --- Font Sizes --- */
+  --text-2xs:  0.68rem;   /* 10.9px — log admin pill, tiny labels         */
+  --text-xs:   0.7rem;    /* 11.2px — msg channel, icon meta               */
+  --text-2xs-plus: 0.72rem; /* 11.5px — sub-meta, preview, option-sub      */
+  --text-sm-minus: 0.75rem; /* 12px   — badge, detail-label, th, meta      */
+  --text-sm-soft:  0.78rem; /* 12.5px — toast, ticket-id, session-timer    */
+  --text-sm-med:   0.8rem;  /* 12.8px — btn, setting-input, tab-mobile     */
+  --text-sm-plus:  0.82rem; /* 13.1px — toast-title, recipient, modal sub  */
+  --text-sm:       0.875rem;/* 14px   — body, td, dropdown item, settings  */
+  --text-base:     1rem;    /* 16px   — payout/refund amount                */
+  --text-lg:       1.25rem; /* 20px   — card-title, session warning h3     */
+  --text-xl:       1.5rem;  /* 24px   — modal-title                        */
+  --text-2xl:      1.75rem; /* 28px   — logo, login-logo, session icon     */
+  --text-lg-icon:  1.2rem;   /* 19.2px — icon decorative                        */
+  --text-3xl:      2rem;    /* 32px   — stat-value                         */
+
+  /* --- Font Weights --- */
+  --fw-normal:     400;
+  --fw-medium:     500;
+  --fw-semibold:   600;
+  --fw-bold:       700;
+  --fw-extrabold:  800;
+
+  /* --- Line Heights --- */
+  --leading-tight:   1.45;  /* toast message                               */
+  --leading-snug:    1.6;   /* body, session card p                        */
+  --leading-normal:  1.6;   /* default                                     */
+  --leading-relaxed: 1.7;   /* sr-message-box, resolution-box              */
+
+  /* --- Letter Spacing --- */
+  --tracking-tight:  0;
+  --tracking-normal: 0.05em;  /* login-label uppercase                     */
+  --tracking-wide:   0.06em;  /* ticket-type, log admin pill               */
+  --tracking-wider:  0.07em;  /* th uppercase labels                       */
+
+  /* --- Border Radius --- */
+  --radius-sm:   0.375rem;
+  --radius-md:   0.5rem;
+  --radius-lg:   0.75rem;
+  --radius-xl:   1rem;
+  --radius-pill: 9999px;
+
+  /* --- Transitions --- */
+  --transition-fast:  0.15s;
+  --transition-base:  0.2s;
+  --transition-slow:  0.3s;
+}

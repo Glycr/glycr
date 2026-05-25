@@ -1,0 +1,73 @@
+/* =============================================
+   LOGS PAGE
+============================================= */
+.log-item {
+  background: var(--color-bg-base);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.875rem 1rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  transition: border-color var(--transition-base);
+}
+
+.log-item:hover { border-color: var(--color-border-hover); }
+
+.log-icon-wrap {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm-med);
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.log-icon-wrap.auth    { background: var(--color-brand-bg4);   color: var(--color-brand-light); }
+.log-icon-wrap.event   { background: var(--color-success-bg2); color: var(--color-success-text); }
+.log-icon-wrap.payout  { background: rgba(139, 92, 246, 0.15); color: var(--color-violet-light); }
+.log-icon-wrap.user    { background: var(--color-warning-bg2); color: var(--color-warning-text); }
+.log-icon-wrap.system  { background: rgba(148, 163, 184, 0.1); color: var(--color-text-muted); }
+.log-icon-wrap.warning { background: var(--color-orange-bg);   color: var(--color-orange); }
+.log-icon-wrap.danger  { background: var(--color-danger-bg2);  color: var(--color-danger-text); }
+
+.log-body    { flex: 1; min-width: 0; }
+.log-message { font-size: var(--text-sm); color: var(--color-text-primary); font-weight: var(--fw-medium); margin-bottom: 0.2rem; }
+.log-meta    { font-size: var(--text-sm-minus); color: var(--color-text-muted); display: flex; gap: 1rem; flex-wrap: wrap; }
+.log-meta-item { display: flex; align-items: center; gap: 0.3rem; }
+
+.log-timestamp {
+  font-size: var(--text-2xs-plus);
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-top: 0.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.log-filters-row { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
+
+.log-count-badge {
+  padding: 0.2rem 0.65rem;
+  background: var(--color-bg-raised);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-2xs-plus);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-muted);
+}
+
+.log-admin-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.5rem;
+  background: var(--color-brand-bg3);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-2xs);
+  color: var(--color-brand-light);
+}

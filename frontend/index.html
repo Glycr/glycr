@@ -7,13 +7,38 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<!-- COOKIE CONSENT -->
+<div id="cookie-banner" class="cookie-banner" role="dialog" aria-label="Cookie consent" style="display:none;">
+  <div class="cookie-banner-inner">
+    <div class="cookie-banner-text">
+      <strong>We use cookies</strong>
+      <span>We use cookies to improve your experience. By continuing, you agree to our <a href="#" onclick="app.openModal('cookie-modal')">Cookie Policy</a>.</span>
+    </div>
+    <div class="cookie-banner-actions">
+      <button class="btn btn-ghost btn-sm" id="cookie-reject-btn" onclick="app.handleCookieChoice(false)">Reject</button>
+      <button class="btn btn-primary btn-sm" id="cookie-accept-btn" onclick="app.handleCookieChoice(true)">Accept all</button>
+    </div>
+  </div>
+</div>
+<div id="toast-message" class="toast-message" style="display:none;"></div>
+
+<!-- ===== NOTIFICATIONS PANEL ===== -->
+<div id="notifications-panel" class="notifications-panel" role="dialog" aria-label="Notifications" aria-modal="false">
+  <div class="notif-header">
+    <span class="notif-title"><i class="fas fa-bell"></i> Notifications</span>
+    <button class="notif-mark-read" id="mark-all-read" onclick="app.markAllNotificationsRead()">Mark all read</button>
+    <button class="notif-close" onclick="app.closeNotifications()" aria-label="Close notifications">&times;</button>
+  </div>
+  <div id="notifications-list" class="notif-list"></div>
+</div>
+<div id="notif-overlay" class="notif-overlay" onclick="app.closeNotifications()"></div>
 
 <!-- ===== NAVBAR ===== -->
 <nav class="navbar">
@@ -29,6 +54,11 @@
   </ul>
   <div class="nav-right">
     <button class="btn btn-ghost" id="login-link">Sign In</button>
+    <!-- Notification Bell -->
+    <button class="notif-bell-btn" id="notif-bell-btn" style="display:none;" onclick="app.toggleNotifications()" aria-label="Notifications">
+      <i class="fas fa-bell"></i>
+      <span class="notif-badge" id="notif-badge" style="display:none;">0</span>
+    </button>
     <div class="profile-dropdown" id="profile-dropdown" style="display:none;">
       <button class="profile-trigger" id="profile-trigger">
         <div class="profile-avatar-small" id="profile-avatar-small">U</div>
@@ -42,7 +72,7 @@
         <a href="#" id="dropdown-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
       </div>
     </div>
-    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">
+    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
   </div>
@@ -92,10 +122,10 @@
     <select id="location-filter" class="filter-chip">
       <option value="">All Locations</option>
       <optgroup label="Accra">
-        <option value="osu">Osu</option><option value="east-legon">East Legon</option>
-        <option value="airport-residential-area">Airport Area</option><option value="cantonments">Cantonments</option>
-        <option value="labone">Labone</option><option value="tema">Tema</option>
-        <option value="madina">Madina</option><option value="spintex">Spintex</option>
+        <option value="osu">Osu</option> <option value="trassaco">Trassaco</option><option value="east-legon">East Legon</option>
+        <option value="airport-residential-area">Airport Residential Area</option><option value="cantonments">Cantonments</option>
+        <option value="labone">Labone</option><option value="labadi">Labadi</option><option value="tema">Tema</option>
+        <option value="madina">Madina</option><option value="Spintex">Spintex</option>
         <option value="accra-central">Accra Central</option><option value="west-legon">West Legon</option>
       </optgroup>
       <optgroup label="Other Cities">
@@ -223,44 +253,93 @@
           <div id="help-status" class="status-msg" style="display:none;"></div>
         </form>
       </div>
-      <div class="help-contact-info">
-        <div class="help-contact-item">
-          <i class="fas fa-envelope"></i>
-          <div><strong>Email Support</strong><br><a href="mailto:support@glycr.com" style="color:var(--teal);">support@glycr.com</a></div>
-        </div>
-        <div class="help-contact-item">
-          <i class="fas fa-phone"></i>
-          <div><strong>Phone</strong><br><span style="color:var(--dim);">+233 (0) 30 000 0000</span></div>
-        </div>
-        <div class="help-contact-item">
-          <i class="fas fa-clock"></i>
-          <div><strong>Support Hours</strong><br><span style="color:var(--dim);">Mon–Fri 8am–8pm GMT</span></div>
-        </div>
-      </div>
     </div>
   </div>
 </section>
 
 <!-- ===== PROFILE ===== -->
 <section class="section" id="profile" style="padding-top:calc(64px + 2.5rem);">
-  <div class="section-head">
-    <h2 class="section-title">Profile</h2>
-    <button class="btn btn-ghost" id="edit-profile-btn" style="font-size:0.82rem;"><i class="fas fa-edit"></i> Edit Profile</button>
-  </div>
-  <div class="profile-layout">
-    <div class="profile-sidebar">
-      <div class="profile-avatar" id="profile-avatar">U</div>
-      <div class="profile-name" id="profile-name">—</div>
-      <div class="profile-detail" id="profile-email"></div>
-      <div class="profile-detail" id="profile-phone"></div>
+  <div class="profile-page-header">
+    <div class="profile-hero-card">
+      <div class="profile-hero-bg"></div>
+      <div class="profile-hero-content">
+        <div class="profile-avatar-lg" id="profile-avatar">U</div>
+        <div class="profile-hero-info">
+          <h2 class="profile-hero-name" id="profile-name">—</h2>
+          <div class="profile-hero-meta">
+            <span id="profile-email-display"><i class="fas fa-envelope"></i> —</span>
+            <span id="profile-phone-display"><i class="fas fa-phone"></i> —</span>
+          </div>
+          <div class="profile-hero-actions">
+            <button class="btn btn-primary btn-sm" id="edit-profile-btn"><i class="fas fa-edit"></i> Edit Profile</button>
+            <button class="btn btn-ghost btn-sm" onclick="app.showSettingsModal()"><i class="fas fa-cog"></i> Settings</button>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="profile-main">
-      <p class="form-label" style="margin-bottom:1rem;">Purchase History</p>
-      <div id="purchase-history-list"></div>
-      <p class="form-label" style="margin:2rem 0 1rem;">Favourites</p>
-      <div class="events-grid" id="favorite-events-list"></div>
-      <p class="form-label" style="margin:2rem 0 1rem;">My Refund Requests</p>
+  </div>
+
+  <div class="profile-tabs-nav" id="profile-tabs-nav">
+    <button class="profile-tab-btn active" data-tab="purchases" onclick="app.switchProfileTab('purchases', this)">
+      <i class="fas fa-ticket-alt"></i> Purchases
+    </button>
+    <button class="profile-tab-btn" data-tab="favourites" onclick="app.switchProfileTab('favourites', this)">
+      <i class="fas fa-heart"></i> Favourites
+    </button>
+    <button class="profile-tab-btn" data-tab="refunds" onclick="app.switchProfileTab('refunds', this)">
+      <i class="fas fa-undo"></i> Refund Requests
+    </button>
+    <button class="profile-tab-btn" data-tab="reminders" onclick="app.switchProfileTab('reminders', this)">
+      <i class="fas fa-bell"></i> Reminders
+    </button>
+    <button class="profile-tab-btn" data-tab="reviews" onclick="app.switchProfileTab('reviews', this)">
+      <i class="fas fa-star"></i> My Reviews
+    </button>
+  </div>
+
+  <div class="profile-tab-panels">
+    <!-- Purchases Tab -->
+    <div class="profile-tab-panel active" id="tab-purchases">
+      <div class="profile-section-header">
+        <h3>Purchase History</h3>
+        <span class="profile-section-count" id="purchase-count">0 tickets</span>
+      </div>
+      <div id="purchase-history-list" class="purchase-list"></div>
+    </div>
+
+    <!-- Favourites Tab -->
+    <div class="profile-tab-panel" id="tab-favourites">
+      <div class="profile-section-header">
+        <h3>Saved Events</h3>
+        <span class="profile-section-count" id="fav-count">0 events</span>
+      </div>
+      <div class="events-grid profile-fav-grid" id="favorite-events-list"></div>
+    </div>
+
+    <!-- Refunds Tab -->
+    <div class="profile-tab-panel" id="tab-refunds">
+      <div class="profile-section-header">
+        <h3>Refund Requests</h3>
+      </div>
       <div id="my-refunds-list"></div>
+    </div>
+
+    <!-- Reminders Tab -->
+    <div class="profile-tab-panel" id="tab-reminders">
+      <div class="profile-section-header">
+        <h3>Event Reminders</h3>
+        <span class="profile-section-hint">Manage your upcoming event reminders</span>
+      </div>
+      <div id="reminders-list" class="reminders-list"></div>
+    </div>
+
+    <!-- Reviews Tab -->
+    <div class="profile-tab-panel" id="tab-reviews">
+      <div class="profile-section-header">
+        <h3>My Reviews</h3>
+        <span class="profile-section-hint">Reviews you've left for past events</span>
+      </div>
+      <div id="my-reviews-list"></div>
     </div>
   </div>
 </section>
@@ -415,7 +494,9 @@
         <li><a href="#" onclick="app.openModal('auth-modal')">Create Account</a></li>
       </ul>
     </div>
-    <div class="footer-links-group">
+
+    <!-- In the "For Organizers" footer column, add id to the <div class="footer-links-group"> -->
+    <div class="footer-links-group" id="footer-organizer-links" style="display:none;">
       <h4 class="footer-heading">For Organizers</h4>
       <ul>
         <li><a href="#" onclick="app.showSection('dashboard')">Dashboard</a></li>
@@ -443,11 +524,6 @@
         </div>
         <div id="newsletter-status" style="display:none; font-size:0.75rem; margin-top:0.5rem;"></div>
       </form>
-      <div class="footer-contact-info">
-        <div><i class="fas fa-envelope"></i> <a href="mailto:hello@glycr.com">hello@glycr.com</a></div>
-        <div><i class="fas fa-phone"></i> +233 (0) 30 000 0000</div>
-        <div><i class="fas fa-map-marker-alt"></i> Accra, Ghana</div>
-      </div>
     </div>
   </div>
   <div class="footer-bottom">
@@ -463,9 +539,9 @@
 <!-- ===== MODALS ===== -->
 
 <!-- Event Detail -->
-<div id="event-modal" class="modal">
+<div id="event-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="event-modal-title">
   <div class="modal-backdrop"></div>
-  <div class="modal-box wide" role="dialog" aria-modal="true">
+  <div class="modal-box wide">
     <button class="modal-close" aria-label="Close">&times;</button>
     <div id="event-detail"></div>
     <div id="ticket-benefits"></div>
@@ -477,9 +553,9 @@
 </div>
 
 <!-- Purchase -->
-<div id="purchase-modal" class="modal">
+<div id="purchase-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="purchase-title">
   <div class="modal-backdrop"></div>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box">
     <div class="modal-header"><h3 class="modal-title" id="purchase-title">Select Ticket</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <div id="ticket-types"></div>
     <div id="quantity-section" style="display:none; margin:1rem 0;">
@@ -493,7 +569,6 @@
         <div class="form-field"><label class="form-label">Billing Address</label><input type="text" id="billing-address" placeholder="Address" class="input"></div>
       </div>
     </div>
-    <!-- Promo Code -->
     <div id="promo-section" style="margin:0.75rem 0;">
       <div class="promo-input-wrap">
         <input type="text" id="promo-code-input" class="input" placeholder="Promo / Coupon code" style="flex:1;">
@@ -504,16 +579,20 @@
     <div id="payment-section" style="display:none;">
       <p class="form-label" style="margin-bottom:0.6rem;">Payment Method</p>
       <div class="pmeth-grid">
-        <button class="pmeth-btn active" data-method="mtn-momo"><span class="pmeth-icon">📱</span>MTN MoMo</button>
-        <button class="pmeth-btn" data-method="vodafone-cash"><span class="pmeth-icon">📱</span>Vodafone</button>
-        <button class="pmeth-btn" data-method="airteltigo-money"><span class="pmeth-icon">📱</span>AirtelTigo</button>
+        <button class="pmeth-btn active" data-method="mtn-momo"><span class="pmeth-icon">📱</span>Mobile Money</button>
         <button class="pmeth-btn" data-method="stripe"><span class="pmeth-icon">💳</span>Card</button>
-        <button class="pmeth-btn" data-method="paypal"><span class="pmeth-icon">🅿️</span>PayPal</button>
-        <button class="pmeth-btn" data-method="crypto"><span class="pmeth-icon">₿</span>Crypto</button>
       </div>
       <div class="form-row" style="margin-bottom:0.75rem;">
-        <div class="form-field"><label class="form-label">Email</label><input type="email" id="payer-email" placeholder="your@email.com" class="input"></div>
-        <div class="form-field"><label class="form-label">Phone</label><input type="tel" id="payer-phone" placeholder="+233xxxxxxxxx" class="input"></div>
+        <div class="form-field">
+          <label class="form-label">Email</label>
+          <input type="email" id="payer-email" placeholder="your@email.com" class="input">
+          <span class="field-error" id="payer-email-err"></span>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Phone</label>
+          <input type="tel" id="payer-phone" placeholder="+233xxxxxxxxx" class="input">
+          <span class="field-error" id="payer-phone-err"></span>
+        </div>
       </div>
       <div id="price-summary" class="price-summary" style="display:none; margin-bottom:0.75rem;">
         <div class="price-row"><span>Subtotal</span><span id="price-subtotal">₵0</span></div>
@@ -528,34 +607,118 @@
   </div>
 </div>
 
-<!-- Ticket (QR + PDF download) -->
-<div id="ticket-modal" class="modal">
+<!-- Ticket QR -->
+<div id="ticket-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:400px;">
+  <div class="modal-box" style="max-width:400px;">
     <button class="modal-close" aria-label="Close">&times;</button>
     <div class="ticket-display">
       <h3><i class="fas fa-ticket-alt"></i> Your Ticket</h3>
       <div id="ticket-canvas" class="ticket-canvas"></div>
       <p id="ticket-id" class="ticket-id-mono"></p>
+      <!-- Calendar Add Buttons -->
+      <div class="calendar-add-row" id="calendar-add-row" style="display:none;">
+        <p class="form-label" style="margin-bottom:0.5rem;">Add to Calendar</p>
+        <div style="display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" id="add-gcal-btn" onclick="app.addToGoogleCalendar()"><i class="fab fa-google"></i> Google</button>
+          <button class="btn btn-ghost btn-sm" id="add-ical-btn" onclick="app.addToICal()"><i class="fas fa-calendar-alt"></i> iCal / Apple</button>
+          <button class="btn btn-ghost btn-sm" id="add-outlook-btn" onclick="app.addToOutlook()"><i class="fab fa-microsoft"></i> Outlook</button>
+        </div>
+      </div>
       <div style="display:flex; gap:0.5rem; margin-top:0.75rem; flex-direction:column;">
         <button class="btn btn-primary btn-block" id="download-ticket-pdf"><i class="fas fa-file-pdf"></i> Download PDF Ticket</button>
-        <button class="btn btn-outline btn-block" id="validate-ticket">Validate at Door</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Waitlist -->
-<div id="waitlist-modal" class="modal">
+<!-- Ticket Transfer Modal -->
+<div id="transfer-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:460px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-paper-plane" style="color:var(--teal);"></i> Transfer Ticket</h3>
+      <button class="modal-close" aria-label="Close">&times;</button>
+    </div>
+    <p style="font-size:0.83rem; color:var(--muted); margin-bottom:1.25rem; line-height:1.6;">Transfer this ticket to another Glycr user. The recipient will receive a confirmation email and their own QR code.</p>
+    <input type="hidden" id="transfer-ticket-id">
+    <div class="transfer-ticket-info" id="transfer-ticket-info-display"></div>
+    <div class="form" style="margin-top:1rem;">
+      <div class="form-field">
+        <label class="form-label">Recipient Email <span style="color:var(--coral);">*</span></label>
+        <input type="email" id="transfer-recipient-email" class="input" placeholder="recipient@email.com">
+        <span class="field-error" id="transfer-email-err"></span>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Message (optional)</label>
+        <textarea id="transfer-message" class="input" rows="2" placeholder="Add a personal note…"></textarea>
+      </div>
+      <div class="transfer-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>This action is irreversible. Once transferred, you will lose access to this ticket.</span>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="app.submitTicketTransfer()"><i class="fas fa-paper-plane"></i> Transfer Ticket</button>
+      <div id="transfer-status" class="status-msg" style="display:none; margin-top:0.75rem;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Review Modal -->
+<div id="review-modal" class="modal" role="dialog" aria-modal="true">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-star" style="color:var(--gold);"></i> Leave a Review</h3>
+      <button class="modal-close" aria-label="Close">&times;</button>
+    </div>
+    <div id="review-event-info" style="margin-bottom:1.25rem;"></div>
+    <input type="hidden" id="review-event-id">
+    <div class="form">
+      <div class="form-field">
+        <label class="form-label">Overall Rating</label>
+        <div class="star-rating" id="star-rating" role="group" aria-label="Star rating">
+          <button class="star-btn" data-val="1" onclick="app.setRating(1)" aria-label="1 star"><i class="fas fa-star"></i></button>
+          <button class="star-btn" data-val="2" onclick="app.setRating(2)" aria-label="2 stars"><i class="fas fa-star"></i></button>
+          <button class="star-btn" data-val="3" onclick="app.setRating(3)" aria-label="3 stars"><i class="fas fa-star"></i></button>
+          <button class="star-btn" data-val="4" onclick="app.setRating(4)" aria-label="4 stars"><i class="fas fa-star"></i></button>
+          <button class="star-btn" data-val="5" onclick="app.setRating(5)" aria-label="5 stars"><i class="fas fa-star"></i></button>
+        </div>
+        <span class="field-error" id="rating-err"></span>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Your Review</label>
+        <textarea id="review-text" class="input" rows="4" placeholder="Share your experience at this event…"></textarea>
+        <span class="field-error" id="review-text-err"></span>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="app.submitReview()"><i class="fas fa-paper-plane"></i> Submit Review</button>
+      <div id="review-status" class="status-msg" style="display:none; margin-top:0.75rem;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Waitlist -->
+<div id="waitlist-modal" class="modal" role="dialog" aria-modal="true">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box">
     <div class="modal-header"><h3 class="modal-title" id="waitlist-title">Join Waitlist</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <p style="font-size:0.83rem; color:var(--muted); margin-bottom:1.25rem;">We'll notify you instantly when a ticket becomes available.</p>
     <form id="waitlist-form" class="form" onsubmit="app.joinWaitlist(); return false;">
-      <div class="form-field"><label class="form-label">Full Name</label><input type="text" id="waitlist-name" placeholder="Your name" class="input" required></div>
+      <div class="form-field">
+        <label class="form-label">Full Name</label>
+        <input type="text" id="waitlist-name" placeholder="Your name" class="input" required>
+        <span class="field-error" id="waitlist-name-err"></span>
+      </div>
       <div class="form-row">
-        <div class="form-field"><label class="form-label">Email</label><input type="email" id="waitlist-email" placeholder="your@email.com" class="input" required></div>
-        <div class="form-field"><label class="form-label">Phone (+233…)</label><input type="tel" id="waitlist-phone" placeholder="+233xxxxxxxxx" class="input" required></div>
+        <div class="form-field">
+          <label class="form-label">Email</label>
+          <input type="email" id="waitlist-email" placeholder="your@email.com" class="input" required>
+          <span class="field-error" id="waitlist-email-err"></span>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Phone (+233…)</label>
+          <input type="tel" id="waitlist-phone" placeholder="+233xxxxxxxxx" class="input" required>
+          <span class="field-error" id="waitlist-phone-err"></span>
+        </div>
       </div>
       <button type="submit" class="btn btn-primary btn-block">Join Waitlist</button>
     </form>
@@ -564,26 +727,51 @@
 </div>
 
 <!-- Auth -->
-<div id="auth-modal" class="modal">
+<div id="auth-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
   <div class="modal-backdrop"></div>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:460px;">
+  <div class="modal-box" style="max-width:460px;">
     <div class="modal-header"><h3 class="modal-title" id="auth-title">Sign In</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <form id="auth-form" class="form">
-      <div class="form-field"><label class="form-label">Email</label><input type="email" id="email" placeholder="your@email.com" class="input" required></div>
+      <div class="form-field">
+        <label class="form-label">Email</label>
+        <input type="email" id="email" placeholder="your@email.com" class="input" required>
+        <span class="field-error" id="email-err"></span>
+      </div>
       <div class="form-field">
         <label class="form-label">Password</label>
         <input type="password" id="password" placeholder="••••••••" class="input" required>
         <div class="strength-track"><div class="strength-fill" id="strength-bar"></div></div>
         <div class="strength-hint" id="strength-text"></div>
+        <span class="field-error" id="password-err"></span>
       </div>
       <div id="register-fields" style="display:none;">
         <div class="form-row" style="margin-top:0.25rem;">
-          <div class="form-field"><label class="form-label">First Name</label><input type="text" id="first-name" placeholder="Kwame" class="input"></div>
-          <div class="form-field"><label class="form-label">Last Name</label><input type="text" id="last-name" placeholder="Mensah" class="input"></div>
+          <div class="form-field">
+            <label class="form-label">First Name</label>
+            <input type="text" id="first-name" placeholder="Kwame" class="input">
+            <span class="field-error" id="first-name-err"></span>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Last Name</label>
+            <input type="text" id="last-name" placeholder="Mensah" class="input">
+            <span class="field-error" id="last-name-err"></span>
+          </div>
         </div>
-        <div class="form-field" style="margin-top:0.5rem;"><label class="form-label">Username</label><input type="text" id="username" placeholder="@handle" class="input"></div>
-        <div class="form-field" style="margin-top:0.5rem;"><label class="form-label">Confirm Password</label><input type="password" id="confirm-password" placeholder="••••••••" class="input"></div>
-        <div class="form-field" style="margin-top:0.5rem;"><label class="form-label">Phone (+233…)</label><input type="tel" id="phone" placeholder="+233xxxxxxxxx" class="input"></div>
+        <div class="form-field" style="margin-top:0.5rem;">
+          <label class="form-label">Username</label>
+          <input type="text" id="username" placeholder="@handle" class="input">
+          <span class="field-error" id="username-err"></span>
+        </div>
+        <div class="form-field" style="margin-top:0.5rem;">
+          <label class="form-label">Confirm Password</label>
+          <input type="password" id="confirm-password" placeholder="••••••••" class="input">
+          <span class="field-error" id="confirm-password-err"></span>
+        </div>
+        <div class="form-field" style="margin-top:0.5rem;">
+          <label class="form-label">Phone (+233…)</label>
+          <input type="tel" id="phone" placeholder="+233xxxxxxxxx" class="input">
+          <span class="field-error" id="phone-err"></span>
+        </div>
         <label class="checkbox-row" style="margin-top:0.75rem;"><input type="checkbox" id="is-organizer"> I'm an event organiser</label>
       </div>
       <button type="submit" class="btn btn-primary btn-block" id="auth-btn" style="margin-top:0.25rem;">Sign In</button>
@@ -594,12 +782,16 @@
 </div>
 
 <!-- Forgot password -->
-<div id="forgot-password-modal" class="modal">
+<div id="forgot-password-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:460px;">
+  <div class="modal-box" style="max-width:460px;">
     <div class="modal-header"><h3 class="modal-title">Reset Password</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <form id="forgot-password-form" class="form">
-      <div class="form-field"><label class="form-label">Email</label><input type="email" id="forgot-email" placeholder="your@email.com" class="input" required></div>
+      <div class="form-field">
+        <label class="form-label">Email</label>
+        <input type="email" id="forgot-email" placeholder="your@email.com" class="input" required>
+        <span class="field-error" id="forgot-email-err"></span>
+      </div>
       <button type="submit" class="btn btn-primary btn-block">Send Reset Link</button>
     </form>
     <div id="forgot-status" class="status-msg" style="display:none;"></div>
@@ -607,9 +799,9 @@
 </div>
 
 <!-- Reset password -->
-<div id="reset-password-modal" class="modal">
+<div id="reset-password-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:460px;">
+  <div class="modal-box" style="max-width:460px;">
     <div class="modal-header"><h3 class="modal-title">Set New Password</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <form id="reset-password-form" class="form">
       <div class="form-field">
@@ -626,27 +818,43 @@
 </div>
 
 <!-- Profile edit -->
-<div id="profile-edit-modal" class="modal">
+<div id="profile-edit-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box">
     <div class="modal-header"><h3 class="modal-title">Edit Profile</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <form id="profile-form" class="form">
-      <div class="form-field"><label class="form-label">Full Name</label><input type="text" id="profile-name-input" class="input" required></div>
-      <div class="form-field"><label class="form-label">Email</label><input type="email" id="profile-email-input" class="input" required></div>
-      <div class="form-field"><label class="form-label">Phone (+233…)</label><input type="tel" id="profile-phone-input" placeholder="+233xxxxxxxxx" class="input" required></div>
+      <div class="form-field">
+        <label class="form-label">Full Name</label>
+        <input type="text" id="profile-name-input" class="input" required>
+        <span class="field-error" id="pname-err"></span>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Email</label>
+        <input type="email" id="profile-email-input" class="input" required>
+        <span class="field-error" id="pemail-err"></span>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Phone (+233…)</label>
+        <input type="tel" id="profile-phone-input" placeholder="+233xxxxxxxxx" class="input" required>
+        <span class="field-error" id="pphone-err"></span>
+      </div>
       <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
     </form>
   </div>
 </div>
 
 <!-- Event Form -->
-<div id="event-form-modal" class="modal">
+<div id="event-form-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box wide" role="dialog" aria-modal="true">
+  <div class="modal-box wide">
     <div class="modal-header"><h3 class="modal-title" id="form-title">Create Event</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <form id="event-form" class="form">
       <div class="form-row">
-        <div class="form-field"><label class="form-label">Event Title</label><input type="text" id="event-title" placeholder="Event name…" class="input" required></div>
+        <div class="form-field">
+          <label class="form-label">Event Title</label>
+          <input type="text" id="event-title" placeholder="Event name…" class="input" required>
+          <span class="field-error" id="etitle-err"></span>
+        </div>
         <div class="form-field"><label class="form-label">Category</label>
           <select id="event-category" class="input" required>
             <option value="">Select</option>
@@ -664,7 +872,28 @@
         <div class="form-field"><label class="form-label">Venue Name</label><input type="text" id="event-venue" placeholder="Venue" class="input" required></div>
       </div>
       <div class="form-row">
-        <div class="form-field"><label class="form-label">City / Area</label><input type="text" id="event-location" placeholder="Accra" class="input"></div>
+        <div class="form-field"><label class="form-label">City / Area</label>
+          <select id="event-location" placeholder="Accra" class="input">
+            <option value="">Select</option>
+            <optgroup label="Accra">
+              <option value="osu">Osu</option> <option value="trassaco">Trassaco</option><option value="east-legon">East Legon</option>
+              <option value="airport-residential-area">Airport Residential Area</option><option value="cantonments">Cantonments</option>
+              <option value="labone">Labone</option><option value="labadi">Labadi</option><option value="tema">Tema</option>
+              <option value="madina">Madina</option><option value="Spintex">Spintex</option>
+              <option value="accra-central">Accra Central</option><option value="west-legon">West Legon</option>
+            </optgroup>
+            <optgroup label="Other Cities">
+              <option value="kumasi">Kumasi</option><option value="takoradi">Takoradi</option>
+              <option value="cape-coast">Cape Coast</option><option value="tamale">Tamale</option>
+              <option value="ho">Ho</option><option value="sunyani">Sunyani</option>
+              <option value="koforidua">Koforidua</option>
+            </optgroup>
+            <option value="online-events">Online</option>
+          </select>
+
+        </div>
+
+
         <div class="form-field"><label class="form-label">Currency</label>
           <select id="event-currency" class="input" required>
             <option value="GHC">₵ GHC</option><option value="USD">$ USD</option>
@@ -672,15 +901,11 @@
           </select>
         </div>
       </div>
-
-      <!-- Scheduled Publish -->
       <div class="form-field">
         <label class="form-label"><i class="fas fa-clock"></i> Schedule Publication (optional)</label>
         <input type="datetime-local" id="event-publish-at" class="input">
-        <p style="font-size:0.73rem; color:var(--muted); margin-top:0.3rem;">Leave empty to publish immediately. If set, the event will go live at the selected date/time.</p>
+        <p style="font-size:0.73rem; color:var(--muted); margin-top:0.3rem;">Leave empty to publish immediately.</p>
       </div>
-
-      <!-- Google Maps -->
       <div class="form-field">
         <label class="form-label"><i class="fas fa-map-marker-alt"></i> Maps Location (optional)</label>
         <div class="maps-search-wrap">
@@ -697,16 +922,21 @@
         <input type="hidden" id="event-lng">
         <input type="hidden" id="event-address">
       </div>
-
       <div class="form-row">
-        <div class="form-field"><label class="form-label">Organiser Email</label><input type="email" id="organizer-email" placeholder="you@email.com" class="input" required></div>
-        <div class="form-field"><label class="form-label">Organiser Phone</label><input type="tel" id="organizer-phone" placeholder="+233xxxxxxxxx" class="input" required></div>
+        <div class="form-field">
+          <label class="form-label">Organiser Email</label>
+          <input type="email" id="organizer-email" placeholder="you@email.com" class="input" required>
+          <span class="field-error" id="oemail-err"></span>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Organiser Phone</label>
+          <input type="tel" id="organizer-phone" placeholder="+233xxxxxxxxx" class="input" required>
+          <span class="field-error" id="ophone-err"></span>
+        </div>
       </div>
       <div class="form-field"><label class="form-label">Event Image</label>
         <label class="file-drop" for="event-image"><input type="file" id="event-image" accept="image/*">Click to upload image (JPG, PNG, WebP)</label>
       </div>
-
-      <!-- Ticket Types -->
       <div style="margin-top:0.25rem;">
         <p class="form-label" style="margin-bottom:0.75rem;">Ticket Types</p>
         <div class="ticket-type-headers">
@@ -724,9 +954,9 @@
 </div>
 
 <!-- Waitlist View (organizer) -->
-<div id="waitlist-view-modal" class="modal">
+<div id="waitlist-view-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box">
     <div class="modal-header"><h3 class="modal-title" id="waitlist-view-title">Waitlist</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <div id="waitlist-entries" style="max-height:380px; overflow-y:auto;"></div>
     <div class="modal-footer"><button class="btn btn-primary" id="notify-waitlist-btn">Notify Waitlist</button></div>
@@ -734,9 +964,9 @@
 </div>
 
 <!-- Cancel event -->
-<div id="cancel-event-modal" class="modal">
+<div id="cancel-event-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:420px;">
+  <div class="modal-box" style="max-width:420px;">
     <div class="modal-header"><h3 class="modal-title" id="cancel-title">Cancel Event?</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <p id="cancel-reason" style="color:var(--dim); font-size:0.88rem; line-height:1.7; margin-bottom:1.25rem;"></p>
     <div class="modal-footer">
@@ -747,9 +977,9 @@
 </div>
 
 <!-- Payout request -->
-<div id="payout-modal" class="modal">
+<div id="payout-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box">
     <div class="modal-header"><h3 class="modal-title" id="payout-title">Request Payout</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <form id="payout-form" class="form">
       <div class="form-row">
@@ -783,9 +1013,9 @@
 </div>
 
 <!-- Settings -->
-<div id="settings-modal" class="modal">
+<div id="settings-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box" role="dialog" aria-modal="true">
+  <div class="modal-box">
     <div class="modal-header"><h3 class="modal-title">Settings</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <form id="settings-form" class="form">
       <div class="form-field"><label class="form-label">Current Password</label><input type="password" id="current-password" placeholder="••••••••" class="input" required></div>
@@ -807,10 +1037,10 @@
   </div>
 </div>
 
-<!-- REFUND REQUEST MODAL (Customer) -->
-<div id="refund-request-modal" class="modal">
+<!-- REFUND REQUEST MODAL -->
+<div id="refund-request-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:500px;">
+  <div class="modal-box" style="max-width:500px;">
     <div class="modal-header">
       <h3 class="modal-title"><i class="fas fa-undo" style="color:var(--coral);"></i> Request Refund</h3>
       <button class="modal-close" aria-label="Close">&times;</button>
@@ -822,7 +1052,7 @@
     <input type="hidden" id="refund-ticket-id">
     <form class="form" onsubmit="app.submitRefundRequest(event)">
       <div class="form-field">
-        <label class="form-label">Reason for Refund <span style="color:var(--coral);">*</span></label>
+        <label class="form-label">Reason <span style="color:var(--coral);">*</span></label>
         <select id="refund-reason-select" class="input" required>
           <option value="">Select a reason…</option>
           <option value="event_cancelled">Event was cancelled</option>
@@ -831,15 +1061,15 @@
           <option value="wrong_ticket">Wrong ticket type purchased</option>
           <option value="other">Other</option>
         </select>
+        <span class="field-error" id="refund-reason-err"></span>
       </div>
       <div class="form-field">
         <label class="form-label">Additional Details</label>
         <textarea id="refund-reason-text" class="input" rows="3" placeholder="Please provide more details…" required></textarea>
       </div>
       <div class="form-field">
-        <label class="form-label">Refund Amount (optional — leave blank for full refund)</label>
+        <label class="form-label">Refund Amount (leave blank for full refund)</label>
         <input type="number" id="refund-amount" class="input" placeholder="e.g. 50.00" min="0" step="0.01">
-        <p style="font-size:0.73rem; color:var(--muted); margin-top:0.3rem;">Leave empty to request a full refund.</p>
       </div>
       <button type="submit" class="btn btn-coral btn-block"><i class="fas fa-paper-plane"></i> Submit Refund Request</button>
     </form>
@@ -847,10 +1077,10 @@
   </div>
 </div>
 
-<!-- ORGANIZER REFUND REQUESTS MODAL -->
-<div id="org-refunds-modal" class="modal">
+<!-- ORGANIZER REFUND REQUESTS -->
+<div id="org-refunds-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box wide" role="dialog" aria-modal="true">
+  <div class="modal-box wide">
     <div class="modal-header">
       <h3 class="modal-title"><i class="fas fa-undo" style="color:var(--coral);"></i> Refund Requests</h3>
       <button class="modal-close" aria-label="Close">&times;</button>
@@ -859,10 +1089,8 @@
       <div class="filter-group">
         <label class="filter-label">Status</label>
         <select id="org-refund-filter" class="filter-input" onchange="app.loadOrganizerRefunds()">
-          <option value="all">All</option>
-          <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
+          <option value="all">All</option><option value="pending">Pending</option>
+          <option value="approved">Approved</option><option value="rejected">Rejected</option>
         </select>
       </div>
     </div>
@@ -870,10 +1098,10 @@
   </div>
 </div>
 
-<!-- COUPON MANAGER MODAL -->
-<div id="coupons-modal" class="modal">
+<!-- COUPON MANAGER -->
+<div id="coupons-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box wide" role="dialog" aria-modal="true">
+  <div class="modal-box wide">
     <div class="modal-header">
       <h3 class="modal-title"><i class="fas fa-tag" style="color:var(--teal);"></i> Coupon / Promo Codes</h3>
       <button class="modal-close" aria-label="Close">&times;</button>
@@ -903,14 +1131,8 @@
             </div>
           </div>
           <div class="form-row">
-            <div class="form-field">
-              <label class="form-label">Expiry Date</label>
-              <input type="date" id="coupon-expiry" class="input" required>
-            </div>
-            <div class="form-field">
-              <label class="form-label">Usage Limit</label>
-              <input type="number" id="coupon-limit" class="input" placeholder="100" min="1">
-            </div>
+            <div class="form-field"><label class="form-label">Expiry Date</label><input type="date" id="coupon-expiry" class="input" required></div>
+            <div class="form-field"><label class="form-label">Usage Limit</label><input type="number" id="coupon-limit" class="input" placeholder="100" min="1"></div>
           </div>
           <div class="form-field">
             <label class="form-label">Applicable Events (optional)</label>
@@ -929,16 +1151,16 @@
 </div>
 
 <!-- LEGAL MODALS -->
-<div id="terms-modal" class="modal">
+<div id="terms-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box wide" role="dialog" aria-modal="true">
+  <div class="modal-box wide">
     <div class="modal-header"><h3 class="modal-title">Terms of Service</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <div class="legal-content">
       <p><strong>Last updated:</strong> <span id="terms-date"></span></p>
-      <h4>1. Acceptance of Terms</h4><p>By accessing or using Glycr, you agree to be bound by these Terms of Service. If you do not agree, please do not use our platform.</p>
-      <h4>2. Use of the Platform</h4><p>You may use Glycr only for lawful purposes and in accordance with these Terms. You agree not to use Glycr to create or sell fraudulent tickets, misrepresent events, or engage in any harmful conduct.</p>
-      <h4>3. Organizer Responsibilities</h4><p>Organizers are solely responsible for the events they create, including compliance with local laws, accurate event details, and honouring tickets sold through the platform.</p>
-      <h4>4. Platform Fees</h4><p>Glycr charges a platform fee on ticket sales. Current fee rates are displayed on your dashboard. Fees are subject to change with 30 days' notice.</p>
+      <h4>1. Acceptance of Terms</h4><p>By accessing or using Glycr, you agree to be bound by these Terms of Service.</p>
+      <h4>2. Use of the Platform</h4><p>You may use Glycr only for lawful purposes. You agree not to create or sell fraudulent tickets, misrepresent events, or engage in harmful conduct.</p>
+      <h4>3. Organizer Responsibilities</h4><p>Organizers are solely responsible for events they create, including compliance with local laws, accurate event details, and honouring tickets sold through the platform.</p>
+      <h4>4. Platform Fees</h4><p>Glycr charges a platform fee on ticket sales. Current rates are displayed on your dashboard. Fees are subject to change with 30 days' notice.</p>
       <h4>5. Refunds & Cancellations</h4><p>Refund policies are set by event organizers. Glycr facilitates refunds but is not responsible for refund disputes between organizers and attendees.</p>
       <h4>6. Intellectual Property</h4><p>All content on Glycr, including logos, designs, and software, is owned by Glycr Technologies Ltd and protected by copyright law.</p>
       <h4>7. Limitation of Liability</h4><p>Glycr is not liable for any indirect, incidental, or consequential damages arising from your use of the platform.</p>
@@ -946,10 +1168,9 @@
     </div>
   </div>
 </div>
-
-<div id="privacy-modal" class="modal">
+<div id="privacy-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box wide" role="dialog" aria-modal="true">
+  <div class="modal-box wide">
     <div class="modal-header"><h3 class="modal-title">Privacy Policy</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <div class="legal-content">
       <p><strong>Last updated:</strong> <span id="privacy-date"></span></p>
@@ -957,37 +1178,39 @@
       <h4>2. How We Use Your Information</h4><p>We use your data to process ticket purchases, send event notifications, improve our platform, and comply with legal obligations.</p>
       <h4>3. Data Sharing</h4><p>We share your data with event organizers (for events you attend), payment processors, and as required by law. We do not sell your personal data.</p>
       <h4>4. Data Security</h4><p>We implement industry-standard security measures including encryption and secure data storage to protect your information.</p>
-      <h4>5. Your Rights</h4><p>You have the right to access, correct, or delete your personal data. Contact us at privacy@glycr.com to exercise these rights.</p>
-      <h4>6. Cookies</h4><p>We use cookies to improve your experience. See our Cookie Policy for details.</p>
-      <h4>7. Contact</h4><p>For privacy questions, contact us at privacy@glycr.com</p>
+      <h4>5. Your Rights</h4><p>You have the right to access, correct, or delete your personal data. Contact privacy@glycr.com.</p>
+      <h4>6. Contact</h4><p>For privacy questions, contact us at privacy@glycr.com</p>
     </div>
   </div>
 </div>
-
-<div id="refund-policy-modal" class="modal">
+<div id="refund-policy-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box wide" role="dialog" aria-modal="true">
+  <div class="modal-box wide">
     <div class="modal-header"><h3 class="modal-title">Refund Policy</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <div class="legal-content">
       <h4>General Refund Policy</h4><p>Refund eligibility is determined by the event organizer's policy set at the time of purchase. Glycr facilitates but does not guarantee refunds.</p>
       <h4>Event Cancellations</h4><p>If an organizer cancels an event, all ticket holders are entitled to a full refund. Glycr will process these automatically within 5–7 business days.</p>
-      <h4>Attendee-Initiated Refunds</h4><p>Refund requests must be submitted through your Profile > Purchase History before the refund window closes. The organizer reviews and approves/rejects each request.</p>
+      <h4>Attendee-Initiated Refunds</h4><p>Refund requests must be submitted through your Profile > Purchase History before the refund window closes.</p>
       <h4>Processing Time</h4><p>Approved refunds are processed within 5–10 business days depending on payment method.</p>
     </div>
   </div>
 </div>
-
-<div id="cookie-modal" class="modal">
+<div id="cookie-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
-  <div class="modal-box" role="dialog" aria-modal="true" style="max-width:500px;">
+  <div class="modal-box" style="max-width:500px;">
     <div class="modal-header"><h3 class="modal-title">Cookie Policy</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <div class="legal-content">
       <h4>What are Cookies?</h4><p>Cookies are small text files stored on your device when you visit Glycr.</p>
-      <h4>How We Use Cookies</h4><p>We use cookies for authentication, preferences, analytics, and to improve your experience on the platform.</p>
+      <h4>How We Use Cookies</h4><p>We use cookies for authentication, preferences, analytics, and to improve your experience.</p>
       <h4>Managing Cookies</h4><p>You can disable cookies in your browser settings, but this may affect platform functionality.</p>
     </div>
   </div>
 </div>
+
+<!-- BACK TO TOP -->
+<button id="back-to-top" class="back-to-top-btn" aria-label="Back to top" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+  <i class="fas fa-arrow-up"></i>
+</button>
 
 <script>
   window.initGlycrMaps = function() {

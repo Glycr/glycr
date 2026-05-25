@@ -2,14 +2,15 @@ const ticketService = require('../services/ticketService');
 
 exports.purchase = async (req, res, next) => {
   try {
-    const { eventId, ticketType, quantity, paymentDetails, groupBooking } = req.body;
+    const { eventId, ticketType, quantity, paymentDetails, groupBooking, promoCode } = req.body;
     const tickets = await ticketService.purchaseTicket(
-      req.user.id,
+      req.user?.id || null,  // FIX: null for guests, user id for logged-in users
       eventId,
       ticketType,
       quantity,
       paymentDetails,
-      groupBooking
+      groupBooking,
+      promoCode || null
     );
     res.status(201).json(tickets);
   } catch (err) {

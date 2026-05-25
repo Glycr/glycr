@@ -1,0 +1,37 @@
+/* =============================================
+   BADGES
+============================================= */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm-minus);
+  font-weight: var(--fw-semibold);
+}
+
+.badge-admin       { background: rgba(236, 72, 153, 0.2);  color: var(--color-pink); }
+.badge-moderator   { background: var(--color-warning-bg3); color: var(--color-warning-text); }
+.badge-organizer   { background: rgba(139, 92, 246, 0.2);  color: var(--color-violet-light); }
+.badge-customer    { background: var(--color-brand-bg3);   color: var(--color-brand-light); }
+.badge-active      { background: var(--color-success-bg3); color: var(--color-success-text); }
+.badge-suspended   { background: var(--color-danger-bg3);  color: var(--color-danger-text); }
+.badge-live        { background: var(--color-success-bg3); color: var(--color-success-text); }
+.badge-cancelled   { background: var(--color-orange-bg);   color: var(--color-orange); }
+.badge-flagged     { background: var(--color-danger-bg3);  color: var(--color-danger-text); }
+.badge-pending     { background: var(--color-warning-bg3); color: var(--color-warning-text); }
+.badge-completed   { background: var(--color-success-bg3); color: var(--color-success-text); }
+.badge-rejected    { background: var(--color-danger-bg3);  color: var(--color-danger-text); }
+.badge-approved    { background: var(--color-success-bg3); color: var(--color-success-text); }
+.badge-info        { background: var(--color-brand-bg3);   color: var(--color-brand-light); }
+.badge-warning     { background: var(--color-warning-bg3); color: var(--color-warning-text); }
+.badge-unpublished { background: rgba(148, 163, 184, 0.15); color: var(--color-text-muted); }
+.badge-used        { background: var(--color-brand-bg3);   color: var(--color-brand-light); }
+.badge-validated   { background: var(--color-success-bg3); color: var(--color-success-text); }
+.badge-waitlist    { background: var(--color-warning-bg2); color: var(--color-warning-text); }
+.badge-refund-pending { background: var(--color-danger-bg2); color: var(--color-danger-text); }
+
+.badge-sr-pending     { background: var(--color-warning-bg3);          color: var(--color-warning-text); }
+.badge-sr-in_progress { background: rgba(6, 182, 212, 0.2);            color: #22d3ee; }
+.badge-sr-resolved    { background: var(--color-success-bg3);          color: var(--color-success-text); }

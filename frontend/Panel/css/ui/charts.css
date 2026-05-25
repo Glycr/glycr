@@ -1,0 +1,27 @@
+/* =============================================
+   CHART PERIOD CONTROLS
+============================================= */
+.chart-period-group {
+  display: flex;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.chart-period-btn {
+  padding: 0.4rem 0.9rem;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm-med);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all 0.18s;
+  border-right: 1px solid var(--color-border);
+}
+
+.chart-period-btn:last-child { border-right: none; }
+.chart-period-btn:hover { background: var(--color-bg-raised); color: var(--color-text-primary); }
+.chart-period-btn.active { background: var(--color-brand); color: white; }

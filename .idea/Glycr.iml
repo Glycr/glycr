@@ -14,5 +14,8 @@
     <orderEntry type="library" name="jspdf" level="application" />
     <orderEntry type="library" name="Chart.js" level="application" />
     <orderEntry type="library" name="Chart.js" level="application" />
+    <orderEntry type="library" name="qrcodejs" level="application" />
+    <orderEntry type="library" name="jspdf-autotable" level="application" />
+    <orderEntry type="library" name="jspdf" level="application" />
   </component>
 </module>

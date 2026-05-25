@@ -1,0 +1,52 @@
+/* =============================================
+   MESSAGE MANAGEMENT
+============================================= */
+.msg-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-2xs-plus);
+  font-weight: var(--fw-semibold);
+}
+
+.msg-type-direct    { background: var(--color-brand-bg4);   color: var(--color-brand-light); }
+.msg-type-broadcast { background: rgba(139, 92, 246, 0.15); color: var(--color-violet-light); }
+
+.msg-channel-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--color-text-muted);
+}
+
+.msg-channel-email { background: var(--color-success-bg);   color: var(--color-success-text); }
+.msg-channel-sms   { background: var(--color-warning-bg);   color: var(--color-warning-text); }
+.msg-channel-both  { background: var(--color-brand-bg2);    color: var(--color-brand-light); }
+
+.msg-audience-badge {
+  font-size: var(--text-sm-minus);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.msg-recipient-option {
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  font-size: var(--text-sm-plus);
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border);
+  transition: background var(--transition-fast);
+}
+
+.msg-recipient-option:hover      { background: var(--color-bg-raised); }
+.msg-recipient-option:last-child { border-bottom: none; }
+.msg-recipient-option .option-sub { font-size: var(--text-2xs-plus); color: var(--color-text-muted); }

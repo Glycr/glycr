@@ -196,3 +196,11 @@ exports.deleteWaitlistEntry = async (req, res, next) => {
     next(err);
   }
 };
+
+
+exports.getAllCoupons = async (req, res, next) => {
+  try {
+    const coupons = await Coupon.find().populate('organizerId', 'name email').sort('-createdAt');
+    res.json(coupons);
+  } catch (err) { next(err); }
+};

@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const auth = require('../middleware/auth');
 const settingsController = require('../controllers/settingsController');
 
 // Base path: /settings (mounted in index.js)
-router.get('/', settingsController.getSettings);   // was '/user/settings'
+router.get('/settings', auth, settingsController.getSettings);   // was '/user/settings'
 
 module.exports = router;

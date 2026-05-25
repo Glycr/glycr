@@ -1,0 +1,27 @@
+/* =============================================
+   REFUND MANAGEMENT
+============================================= */
+.refund-table-id     { font-size: var(--text-sm-minus); color: var(--color-text-muted); font-family: var(--font-mono); }
+.refund-table-user   { font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--color-text-primary); margin-bottom: 0.15rem; }
+.refund-table-sub    { font-size: var(--text-sm-minus); color: var(--color-text-muted); display: flex; align-items: center; gap: 0.3rem; }
+.refund-table-amount { font-weight: var(--fw-bold); font-size: var(--text-base); color: var(--color-danger-text); margin-bottom: 0.2rem; }
+.refund-table-reason { font-size: var(--text-sm-minus); color: var(--color-text-muted); display: flex; align-items: center; gap: 0.3rem; }
+.refund-table-ticket { font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--color-text-primary); margin-bottom: 0.15rem; }
+.refund-table-event  { font-size: var(--text-sm-minus); color: var(--color-text-muted); display: flex; align-items: center; gap: 0.3rem; }
+
+.refund-reason-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-2xs-plus);
+  font-weight: var(--fw-semibold);
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--color-text-muted);
+  text-transform: capitalize;
+}
+
+.refund-reason-pill.event_cancelled { background: var(--color-danger-bg2);  color: var(--color-danger-text); }
+.refund-reason-pill.duplicate       { background: var(--color-warning-bg2); color: var(--color-warning-text); }
+.refund-reason-pill.other           { background: var(--color-brand-bg3);   color: var(--color-brand-light); }

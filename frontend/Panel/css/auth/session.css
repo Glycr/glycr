@@ -1,0 +1,91 @@
+/* =============================================
+   SESSION WARNING OVERLAY
+============================================= */
+#session-warning-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(6px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.session-warning-card {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-xl);
+  padding: 2rem;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 0 60px rgba(245, 158, 11, 0.15);
+}
+
+.session-warning-icon {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-warning-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-2xl);
+  margin: 0 auto 1.25rem;
+  animation: pulse-warning 1s ease-in-out infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.3); }
+  50%       { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+}
+
+.session-warning-card h3 {
+  font-size: var(--text-lg);
+  font-weight: var(--fw-bold);
+  margin-bottom: 0.75rem;
+  color: var(--color-warning-text);
+}
+
+.session-warning-card p {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--leading-snug);
+}
+
+/* Session timer in header */
+.session-timer-display {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  background: var(--color-brand-bg2);
+  border: 1px solid var(--color-brand-border);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm-soft);
+  color: var(--color-brand-light);
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+  transition: all var(--transition-slow);
+}
+
+.session-timer-display.warning {
+  background: var(--color-warning-bg);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: var(--color-warning-text);
+}
+
+.session-timer-display.danger {
+  background: var(--color-danger-bg);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--color-danger-text);
+  animation: timer-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes timer-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
