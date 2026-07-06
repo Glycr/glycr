@@ -13,13 +13,14 @@ const refundRoutes = require('./refunds');
 const serviceRequestRoutes = require('./serviceRequests');
 const messageRoutes = require('./messages');
 const couponRoutes = require('./coupons');
+const staffRoutes = require('./staff');
 
 
 
 
 
 const router = express.Router();
-
+router.use(staffRoutes);
 router.use(authRoutes);
 router.use(userRoutes);
 router.use(eventRoutes);
