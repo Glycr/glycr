@@ -31,7 +31,7 @@ exports.getLogs = async (req, res, next) => {
 
 exports.clearLogs = async (req, res, next) => {
   try {
-    await logService.clearLogs();
+    await logService.clearLogs(req.user.id);   // <- now passes the admin id
     res.status(204).send();
   } catch (err) {
     next(err);

@@ -5,8 +5,7 @@ const morgan = require('morgan');
 const path = require('path');
 const config = require('./config');
 const routes = require('./routes');
-const errorHandler = require('./middleware/errorHandler');
-
+const { errorHandler, notFound } = require('./middleware/errorHandler');
 const app = express();
 
 // Middleware
@@ -24,6 +23,7 @@ app.use('/uploads', (req, res, next) => {
 // API routes
 
 app.use('/api', routes);
+app.use(notFound);
 app.use(errorHandler);
 
 module.exports = app;

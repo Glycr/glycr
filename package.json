@@ -3,7 +3,13 @@
   "version": "0.0.1",
   "description": "",
   "private": true,
-  "keywords": ["events", "tickets", "nodejs", "express", "mongodb"],
+  "keywords": [
+    "events",
+    "tickets",
+    "nodejs",
+    "express",
+    "mongodb"
+  ],
   "license": "Glycr",
   "author": "Fervtech Team",
   "scripts": {
@@ -21,6 +27,7 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
@@ -29,6 +36,4 @@
     "multer": "^2.0.2",
     "nodemailer": "^7.0.9"
   }
-
-
 }

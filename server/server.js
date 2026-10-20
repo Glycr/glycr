@@ -1,6 +1,6 @@
 const app = require('./app');
 const config = require('./config');
-const connectDB = require('./config/db');
+const { connectDB } = require('./config/db');
 const fs = require('fs');
 
 

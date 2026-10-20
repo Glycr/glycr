@@ -12,12 +12,15 @@
   "description": "",
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "connect-redis": "^9.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "crypto": "^1.0.1",
-    "csurf": "^1.11.0",
+    "csurf": "^1.2.2",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.2",
+    "express-session": "^1.19.0",
     "express-slow-down": "^3.1.0",
     "express-validator": "^7.3.2",
     "helmet": "^8.1.0",
@@ -26,10 +29,12 @@
     "mongoose": "^9.3.3",
     "morgan": "^1.10.1",
     "multer": "^2.1.1",
-    "nodemailer": "^8.0.4",
+    "nodemailer": "^10.1.7",
     "resend": "^6.12.2",
     "sanitize-html": "^2.17.3",
     "twilio": "^5.13.1",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0"
   }
 }

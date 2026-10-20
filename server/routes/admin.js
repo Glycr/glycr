@@ -1,77 +1,70 @@
 const express = require('express');
 const router = express.Router();
+
 const adminController = require('../controllers/adminController');
-const waitlistController = require('../controllers/waitlistController');
 const settingsController = require('../controllers/settingsController');
 const ticketController = require('../controllers/ticketController');
 const logController = require('../controllers/logController');
 const refundController = require('../controllers/refundController');
 const serviceRequestController = require('../controllers/serviceRequestController');
+
 const auth = require('../middleware/auth');
-const roleMiddleware = require('../middleware/role');
+const { requireAdmin, requireModeratorOrAdmin } = require('../middleware/rbac');
 
+// Runs once, only for /admin/*: authenticated + moderator or admin.
+// Everything below inherits this; add requireAdmin only where stricter.
+router.use('/admin', auth, requireModeratorOrAdmin);
 
-router.use(auth);
-
-// Dashboard stats
+// Dashboard
 router.get('/admin/stats', adminController.getStats);
 
 // Users
 router.get('/admin/users', adminController.getAllUsers);
+router.post('/admin/users', requireAdmin, adminController.createUser);
+router.put('/admin/users/:id', adminController.updateUser);
 router.patch('/admin/users/:id/suspend', adminController.suspendUser);
-router.delete('/admin/users/:id', adminController.deleteUser);
-router.post('/admin/users', auth, roleMiddleware(['admin']), adminController.createUser);
-router.put('/admin/users/:id', auth, roleMiddleware(['admin', 'moderator']), adminController.updateUser);
+router.patch('/admin/users/:id/role', requireAdmin, adminController.changeUserRole);
+router.delete('/admin/users/:id', requireAdmin, adminController.deleteUser);
 
 // Waitlist
-router.get('/admin/waitlists', auth, roleMiddleware(['admin', 'moderator']), adminController.getAllWaitlists);
-router.post('/admin/waitlist/:id/notify', auth, roleMiddleware(['admin', 'moderator']), adminController.notifyWaitlistEntry);
-router.post('/admin/waitlist/:id/convert', auth, roleMiddleware(['admin', 'moderator']), adminController.convertWaitlistToTicket);
-router.delete('/admin/waitlist/:id', auth, roleMiddleware(['admin', 'moderator']), adminController.deleteWaitlistEntry);
-
-
-// All admin routes require authentication and at least moderator role
-router.use(auth);
-router.use(roleMiddleware(['moderator', 'admin']));
-
-// Only admin can change user roles
-router.patch('/admin/users/:id/role', roleMiddleware(['admin']), adminController.changeUserRole);
+router.get('/admin/waitlists', adminController.getAllWaitlists);
+router.post('/admin/waitlist/:id/notify', adminController.notifyWaitlistEntry);
+router.post('/admin/waitlist/:id/convert', adminController.convertWaitlistToTicket);
+router.delete('/admin/waitlist/:id', adminController.deleteWaitlistEntry);
 
 // Events
 router.get('/admin/events', adminController.getAllEvents);
 router.patch('/admin/events/:id/flag', adminController.flagEvent);
+router.patch('/admin/events/:id/publish', adminController.togglePublish);
 router.delete('/admin/events/:id', adminController.deleteEvent);
-router.patch('/admin/events/:id/publish', auth, roleMiddleware(['admin', 'moderator']), adminController.togglePublish);
 
 // Tickets
 router.get('/admin/tickets', adminController.getAllTickets);
-router.patch('/admin/tickets/:id/validate', auth, roleMiddleware(['admin', 'moderator']), ticketController.validateTicket);
-router.patch('/admin/tickets/:id/cancel', auth, roleMiddleware(['admin', 'moderator']), ticketController.cancelTicket);
-router.get('/admin/coupons', auth, roleMiddleware(['admin']), adminController.getAllCoupons);
+router.patch('/admin/tickets/:id/validate', ticketController.validateTicket);
+router.patch('/admin/tickets/:id/cancel', ticketController.cancelTicket);
+router.get('/admin/coupons', requireAdmin, adminController.getAllCoupons);
 
-
-// Service Request Management (admin only)
-router.get('/admin/service-requests', serviceRequestController.getAllRequests);
-router.patch('/admin/service-requests/:id/status',  auth, roleMiddleware(['admin', 'moderator']), serviceRequestController.updateStatus);
-router.patch('/admin/service-requests/:id/resolve',  auth, roleMiddleware(['admin', 'moderator']), serviceRequestController.resolveRequest);
-router.patch('/admin/service-requests/:id/in-progress',  auth, roleMiddleware(['admin', 'moderator']), serviceRequestController.markInProgress);
-
+// Service requests
+router.get('/admin/service-requests', requireModeratorOrAdmin, serviceRequestController.getAllRequests);
+router.patch('/admin/service-requests/:id/status', serviceRequestController.updateStatus);
+router.patch('/admin/service-requests/:id/resolve', serviceRequestController.resolveRequest);
+router.patch('/admin/service-requests/:id/in-progress', serviceRequestController.markInProgress);
 
 // Payouts
-router.get('/admin/payouts', adminController.getAllPayouts);
-router.patch('/admin/payouts/:id/approve',  auth, roleMiddleware(['admin']),adminController.approvePayout);
-router.patch('/admin/payouts/:id/reject',  auth, roleMiddleware(['admin']),adminController.rejectPayout);
+router.get('/admin/payouts', requireModeratorOrAdmin, adminController.getAllPayouts);
+router.patch('/admin/payouts/:id/approve', requireModeratorOrAdmin, adminController.approvePayout);
+router.patch('/admin/payouts/:id/reject', requireModeratorOrAdmin, adminController.rejectPayout);
 
 // Logs
-router.get('/admin/logs', logController.getLogs);
-router.post('/admin/logs', logController.addLog);
-router.delete('/admin/logs', auth, roleMiddleware(['admin']), logController.clearLogs);
+router.get('/admin/logs', requireModeratorOrAdmin,logController.getLogs);
+router.post('/admin/logs', requireModeratorOrAdmin, logController.addLog);
+router.delete('/admin/logs', requireAdmin, logController.clearLogs);
 
 // Settings
-router.get('/admin/settings', auth, roleMiddleware(['admin', 'moderator']), settingsController.getSettings);
-router.put('/admin/settings', auth, roleMiddleware(['admin']), settingsController.updateSettings);
+router.get('/admin/settings', settingsController.getSettings);
+router.put('/admin/settings', requireAdmin, settingsController.updateSettings);
 
-// Refund
-router.get('/admin/refunds/all', auth, roleMiddleware(['admin']), refundController.getAllRefunds);
+// Refunds
+router.get('/admin/refunds/all', requireAdmin, refundController.getAllRefunds);
 
 module.exports = router;
