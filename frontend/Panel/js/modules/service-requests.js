@@ -132,7 +132,7 @@ function viewServiceRequest(srId) {
       ${r.status === 'pending' ? `<button class="btn" style="flex:1;background:#0891b2;color:white;" onclick="markServiceRequestInProgress('${r.id}');closeModal('sr-modal');"><i class="fa-solid fa-spinner"></i> Mark In Progress</button>` : ''}
       <button class="btn" style="flex:1;background:#10b981;color:white;" onclick="openResolveServiceRequestModal('${r.id}');closeModal('sr-modal');"><i class="fa-solid fa-circle-check"></i> Mark as Resolved</button>
     </div>` : ''}`;
-  addLog('system', `Viewed service request: ${r.subject}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, srId });
+ // addLog('system', `Viewed service request: ${r.subject}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, srId });
   openModal('sr-modal');
 }
 
@@ -152,7 +152,7 @@ async function markServiceRequestInProgress(srId) {
   if (!r) return;
   try { await apiRequest(`/admin/service-requests/${srId}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'in_progress' }) }); }
   catch { r.status = 'in_progress'; }
-  await addLog('system', `Service request marked in progress: ${r?.subject}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, srId, userName: r?.userName });
+//  await addLog('system', `Service request marked in progress: ${r?.subject}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, srId, userName: r?.userName });
   calculateStats(); renderDashboard(); renderServiceRequests();
   toast.info('Marked in progress', 'The request has been updated.');
 }
@@ -164,7 +164,7 @@ async function submitResolveServiceRequest() {
   const r = serviceRequests.find(x => x.id === srId);
   try { await apiRequest(`/admin/service-requests/${srId}/resolve`, { method: 'PATCH', body: JSON.stringify({ resolutionNotes: notes }) }); }
   catch { if (r) { r.status = 'resolved'; r.resolvedAt = new Date().toISOString(); r.resolutionNotes = notes; } }
-  await addLog('system', `Service request resolved: ${r?.subject}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, srId, userName: r?.userName });
+  //await addLog('system', `Service request resolved: ${r?.subject}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, srId, userName: r?.userName });
   closeModal('sr-resolve-modal');
   calculateStats(); renderDashboard(); renderServiceRequests();
   toast.success('Request resolved', 'The customer will be notified of the resolution.');
@@ -182,7 +182,7 @@ async function bulkResolveServiceRequests() {
       catch { const r = serviceRequests.find(x => x.id === id); if (r) { r.status = 'resolved'; r.resolvedAt = new Date().toISOString(); r.resolutionNotes = notes; } }
       ok++;
     }
-    await addLog('system', `Bulk resolved ${ok} service request(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+    //await addLog('system', `Bulk resolved ${ok} service request(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
     selectedIds['service-requests'].clear();
     calculateStats(); renderDashboard(); renderServiceRequests();
     toast.success('Done', `${ok} service request(s) resolved.`);

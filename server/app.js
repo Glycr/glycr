@@ -1,28 +1,22 @@
 const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const path = require('path');
-const config = require('./config');
+const { setupMiddleware } = require('./config/middleware');
 const routes = require('./routes');
-const { errorHandler, notFound } = require('./middleware/errorHandler');
+const { notFound, errorHandler } = require('./middleware/errorHandler');
+
 const app = express();
 
-// Middleware
-app.use(helmet());
-app.use(cors()); // keep your existing CORS
-app.use(express.json());
-app.use(morgan('combined'));
+// 1. Pre-route middleware (helmet, cors, body parsing, request log, static, rate limits)
+setupMiddleware(app);
 
-// Serve static files with CORP header to allow cross-origin loading
-app.use('/uploads', (req, res, next) => {
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  next();
-}, express.static(path.join(__dirname, config.uploadDir)));
+// 2. Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() });
+});
 
-// API routes
-
+// 3. Routes
 app.use('/api', routes);
+
+// 4. Error handlers: must be last
 app.use(notFound);
 app.use(errorHandler);
 

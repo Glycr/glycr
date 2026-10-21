@@ -263,6 +263,6 @@ function viewTransaction(txnId) {
       <div style="font-family:monospace;font-size:0.8rem;color:#94a3b8;">${txn.ticketId}</div>
       <button class="btn btn-primary" style="margin-top:0.75rem;font-size:0.78rem;padding:0.4rem 0.8rem;" onclick="closeModal('transaction-modal');viewTicket('${txn.ticketId}');"><i class="fa-solid fa-eye"></i> View Ticket</button>
     </div>` : ''}`;
-  addLog('system', `Viewed transaction details`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, txnId: txn.id, amount: txn.amount, type: txn.type });
+  //addLog('system', `Viewed transaction details`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, txnId: txn.id, amount: txn.amount, type: txn.type });
   openModal('transaction-modal');
 }

@@ -1,46 +1,34 @@
 const { logger } = require('./logger');
 
-// ============================================================
-// 1. ALLOWED ORIGINS
-//    (Comma-separated list from environment variables)
-// ============================================================
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [ "https://wrytix.netlify.app"];
+const isProd = process.env.NODE_ENV === 'production';
 
-// ============================================================
-// 2. CORS CONFIGURATION
-// ============================================================
+// Comma-separated list in .env, e.g. ALLOWED_ORIGINS=https://glycr.com,https://admin.glycr.com
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+if (isProd && allowedOrigins.length === 0) {
+  logger.warn('ALLOWED_ORIGINS is empty in production: all browser origins will be blocked');
+}
+
 const corsOptions = {
-  // --- Origin Handling ---
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, Postman)
-    if (!origin) {
-      return callback(null, true);
-    }
+    // No origin: mobile apps, scanner apps, curl, Postman
+    if (!origin) return callback(null, true);
 
-    // Check if origin is allowed or if we're in development
-    if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
-      callback(null, true);
-    } else {
-      // Log blocked origins for debugging
-      logger.warn(`❌ CORS blocked origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
+    // Outside production, allow everything (same as your old cors())
+    if (!isProd || allowedOrigins.includes(origin)) return callback(null, true);
+
+    logger.warn(`CORS blocked origin: ${origin}`);
+    const err = new Error('Not allowed by CORS');
+    err.statusCode = 403; // otherwise errorHandler reports it as a 500
+    callback(err);
   },
-
-  // --- Credentials (Allow cookies to be sent) ---
   credentials: true,
-
-  // --- Preflight Response ---
   optionsSuccessStatus: 200,
-
-  // --- Allowed HTTP Methods ---
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-
-  // --- Allowed Headers ---
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control'],
 };
 
-// ============================================================
-// 3. EXPORT
-// ============================================================
 module.exports = { corsOptions };

@@ -141,7 +141,7 @@ function viewRefund(refundId) {
       <button class="btn btn-success" style="flex:1;" onclick="approveRefund('${r.id}');closeModal('refund-modal');"><i class="fa-solid fa-check"></i> Approve</button>
       <button class="btn btn-danger"  style="flex:1;" onclick="openRefundRejectModal('${r.id}');closeModal('refund-modal');"><i class="fa-solid fa-xmark"></i> Reject</button>
     </div>` : ''}`;
-  addLog('system', 'Viewed refund details', { adminName: currentAdmin.name, adminRole: currentAdmin.role, refundId });
+  //addLog('system', 'Viewed refund details', { adminName: currentAdmin.name, adminRole: currentAdmin.role, refundId });
   openModal('refund-modal');
 }
 
@@ -172,7 +172,7 @@ async function submitRefundReject() {
   const r = refunds.find(x => x.id === refundId);
   try { await apiRequest(`/refunds/${refundId}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) }); }
   catch { if (r) { r.status = 'rejected'; r.rejectionReason = reason; r.resolvedAt = new Date().toISOString(); } }
-  await addLog('warning', 'Refund rejected', { adminName: currentAdmin.name, adminRole: currentAdmin.role, refundId, reason, userEmail: r?.userEmail });
+ // await addLog('warning', 'Refund rejected', { adminName: currentAdmin.name, adminRole: currentAdmin.role, refundId, reason, userEmail: r?.userEmail });
   closeModal('refund-reject-modal');
   calculateStats(); renderDashboard(); renderRefunds(); renderReports();
   toast.warning('Refund rejected', 'The customer will be notified.');
@@ -188,7 +188,7 @@ async function bulkApproveRefunds() {
       catch { const r = refunds.find(x => x.id === id); if (r) { r.status = 'approved'; r.resolvedAt = new Date().toISOString(); } }
       ok++;
     }
-    await addLog('system', `Bulk approved ${ok} refund(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+    //await addLog('system', `Bulk approved ${ok} refund(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
     selectedIds.refunds.clear();
     calculateStats(); renderDashboard(); renderRefunds(); renderReports();
     toast.success('Done', `${ok} refund(s) approved.`);

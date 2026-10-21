@@ -97,14 +97,14 @@ function viewPayout(payoutId) {
       <button class="btn btn-success" style="flex:1;" onclick="approvePayout('${p.id}');closeModal('payout-modal');"><i class="fa-solid fa-check"></i> Approve</button>
       <button class="btn btn-danger"  style="flex:1;" onclick="rejectPayout('${p.id}');closeModal('payout-modal');"><i class="fa-solid fa-xmark"></i> Reject</button>
     </div>` : ''}`;
-  addLog('payout', 'Viewed payout details', { adminName: currentAdmin.name, adminRole: currentAdmin.role, payoutId });
+  //addLog('payout', 'Viewed payout details', { adminName: currentAdmin.name, adminRole: currentAdmin.role, payoutId });
   openModal('payout-modal');
 }
 
 async function approvePayout(payoutId) {
   try { await apiRequest(`/admin/payouts/${payoutId}/approve`, { method: 'PATCH' }); }
   catch { const p = payouts.find(p => p.id === payoutId); if (p) { p.status = 'completed'; p.completedAt = new Date().toISOString(); } }
-  await addLog('payout', 'Payout approved', { adminName: currentAdmin.name, adminRole: currentAdmin.role, payoutId });
+  //await addLog('payout', 'Payout approved', { adminName: currentAdmin.name, adminRole: currentAdmin.role, payoutId });
   await loadData();
   toast.success('Payout approved', 'The payment will be processed shortly.');
 }
@@ -114,7 +114,7 @@ async function rejectPayout(payoutId) {
   if (!reason) return;
   try { await apiRequest(`/admin/payouts/${payoutId}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) }); }
   catch { const p = payouts.find(p => p.id === payoutId); if (p) { p.status = 'rejected'; p.rejectionReason = reason; } }
-  await addLog('warning', 'Payout rejected', { adminName: currentAdmin.name, adminRole: currentAdmin.role, payoutId, reason });
+ // await addLog('warning', 'Payout rejected', { adminName: currentAdmin.name, adminRole: currentAdmin.role, payoutId, reason });
   await loadData();
   toast.warning('Payout rejected', 'The organizer will be notified.');
 }
@@ -129,7 +129,7 @@ async function bulkApprovePayouts() {
       catch { const p = payouts.find(p => p.id === id); if (p) { p.status = 'completed'; p.completedAt = new Date().toISOString(); } }
       ok++;
     }
-    await addLog('payout', `Bulk approved ${ok} payout(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+    //await addLog('payout', `Bulk approved ${ok} payout(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
     selectedIds.payouts.clear();
     await loadData();
     toast.success('Done', `${ok} payout(s) approved.`);
@@ -147,7 +147,7 @@ async function bulkRejectPayouts() {
     catch { const p = payouts.find(p => p.id === id); if (p) { p.status = 'rejected'; p.rejectionReason = reason; } }
     ok++;
   }
-  await addLog('warning', `Bulk rejected ${ok} payout(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok, reason });
+  //await addLog('warning', `Bulk rejected ${ok} payout(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok, reason });
   selectedIds.payouts.clear();
   await loadData();
   toast.warning('Done', `${ok} payout(s) rejected.`);

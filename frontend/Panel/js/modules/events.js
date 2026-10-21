@@ -104,7 +104,7 @@ async function saveEditEvent() {
   const payload = { title, description, date, venue, location, category };
   try { await apiRequest(`/admin/events/${eventId}`, { method: 'PUT', body: JSON.stringify(payload) }); }
   catch { const ev = events.find(e => e.id === eventId); if (ev) Object.assign(ev, payload); }
-  await addLog('event', 'Event details edited', { adminName: currentAdmin.name, adminRole: currentAdmin.role, eventId, title });
+ // await addLog('event', 'Event details edited', { adminName: currentAdmin.name, adminRole: currentAdmin.role, eventId, title });
   closeModal('edit-event-modal');
   renderEvents();
   toast.success('Event updated', 'Changes have been saved.');
@@ -121,7 +121,7 @@ async function flagEvent(eventId) {
 async function togglePublish(eventId) {
   try { await apiRequest(`/admin/events/${eventId}/publish`, { method: 'PATCH' }); }
   catch { const ev = events.find(e => e.id === eventId); if (ev) ev.isPublished = !ev.isPublished; }
-  await addLog('system', 'Event publish toggled', { adminName: currentAdmin.name, adminRole: currentAdmin.role, eventId });
+  //await addLog('system', 'Event publish toggled', { adminName: currentAdmin.name, adminRole: currentAdmin.role, eventId });
   renderEvents();
   toast.info('Visibility updated', 'Event publish status changed.');
 }
@@ -132,7 +132,7 @@ async function deleteEvent(eventId) {
   if (!ok) return;
   try { await apiRequest(`/admin/events/${eventId}`, { method: 'DELETE' }); }
   catch { events.splice(events.findIndex(e => e.id === eventId), 1); }
-  await addLog('danger', 'Event deleted', { adminName: currentAdmin.name, adminRole: currentAdmin.role, eventId });
+ // await addLog('danger', 'Event deleted', { adminName: currentAdmin.name, adminRole: currentAdmin.role, eventId });
   await loadData();
   toast.success('Event deleted', 'The event has been removed.');
 }
@@ -143,9 +143,9 @@ async function bulkFlagEvents() {
   showBulkConfirm('Flag Events', `Flag ${ids.length} event(s)?`, async () => {
     let ok = 0;
     for (const id of ids) { try { await apiRequest(`/admin/events/${id}/flag`, { method: 'PATCH' }); ok++; } catch { ok++; } }
-    await addLog('warning', `Bulk flagged ${ok} event(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+   // await addLog('warning', `Bulk flagged ${ok} event(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
     selectedIds.events.clear();
-    await loadData();
+   await loadData();
     toast.warning('Done', `${ok} event(s) flagged.`);
   });
 }
@@ -156,7 +156,7 @@ async function bulkDeleteEvents() {
   showBulkConfirm('Delete Events', `Permanently delete ${ids.length} event(s) and all their tickets?`, async () => {
     let ok = 0;
     for (const id of ids) { try { await apiRequest(`/admin/events/${id}`, { method: 'DELETE' }); ok++; } catch { ok++; } }
-    await addLog('danger', `Bulk deleted ${ok} event(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+   // await addLog('danger', `Bulk deleted ${ok} event(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
     selectedIds.events.clear();
     await loadData();
     toast.success('Done', `${ok} event(s) deleted.`);
@@ -207,6 +207,6 @@ function viewEvent(eventId) {
     <div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
       <button class="btn btn-primary" onclick="openEditEventModal('${ev.id}');closeModal('event-modal');"><i class="fa-solid fa-pen-to-square"></i> Edit Event</button>
     </div>`;
-  addLog('event', `Viewed event: ${ev.title}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, eventId });
+  //addLog('event', `Viewed event: ${ev.title}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, eventId });
   openModal('event-modal');
 }

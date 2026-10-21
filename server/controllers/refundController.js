@@ -1,9 +1,17 @@
 const refundService = require('../services/refundService');
+const logService = require('../services/logService');
+
+const ctx = (req) => ({ ip: req.ip, userAgent: req.get('user-agent') });
 
 exports.requestRefund = async (req, res, next) => {
   try {
     const { ticketId, reason, isPartial, partialAmount } = req.body;
     const refund = await refundService.requestRefund(req.user.id, ticketId, reason, isPartial, partialAmount);
+    const refundId = String(refund?._id || refund?.id || '');
+    logService.audit(req.user.email, 'request_refund', refundId, {
+      type: 'payout', adminId: req.user.id, refundId, ticketId: String(ticketId),
+      isPartial: !!isPartial, partialAmount, reason: String(reason || '').slice(0, 300), ...ctx(req),
+    });
     res.status(201).json(refund);
   } catch (err) {
     next(err);
@@ -36,6 +44,10 @@ exports.approveRefund = async (req, res, next) => {
   // We'll add permission check inside service? Better to check here.
   try {
     const refund = await refundService.approveRefund(req.params.id, req.user.id);
+    logService.audit(req.user.email, 'approve_refund', String(req.params.id), {
+      type: 'payout', adminId: req.user.id, refundId: req.params.id, amount: refund?.amount,
+      ticketId: String(refund?.ticketId?._id || refund?.ticketId || ''), ...ctx(req),
+    });
     res.json(refund);
   } catch (err) {
     next(err);
@@ -47,6 +59,11 @@ exports.rejectRefund = async (req, res, next) => {
     const { reason } = req.body;
     if (!reason) return res.status(400).json({ error: 'Rejection reason required' });
     const refund = await refundService.rejectRefund(req.params.id, req.user.id, reason);
+    logService.audit(req.user.email, 'reject_refund', String(req.params.id), {
+      type: 'payout', adminId: req.user.id, refundId: req.params.id, amount: refund?.amount,
+      ticketId: String(refund?.ticketId?._id || refund?.ticketId || ''),
+      reason: String(reason).slice(0, 300), ...ctx(req),
+    });
     res.json(refund);
   } catch (err) {
     next(err);

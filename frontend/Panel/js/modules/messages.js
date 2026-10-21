@@ -225,7 +225,7 @@ async function deleteMessage(msgId) {
   try { await apiRequest(`/admin/messages/${msgId}`, { method: 'DELETE' }); } catch {}
   const idx = messages.findIndex(m => m.id === msgId);
   if (idx !== -1) messages.splice(idx, 1);
-  await addLog('system', `Message deleted: ${msg?.subject}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, msgId });
+ // await addLog('system', `Message deleted: ${msg?.subject}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, msgId });
   renderMessages();
   updateMessageStats();
   toast.success('Message deleted', 'The message record has been removed.');
@@ -241,7 +241,7 @@ async function bulkDeleteMessages() {
       const idx = messages.findIndex(m => m.id === id);
       if (idx !== -1) { messages.splice(idx, 1); ok++; }
     }
-    await addLog('system', `Bulk deleted ${ok} message(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+    //await addLog('system', `Bulk deleted ${ok} message(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
     selectedIds.messages.clear();
     renderMessages();
     updateMessageStats();

@@ -1,4 +1,8 @@
 const couponService = require('../services/couponService');
+const logService = require('../services/logService');
+const Coupon = require('../models/Coupon'); // only used to read the code before it is deleted
+
+const ctx = (req) => ({ ip: req.ip, userAgent: req.get('user-agent') });
 
 // Organizer: Create coupon
 exports.createCoupon = async (req, res, next) => {
@@ -9,6 +13,9 @@ exports.createCoupon = async (req, res, next) => {
     }
     const coupon = await couponService.createCoupon(req.user.id, {
       code, type, value, expiryDate, usageLimit, eventId,
+    });
+    logService.audit(req.user.email, 'create_coupon', coupon?.code || code, {
+      type: 'event', adminId: req.user.id, couponType: type, value, usageLimit, eventId, ...ctx(req),
     });
     res.status(201).json(coupon);
   } catch (err) {
@@ -84,7 +91,11 @@ exports.deleteCoupon = async (req, res, next) => {
   try {
     const { id } = req.params;
     const isAdmin = req.user.role === 'admin';
+    const before = await Coupon.findById(id).select('code eventId').lean();
     await couponService.deleteCoupon(id, req.user.id, isAdmin);
+    logService.audit(req.user.email, 'delete_coupon', before?.code || id, {
+      type: 'event', adminId: req.user.id, couponId: id, eventId: before?.eventId, ...ctx(req),
+    });
     res.status(204).send();
   } catch (err) {
     next(err);

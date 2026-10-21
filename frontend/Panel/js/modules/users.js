@@ -60,11 +60,15 @@ function getFilteredUsers() {
 async function suspendUser(userId) {
   const user = users.find(u => u.id === userId);
   if (!canSuspendUser(user)) { toast.error('Permission denied', 'You cannot suspend this user.'); return; }
+
+  const suspend = !user.suspended;   // the new state, captured before anything changes
+
   try { await apiRequest(`/admin/users/${userId}/suspend`, { method: 'PATCH' }); }
   catch { if (user) user.suspended = !user.suspended; }
-  await addLog('user', `User ${user?.suspended ? 'suspended' : 'unsuspended'}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, targetUser: user?.email, targetRole: user?.role });
+
+  await addLog('user', `User ${suspend ? 'suspended' : 'unsuspended'}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, targetUser: user?.email, targetRole: user?.role });
   await loadData();
-  toast.success('User updated', `Account has been ${user?.suspended ? 'suspended' : 'unsuspended'}.`);
+  toast.success('User updated', `Account has been ${suspend ? 'suspended' : 'unsuspended'}.`);
 }
 
 async function deleteUser(userId) {
@@ -100,7 +104,7 @@ async function saveEditUser() {
   if (!name || !email) { toast.warning('Missing fields', 'Name and email are required.'); return; }
   try { await apiRequest(`/admin/users/${userId}`, { method: 'PUT', body: JSON.stringify({ name, email, phone, role, suspended }) }); }
   catch { const u = users.find(u => u.id === userId); if (u) Object.assign(u, { name, email, phone, role, suspended }); }
-  await addLog('user', 'User details updated', { adminName: currentAdmin.name, adminRole: currentAdmin.role, targetUser: email, targetRole: role });
+//  await addLog('user', 'User details updated', { adminName: currentAdmin.name, adminRole: currentAdmin.role, targetUser: email, targetRole: role });
   closeModal('edit-user-modal');
   await loadData();
   toast.success('User updated', 'Changes saved successfully.');
@@ -140,7 +144,7 @@ async function bulkSuspendUsers() {
       try { await apiRequest(`/admin/users/${id}/suspend`, { method: 'PATCH' }); ok++; }
       catch { const u = users.find(u => u.id === id); if (u) { u.suspended = true; ok++; } }
     }
-    await addLog('user', `Bulk suspended ${ok} user(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+    //await addLog('user', `Bulk suspended ${ok} user(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
     selectedIds.users.clear();
     await loadData();
     toast.success('Done', `${ok} user(s) suspended.`);
@@ -157,7 +161,7 @@ async function bulkDeleteUsers() {
       if (!canDeleteUser(user)) continue;
       try { await apiRequest(`/admin/users/${id}`, { method: 'DELETE' }); ok++; } catch { ok++; }
     }
-    await addLog('danger', `Bulk deleted ${ok} user(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+    //await addLog('danger', `Bulk deleted ${ok} user(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
     selectedIds.users.clear();
     await loadData();
     toast.success('Done', `${ok} user(s) deleted.`);
@@ -203,6 +207,6 @@ function viewUser(userId) {
   }).join('') || '<div class="empty-state">No ticket activity yet</div>'}
       </div>
     </div>`;
-  addLog('user', `Viewed user profile: ${user.email}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, userId });
+  //addLog('user', `Viewed user profile: ${user.email}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, userId });
   openModal('user-modal');
 }

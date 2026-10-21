@@ -106,7 +106,7 @@ async function clearLogs() {
   try { await apiRequest('/admin/logs', { method: 'DELETE' }); } catch {}
   logs = [];
   localStorage.removeItem('glycr_admin_logs');
-  await addLog('system', 'Logs cleared by admin', { adminName: currentAdmin.name, adminRole: currentAdmin.role });
+ // await addLog('system', 'Logs cleared by admin', { adminName: currentAdmin.name, adminRole: currentAdmin.role });
   renderLogs();
   toast.info('Logs cleared', 'All activity logs have been removed.');
 }

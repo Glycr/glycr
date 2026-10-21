@@ -1,14 +1,17 @@
-// config/helmet.js
+
+
 const helmet = require('helmet');
 
-// ============================================================
-// 1. HELMET CONFIGURATION
-//    Defines Content Security Policy (CSP) and other security headers
-// ============================================================
-
+// This server returns JSON and serves /uploads only, so the CSP can be strict.
 const helmetConfig = {
-  // --- Content Security Policy ---
   contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      fontSrc: ["'self'", 'data:', 'https:'],
+    },
+
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: [
@@ -32,14 +35,8 @@ const helmetConfig = {
       fontSrc: ["'self'", "data:", "https:"],
     },
   },
-  // --- Disable COEP (allows cross-origin resources) ---
   crossOriginEmbedderPolicy: false,
-  // --- Allow cross-origin resource sharing ---
-  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // lets other origins load /uploads images
 };
-
-// ============================================================
-// 2. EXPORT – The configured Helmet middleware
-// ============================================================
 
 module.exports = helmet(helmetConfig);

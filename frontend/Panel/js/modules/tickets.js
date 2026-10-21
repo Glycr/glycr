@@ -121,7 +121,7 @@ function viewTicket(ticketId) {
         <button class="btn btn-success" onclick="validateTicket('${ticket.id}');closeModal('ticket-modal');"><i class="fa-solid fa-circle-check"></i> Validate</button>
         <button class="btn btn-danger"  onclick="cancelTicket('${ticket.id}');closeModal('ticket-modal');"><i class="fa-solid fa-ban"></i> Cancel</button>` : ''}
     </div>`;
-  addLog('system', 'Viewed ticket details', { adminName: currentAdmin.name, adminRole: currentAdmin.role, ticketId });
+ // addLog('system', 'Viewed ticket details', { adminName: currentAdmin.name, adminRole: currentAdmin.role, ticketId });
   openModal('ticket-modal');
 }
 
@@ -154,7 +154,7 @@ async function submitResendTicket() {
   } catch {}
   if (email) channels.push('email');
   if (phone) channels.push('SMS');
-  await addLog('system', `Ticket resent via ${channels.join(' & ')}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, ticketId, email, phone });
+  //await addLog('system', `Ticket resent via ${channels.join(' & ')}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, ticketId, email, phone });
   _setResendStatus(statusEl, 'success', `Sent via ${channels.join(' & ')}!`);
   toast.success('Ticket resent', `Sent via ${channels.join(' & ')}.`);
   setTimeout(() => closeModal('resend-ticket-modal'), 1800);
@@ -176,7 +176,7 @@ async function validateTicket(ticketId) {
   if (!ok) return;
   try { await apiRequest(`/admin/tickets/${ticketId}/validate`, { method: 'PATCH' }); }
   catch { const t = tickets.find(t => t.id === ticketId); if (t) t.status = 'used'; }
-  await addLog('system', 'Ticket validated', { adminName: currentAdmin.name, adminRole: currentAdmin.role, ticketId });
+  //await addLog('system', 'Ticket validated', { adminName: currentAdmin.name, adminRole: currentAdmin.role, ticketId });
   renderTickets();
   toast.success('Ticket validated', 'Marked as used.');
 }
@@ -186,7 +186,7 @@ async function cancelTicket(ticketId) {
   if (!ok) return;
   try { await apiRequest(`/admin/tickets/${ticketId}/cancel`, { method: 'PATCH' }); }
   catch { const t = tickets.find(t => t.id === ticketId); if (t) t.status = 'cancelled'; }
-  await addLog('warning', 'Ticket cancelled by admin', { adminName: currentAdmin.name, adminRole: currentAdmin.role, ticketId });
+ // await addLog('warning', 'Ticket cancelled by admin', { adminName: currentAdmin.name, adminRole: currentAdmin.role, ticketId });
   renderTickets();
   toast.warning('Ticket cancelled', 'The ticket has been cancelled.');
 }
@@ -201,7 +201,7 @@ async function bulkValidateTickets() {
       catch { const t = tickets.find(t => t.id === id); if (t) t.status = 'used'; }
       ok++;
     }
-    await addLog('system', `Bulk validated ${ok} ticket(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+    //await addLog('system', `Bulk validated ${ok} ticket(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
     selectedIds.tickets.clear();
     renderTickets();
     toast.success('Done', `${ok} ticket(s) validated.`);
@@ -218,7 +218,7 @@ async function bulkCancelTickets() {
       catch { const t = tickets.find(t => t.id === id); if (t) t.status = 'cancelled'; }
       ok++;
     }
-    await addLog('warning', `Bulk cancelled ${ok} ticket(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+   // await addLog('warning', `Bulk cancelled ${ok} ticket(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
     selectedIds.tickets.clear();
     renderTickets();
     toast.warning('Done', `${ok} ticket(s) cancelled.`);

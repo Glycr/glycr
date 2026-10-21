@@ -90,7 +90,7 @@ async function submitWaitlistNotify() {
   if (!message) { toast.warning('Missing message', 'Please enter a notification message.'); return; }
   try { await apiRequest(`/admin/waitlist/${entryId}/notify`, { method:'POST', body: JSON.stringify({ channel, message }) }); } catch {}
   if (entry) entry.notified = true;
-  await addLog('system', `Waitlist notification sent via ${channel}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, entryId, userEmail: entry?.userEmail, eventTitle: entry?.eventTitle });
+  //await addLog('system', `Waitlist notification sent via ${channel}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, entryId, userEmail: entry?.userEmail, eventTitle: entry?.eventTitle });
   closeModal('waitlist-notify-modal');
   renderWaitlist();
   toast.success('Notification sent', `Message delivered via ${channel}.`);
@@ -131,7 +131,7 @@ async function removeWaitlistEntry(entryId) {
   try { await apiRequest(`/admin/waitlist/${entryId}`, { method: 'DELETE' }); } catch {}
   const idx = waitlist.findIndex(w => w.id === entryId);
   if (idx !== -1) waitlist.splice(idx, 1);
-  await addLog('warning', 'Waitlist entry removed', { adminName: currentAdmin.name, adminRole: currentAdmin.role, entryId, userEmail: entry?.userEmail });
+  //await addLog('warning', 'Waitlist entry removed', { adminName: currentAdmin.name, adminRole: currentAdmin.role, entryId, userEmail: entry?.userEmail });
   renderWaitlist(); calculateStats(); renderDashboard();
   toast.info('Removed', 'Entry removed from the waitlist.');
 }
@@ -146,7 +146,7 @@ async function bulkNotifyWaitlist() {
     try { await apiRequest(`/admin/waitlist/${id}/notify`, { method:'POST', body: JSON.stringify({ channel:'both', message }) }); } catch {}
     ok++;
   }
-  await addLog('system', `Bulk waitlist notification sent to ${ok} user(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+  //await addLog('system', `Bulk waitlist notification sent to ${ok} user(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
   selectedIds.waitlist.clear();
   updateBulkBar('waitlist');
   toast.success('Done', `${ok} waitlisted user(s) notified.`);
@@ -163,7 +163,7 @@ async function bulkConvertWaitlist() {
       try { await apiRequest(`/admin/waitlist/${id}/convert`, { method:'POST', body: JSON.stringify({ ticketType }) }); } catch {}
       const idx = waitlist.findIndex(w => w.id === id); if (idx !== -1) { waitlist.splice(idx, 1); ok++; }
     }
-    await addLog('system', `Bulk converted ${ok} waitlist entries to ${ticketType} tickets`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok, ticketType });
+    //await addLog('system', `Bulk converted ${ok} waitlist entries to ${ticketType} tickets`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok, ticketType });
     selectedIds.waitlist.clear();
     renderWaitlist(); calculateStats(); renderDashboard();
     toast.success('Done', `${ok} user(s) converted to ${ticketType} tickets.`);
@@ -179,7 +179,7 @@ async function bulkRemoveWaitlist() {
       try { await apiRequest(`/admin/waitlist/${id}`, { method: 'DELETE' }); } catch {}
       const idx = waitlist.findIndex(w => w.id === id); if (idx !== -1) { waitlist.splice(idx, 1); ok++; }
     }
-    await addLog('warning', `Bulk removed ${ok} waitlist entries`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+   // await addLog('warning', `Bulk removed ${ok} waitlist entries`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
     selectedIds.waitlist.clear();
     renderWaitlist(); calculateStats(); renderDashboard();
     toast.info('Done', `${ok} waitlist entr${ok === 1 ? 'y' : 'ies'} removed.`);

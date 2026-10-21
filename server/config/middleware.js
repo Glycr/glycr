@@ -1,51 +1,39 @@
 // config/middleware.js
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
-const { ddosProtection,loginSlowDown } = require('../middleware/slowDown');
-const { apiLimiter ,authLimiter} = require('../middleware/rateLimit');
+const helmet = require('./helmet');
+const config = require('./index');
 const { corsOptions } = require('./cors');
 const { upload } = require('./multer');
 const { requestLogger } = require('../middleware/requestLogger');
-const helmet = require('./helmet');
-const morgan = require('morgan');
-const cookieParser = require('cookie-parser');
-const setupSession = require('./session');
+const { apiLimiter, authLimiter, resetLimiter } = require('../middleware/rateLimit');
+const { ddosProtection,loginSlowDown } = require('../middleware/slowDown');
+
+
 
 const setupMiddleware = (app) => {
-  app.set('trust proxy', 1);
-
-  app.use(helmet);
-  if (process.env.NODE_ENV === "production") {
-    app.use((req, res, next) => {
-      res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
-      next();
-    });
+  // Only behind a proxy/load balancer (Nginx, Render, Heroku...). Set TRUST_PROXY=1 in .env.
+  // Without it, rate limiting sees the proxy's IP instead of the client's.
+  const tp = process.env.TRUST_PROXY;
+  if (tp !== undefined) {
+    app.set('trust proxy', tp === 'true' ? true : Number(tp));
   }
-
-  app.use(cookieParser());
+  app.use(helmet);
   app.use(cors(corsOptions));
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-  // ✅ Session applied here (before routes)
-  setupSession(app);
-
+  app.use(express.json({ limit: '1mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '1mb' }));
   app.use(requestLogger);
 
-  // Rate limiter + DDoS (skip login)
-  app.use((req, res, next) => {
-    if (req.path.startsWith('/auth/login',)) return next();
-    apiLimiter(req, res, () => {
-      ddosProtection(req, res, next);
-    });
-  });
+  // Uploads sit before the rate limiters so event images don't count against them
+  app.use('/uploads', express.static(path.resolve(__dirname, '..', config.uploadDir)));
 
-  // Optional root route (can stay)
-  app.get("/", (req, res) => {
-    res.send("Backend is running 🚀");
-  });
+  // Rate limits (must come after express.json(): authLimiter and resetLimiter read req.body)
+  // Adjust these paths to match your real auth routes.
+  app.use('/api', ddosProtection, apiLimiter);
 
-  // ❌ Do NOT mount routes or error handlers here
+
+  // Do NOT mount routes or error handlers here
   return { upload };
 };
 

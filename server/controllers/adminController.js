@@ -1,6 +1,10 @@
 const adminService = require('../services/adminService');
+const logService = require('../services/logService');
 const Payout = require('../models/Payout');
 const Event = require('../models/Event');
+const User = require('../models/User'); // only used to read a record before it is deleted / its role changes
+
+const ctx = (req) => ({ ip: req.ip, userAgent: req.get('user-agent') });
 
 exports.getStats = async (req, res, next) => {
   try {
@@ -23,6 +27,9 @@ exports.getAllUsers = async (req, res, next) => {
 exports.createUser = async (req, res, next) => {
   try {
     const user = await adminService.createUser(req.body);
+    logService.audit(req.user.email, 'create_user', user?.email || req.body?.email, {
+      type: 'user', adminId: req.user.id, targetRole: user?.role, ...ctx(req),
+    });
     res.status(201).json(user);
   } catch (err) {
     next(err);
@@ -32,6 +39,11 @@ exports.createUser = async (req, res, next) => {
 exports.updateUser = async (req, res, next) => {
   try {
     const user = await adminService.updateUser(req.params.id, req.body, req.user.role);
+    // Field names only, never values
+    const submittedFields = Object.keys(req.body || {}).filter((k) => k !== 'password');
+    logService.audit(req.user.email, 'update_user', user?.email || req.params.id, {
+      type: 'user', adminId: req.user.id, targetRole: user?.role, submittedFields, ...ctx(req),
+    });
     res.json(user);
   } catch (err) {
     next(err);
@@ -41,6 +53,17 @@ exports.updateUser = async (req, res, next) => {
 exports.suspendUser = async (req, res, next) => {
   try {
     const result = await adminService.suspendUser(req.user.id, req.params.id);
+
+    // Works whether the service returns the user or { user, suspended }
+    const target = result?.user || result;
+    const suspended = result?.suspended ?? target?.suspended;
+
+    if (typeof suspended === 'boolean') {
+      logService.audit(req.user.email, suspended ? 'suspend_user' : 'unsuspend_user', target?.email || req.params.id, {
+        type: 'user', adminId: req.user.id, targetRole: target?.role, ...ctx(req),
+      });
+    }
+
     res.json(result);
   } catch (err) {
     next(err);
@@ -49,7 +72,11 @@ exports.suspendUser = async (req, res, next) => {
 
 exports.deleteUser = async (req, res, next) => {
   try {
+    const target = await User.findById(req.params.id).select('email role').lean();
     await adminService.deleteUser(req.user.id, req.params.id);
+    logService.audit(req.user.email, 'delete_user', target?.email || req.params.id, {
+      type: 'danger', adminId: req.user.id, targetRole: target?.role, ...ctx(req),
+    });
     res.status(204).send();
   } catch (err) {
     next(err);
@@ -59,7 +86,14 @@ exports.deleteUser = async (req, res, next) => {
 exports.changeUserRole = async (req, res, next) => {
   try {
     const { role } = req.body;
+    const before = await User.findById(req.params.id).select('role').lean();
     const user = await adminService.changeUserRole(req.user.id, req.params.id, role);
+    // Anything involving the admin role is logged as danger
+    const privileged = role === 'admin' || before?.role === 'admin';
+    logService.audit(req.user.email, 'change_role', user?.email || req.params.id, {
+      type: privileged ? 'danger' : 'user', adminId: req.user.id,
+      previousRole: before?.role, newRole: user?.role || role, ...ctx(req),
+    });
     res.json(user);
   } catch (err) {
     next(err);
@@ -79,6 +113,9 @@ exports.getAllEvents = async (req, res, next) => {
 exports.flagEvent = async (req, res, next) => {
   try {
     const event = await adminService.flagEvent(req.params.id);
+    logService.audit(req.user.email, 'flag_event', event?.title || req.params.id, {
+      type: 'event', adminId: req.user.id, eventId: req.params.id, ...ctx(req),
+    });
     res.json(event);
   } catch (err) {
     next(err);
@@ -87,7 +124,11 @@ exports.flagEvent = async (req, res, next) => {
 
 exports.deleteEvent = async (req, res, next) => {
   try {
+    const before = await Event.findById(req.params.id).select('title').lean();
     await adminService.deleteEvent(req.params.id);
+    logService.audit(req.user.email, 'delete_event', before?.title || req.params.id, {
+      type: 'danger', adminId: req.user.id, eventId: req.params.id, ...ctx(req),
+    });
     res.status(204).send();
   } catch (err) {
     next(err);
@@ -124,6 +165,10 @@ exports.getAllPayouts = async (req, res, next) => {
 exports.approvePayout = async (req, res, next) => {
   try {
     const payout = await adminService.approvePayout(req.params.id);
+    logService.audit(req.user.email, 'approve_payout', String(req.params.id), {
+      type: 'payout', adminId: req.user.id, amount: payout?.amount,
+      organizerId: String(payout?.organizerId?._id || payout?.organizerId || ''), ...ctx(req),
+    });
     res.json(payout);
   } catch (err) {
     next(err);
@@ -135,6 +180,11 @@ exports.rejectPayout = async (req, res, next) => {
     const { reason } = req.body;
     if (!reason) return res.status(400).json({ error: 'Rejection reason required' });
     const payout = await adminService.rejectPayout(req.params.id, reason);
+    logService.audit(req.user.email, 'reject_payout', String(req.params.id), {
+      type: 'payout', adminId: req.user.id, amount: payout?.amount,
+      organizerId: String(payout?.organizerId?._id || payout?.organizerId || ''),
+      reason: String(reason).slice(0, 300), ...ctx(req),
+    });
     res.json(payout);
   } catch (err) {
     next(err);
@@ -148,6 +198,9 @@ exports.togglePublish = async (req, res, next) => {
     if (!event) return res.status(404).json({ error: 'Event not found' });
     event.isPublished = !event.isPublished;
     await event.save();
+    logService.audit(req.user.email, event.isPublished ? 'publish_event' : 'unpublish_event', event.title || req.params.id, {
+      type: 'event', adminId: req.user.id, eventId: req.params.id, ...ctx(req),
+    });
     res.json(event);
   } catch (err) {
     next(err);
@@ -170,6 +223,10 @@ exports.notifyWaitlistEntry = async (req, res, next) => {
     const { id } = req.params;
     const { channel, message } = req.body;
     const result = await adminService.notifyWaitlistEntry(id, channel, message);
+    // Channel only; the message text is not stored
+    logService.audit(req.user.email, 'notify_waitlist', String(id), {
+      type: 'event', adminId: req.user.id, channel, ...ctx(req),
+    });
     res.json(result);
   } catch (err) {
     next(err);
@@ -181,6 +238,9 @@ exports.convertWaitlistToTicket = async (req, res, next) => {
     const { id } = req.params;
     const { ticketType } = req.body;
     const result = await adminService.convertWaitlistToTicket(id, ticketType);
+    logService.audit(req.user.email, 'convert_waitlist', String(id), {
+      type: 'event', adminId: req.user.id, ticketType, ...ctx(req),
+    });
     res.json(result);
   } catch (err) {
     next(err);
@@ -191,6 +251,9 @@ exports.deleteWaitlistEntry = async (req, res, next) => {
   try {
     const { id } = req.params;
     await adminService.deleteWaitlistEntry(id);
+    logService.audit(req.user.email, 'delete_waitlist_entry', String(id), {
+      type: 'event', adminId: req.user.id, ...ctx(req),
+    });
     res.status(204).send();
   } catch (err) {
     next(err);
