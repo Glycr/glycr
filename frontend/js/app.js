@@ -102,6 +102,48 @@ class GlycrApp {
   validateEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
   validatePhone(p) { return /^\+233\d{9}$/.test(p); }
 
+  // ═══════════════════════════════════════════════════════════
+  //  FIX: Payout method normalizer
+  //  Accepts every way a client might send the method and maps
+  //  to canonical snake_case values the backend validates:
+  //    bank | mobile_money | paypal | stripe
+  // ═══════════════════════════════════════════════════════════
+  _normalizePayoutMethod(m) {
+    if (!m || typeof m !== 'string') return '';
+    const s = m.trim().toLowerCase();
+    const aliases = {
+      // bank
+      'bank':             'bank',
+      'bank transfer':    'bank',
+      'bank_transfer':    'bank',
+      'bank account':     'bank',
+      'bank_account':     'bank',
+      // mobile money
+      'mobile_money':     'mobile_money',
+      'mobile money':     'mobile_money',
+      'mobilemoney':      'mobile_money',
+      'momo':             'mobile_money',   // legacy index.html value
+      'mo mo':            'mobile_money',
+      'mtn':              'mobile_money',
+      'mtn momo':         'mobile_money',
+      'mtn mobile money': 'mobile_money',
+      'vodafone cash':    'mobile_money',
+      'telecel cash':     'mobile_money',
+      'airteltigo money': 'mobile_money',
+      // paypal
+      'paypal':           'paypal',
+      'pay pal':          'paypal',
+      // stripe / card
+      'stripe':           'stripe',
+      'card':             'stripe',
+      'credit card':      'stripe',
+      'debit card':       'stripe',
+      'credit_card':      'stripe',
+      'debit_card':       'stripe',
+    };
+    return aliases[s] || aliases[s.replace(/[\s_-]+/g, '')] || s;
+  }
+
   parseTicketTypes(tt) {
     if (!tt) return {};
     if (typeof tt === 'string') { try { return JSON.parse(tt); } catch { return {}; } }
@@ -198,7 +240,7 @@ class GlycrApp {
     const response = await fetch(url, { ...options, headers });
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${response.status}`);
+      throw new Error(err.error || err.message || `HTTP ${response.status}`);
     }
     return response.json();
   }
@@ -484,7 +526,7 @@ class GlycrApp {
     this.renderNotificationBadge();
     this.renderNotificationsPanel();
   }
-  
+
   buildCarousel() {
     const slidesEl = document.getElementById('carousel-slides');
     const dotsEl   = document.getElementById('carousel-dots');
@@ -627,7 +669,7 @@ class GlycrApp {
     if ($('profile-dropdown'))    $('profile-dropdown').style.display    = loggedIn ? 'inline-block' : 'none';
     if ($('notif-bell-btn'))      $('notif-bell-btn').style.display      = loggedIn ? 'inline-flex'  : 'none';
     if ($('dashboard-link'))      $('dashboard-link').style.display      = isOrg    ? 'block'        : 'none';
-    if ($('validation-link'))         $('validation-link').style.display        = isOrg    ? 'block'        : 'none';
+    if ($('validation-link'))     $('validation-link').style.display     = isOrg    ? 'block'        : 'none';
     if ($('payout-link'))         $('payout-link').style.display         = isOrg    ? 'block'        : 'none';
     if ($('myevents-link'))       $('myevents-link').style.display       = isOrg    ? 'block'        : 'none';
     if ($('report-link'))         $('report-link').style.display         = isOrg    ? 'block'        : 'none';
@@ -758,7 +800,6 @@ class GlycrApp {
   }
 
   // ─── MY EVENTS PAGE ───────────────────────────────────────
-  // FIX: alias so HTML oninput/onchange="app.loadMyEventsPage()" works
   loadMyEventsPage() { return this.renderMyEventsFromData(); }
 
   async renderMyEventsFromData() {
@@ -805,7 +846,6 @@ class GlycrApp {
 
     container.innerHTML = myEvents.map(e => this.renderEventAdminCard(e)).join('');
 
-    // Re-attach event handlers
     container.querySelectorAll('[data-action]').forEach(btn => {
       btn.addEventListener('click', async () => {
         const action = btn.dataset.action;
@@ -1119,8 +1159,6 @@ class GlycrApp {
     const icon    = this.getCategoryIcon(event.category);
     const cat     = this.getCategoryName(event.category);
 
-    // ── FIX: availability badge for card footer ───────────────
-    // Show badge for all non-sold-out tiers (including free events).
     const minTypeData = tt[minType];
     const availBadge  = (!soldOut && minTypeData)
       ? this.renderAvailabilityBadge(
@@ -1159,71 +1197,27 @@ class GlycrApp {
 
 
   // ─── Ticket Availability System ───────────────────────────
-
-  /**
-   * Returns a structured availability object from remaining / total counts.
-   * Uses only Font Awesome Free icons (compatible with FA 6.0.0-beta3 CDN).
-   */
   getTicketAvailability(remaining, total) {
     const pct = total > 0 ? (remaining / total) * 100 : 0;
 
     if (remaining <= 0) {
-      return {
-        label:    'Sold out',
-        sublabel: 'Join the waitlist',
-        icon:     'fa-ban',
-        tier:     'sold-out',
-        pct:      0,
-      };
+      return { label: 'Sold out', sublabel: 'Join the waitlist', icon: 'fa-ban', tier: 'sold-out', pct: 0 };
     }
     if (pct > 80) {
-      return {
-        label:    'Available',
-        sublabel: `${remaining} tickets available`,
-        icon:     'fa-ticket-alt',
-        tier:     'ok',
-        pct,
-      };
+      return { label: 'Available', sublabel: `${remaining} tickets available`, icon: 'fa-ticket-alt', tier: 'ok', pct };
     }
     if (pct > 50) {
-      return {
-        label:    'Selling fast',
-        sublabel: `${remaining} remaining`,
-        icon:     'fa-bolt',           // FA Free ✓
-        tier:     'ok',
-        pct,
-      };
+      return { label: 'Selling fast', sublabel: `${remaining} remaining`, icon: 'fa-bolt', tier: 'ok', pct };
     }
     if (pct > 20) {
-      return {
-        label:    'Going quickly',
-        sublabel: `${remaining} remaining`,
-        icon:     'fa-fire',           // FA Free ✓
-        tier:     'warn',
-        pct,
-      };
+      return { label: 'Going quickly', sublabel: `${remaining} remaining`, icon: 'fa-fire', tier: 'warn', pct };
     }
     if (pct > 5) {
-      return {
-        label:    `Only ${remaining} left`,
-        sublabel: 'Limited availability',
-        icon:     'fa-exclamation-triangle', // FA Free ✓
-        tier:     'danger',
-        pct,
-      };
+      return { label: `Only ${remaining} left`, sublabel: 'Limited availability', icon: 'fa-exclamation-triangle', tier: 'danger', pct };
     }
-    return {
-      label:    'Almost sold out',
-      sublabel: `${remaining} ticket${remaining !== 1 ? 's' : ''} left`,
-      icon:     'fa-hourglass-end',   // FA Free ✓
-      tier:     'danger',
-      pct,
-    };
+    return { label: 'Almost sold out', sublabel: `${remaining} ticket${remaining !== 1 ? 's' : ''} left`, icon: 'fa-hourglass-end', tier: 'danger', pct };
   }
 
-  /**
-   * Compact pill badge — used on event cards.
-   */
   renderAvailabilityBadge(remaining, total) {
     const a = this.getTicketAvailability(remaining, total);
     const colorMap = {
@@ -1241,10 +1235,6 @@ class GlycrApp {
     "><i class="fas ${a.icon}" style="font-size:0.6rem;" aria-hidden="true"></i>${a.label}</span>`;
   }
 
-  /**
-   * Full bar with progress track + sublabel + percentage — used in event detail modal tiers.
-   * Also handles the sold-out state correctly (renders 0% bar in muted colour).
-   */
   renderAvailabilityBar(remaining, total) {
     const a = this.getTicketAvailability(remaining, total);
     const fillColor = {
@@ -1301,7 +1291,6 @@ class GlycrApp {
         <p class="detail-desc">${event.description}</p>
         <p class="tickets-label">Available Tickets</p>`;
 
-      // ── FIX: both sold-out AND available tiers use renderAvailabilityBar ──
       document.getElementById('ticket-benefits').innerHTML = Object.entries(tt).map(([type, data]) => {
         const avail   = data.capacity - (data.sold || 0);
         const soldOut = avail <= 0;
@@ -1510,7 +1499,6 @@ class GlycrApp {
         body: JSON.stringify({
           eventId: this.selectedTicket.eventId, ticketType: this.selectedTicket.type, quantity: qty,
           paymentDetails: { email, phone },
-          // Send buyer info at top level too for guest (unauthenticated) purchases
           buyerEmail: email,
           buyerPhone: phone,
           buyerName: email.split('@')[0],
@@ -1733,7 +1721,6 @@ class GlycrApp {
       doc.setFillColor(13, 32, 48);
       doc.rect(0, 0, 148, BANNER_H, 'F');
     }
-    
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14); doc.setTextColor(234, 242, 248);
@@ -2150,8 +2137,6 @@ class GlycrApp {
       const gDisc = parseInt(inp.querySelector('.type-group-disc').value) || 0;
       if (type && !isNaN(price) && !isNaN(cap)) {
         const tkt  = { price, capacity: cap, earlyBirdPrice: ebP, groupDiscountMinQty: gMin, groupDiscount: gDisc };
-
-
         if (ebEnd) tkt.earlyBirdEnd = ebEnd;
         ticketTypes[type] = tkt;
       }
@@ -2270,7 +2255,6 @@ class GlycrApp {
   async togglePublish(id) {
     try {
       await this.fetchApi(`/events/${id}/publish`, { method: 'PATCH' });
-      // loadAllData calls refreshCurrentView which re-renders myevents-page correctly
       await this.loadAllData();
     } catch (err) { this.showToast(err.message); }
   }
@@ -2288,7 +2272,6 @@ class GlycrApp {
     try {
       await this.fetchApi(`/events/${this.currentEventId}/cancel`, { method: 'PATCH' });
       this.closeAllModals();
-      // loadAllData calls refreshCurrentView which re-renders correctly
       await this.loadAllData();
       this.showToast('Event cancelled. All ticket holders will be refunded.', 'warning');
     } catch (err) { this.showToast(err.message); }
@@ -2298,7 +2281,6 @@ class GlycrApp {
     if (!confirm('Delete this event and all its tickets? This cannot be undone.')) return;
     try {
       await this.fetchApi(`/events/${id}`, { method: 'DELETE' });
-      // loadAllData calls refreshCurrentView which re-renders correctly
       await this.loadAllData();
     } catch (err) { this.showToast(err.message); }
   }
@@ -2326,42 +2308,82 @@ class GlycrApp {
     this.openModal('payout-modal');
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  FIX: getNetAvailablePayout — subtract PENDING payouts too.
+  //  Previously it subtracted only completed payouts, so the
+  //  UI showed more available than the backend would accept,
+  //  resulting in a 400 error after the user filled out the form.
+  // ═══════════════════════════════════════════════════════════
   async getNetAvailablePayout() {
-    const [myPayouts, myEvents] = await Promise.all([this.fetchApi('/payouts'), this.fetchApi(`/events?organizerId=${this.currentUser.id}`)]);
-    const totalPaid = myPayouts.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0);
-    const gross = myEvents.reduce((s, e) => { const tt = this.parseTicketTypes(e.ticketTypes); return s + Object.values(tt).reduce((a, t) => a + ((t.sold || 0) * t.price), 0); }, 0);
-    return Math.max(0, gross * (1 - this.platformFeePercent / 100) - totalPaid);
+    const [myPayouts, myEvents] = await Promise.all([
+      this.fetchApi('/payouts'),
+      this.fetchApi(`/events?organizerId=${this.currentUser.id}`),
+    ]);
+
+    // Include BOTH completed and pending payouts (matches backend behaviour)
+    const totalCommitted = myPayouts
+      .filter(p => p.status === 'completed' || p.status === 'pending')
+      .reduce((s, p) => s + (p.amount || 0), 0);
+
+    const gross = myEvents.reduce((s, e) => {
+      const tt = this.parseTicketTypes(e.ticketTypes);
+      return s + Object.values(tt).reduce((a, t) => a + ((t.sold || 0) * t.price), 0);
+    }, 0);
+
+    return Math.max(0, gross * (1 - this.platformFeePercent / 100) - totalCommitted);
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  FIX: togglePayoutDetails — use _normalizePayoutMethod
+  //  so the value "momo", "Mobile Money", "MTN MoMo", etc. all
+  //  correctly show the Mobile Money details field.
+  // ═══════════════════════════════════════════════════════════
   togglePayoutDetails(method) {
-    document.getElementById('bank-details').style.display = method === 'bank' ? 'grid' : 'none';
-    document.getElementById('momo-details').style.display = method === 'momo' ? 'block' : 'none';
+    const canonical = this._normalizePayoutMethod(method);
+    document.getElementById('bank-details').style.display = canonical === 'bank'         ? 'grid'  : 'none';
+    document.getElementById('momo-details').style.display = canonical === 'mobile_money' ? 'block' : 'none';
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  FIX: requestPayout — normalize method before sending.
+  //  Backend expects: bank | mobile_money | paypal | stripe
+  //  Old HTML sent:   momo  (which backend rejected with 400)
+  // ═══════════════════════════════════════════════════════════
   async requestPayout() {
-    const amount = parseFloat(document.getElementById('payout-amount').value);
-    const method = document.getElementById('payout-method').value;
-    const email  = document.getElementById('payout-email').value.trim();
-    const notes  = document.getElementById('payout-notes').value.trim();
+    const amount    = parseFloat(document.getElementById('payout-amount').value);
+    const rawMethod = document.getElementById('payout-method').value;
+    const method    = this._normalizePayoutMethod(rawMethod);
+    const email     = document.getElementById('payout-email').value.trim();
+    const notes     = document.getElementById('payout-notes').value.trim();
+
     if (!amount || !method || !email) return this.showPayoutError('Please fill in all required fields');
-    if (!this.validateEmail(email)) return this.showPayoutError('Invalid email format');
+    if (!this.validateEmail(email))    return this.showPayoutError('Invalid email format');
+
     let bankDetails = null, momoDetails = null;
+
     if (method === 'bank') {
-      const bn = document.getElementById('bank-name').value.trim(), bhn = document.getElementById('branch-name').value.trim(), an = document.getElementById('account-number').value.trim(), nm = document.getElementById('account-name').value.trim();
+      const bn  = document.getElementById('bank-name').value.trim();
+      const bhn = document.getElementById('branch-name').value.trim();
+      const an  = document.getElementById('account-number').value.trim();
+      const nm  = document.getElementById('account-name').value.trim();
       if (!bn || !bhn || !an || !nm) return this.showPayoutError('All bank details are required');
       bankDetails = { bankName: bn, branchName: bhn, accountNumber: an, accountName: nm };
-    } else if (method === 'momo') {
+    } else if (method === 'mobile_money') {
       const ph = document.getElementById('momo-number').value.trim();
       if (!this.validatePhone(ph)) return this.showPayoutError('Invalid MoMo number');
       momoDetails = { phone: ph };
     }
+
+    // `method` is canonical (mobile_money / bank / paypal / stripe)
     const body = { amount, method, email, notes };
     if (bankDetails) body.bankDetails = bankDetails;
     if (momoDetails) body.momoDetails = momoDetails;
+
     try {
       await this.fetchApi('/payouts', { method: 'POST', body: JSON.stringify(body) });
       const s = document.getElementById('payout-status');
-      s.style.display = 'block'; s.className = 'status-msg success'; s.innerHTML = '<strong>✓ Payout request submitted!</strong>';
+      s.style.display = 'block'; s.className = 'status-msg success';
+      s.innerHTML = '<strong>✓ Payout request submitted!</strong>';
       await this.loadAllData();
       setTimeout(() => { this.closeAllModals(); }, 2000);
     } catch (err) { this.showPayoutError(err.message); }
@@ -2724,8 +2746,6 @@ class GlycrApp {
     document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', () => this.closeAllModals()));
     document.querySelectorAll('.modal-backdrop').forEach(bd => bd.addEventListener('click', () => this.closeAllModals()));
 
-    // FIX: removed manual this.renderMyEventsFromData() calls after togglePublish/deleteEvent
-    // loadAllData → refreshCurrentView handles the re-render correctly after data is fresh
     document.addEventListener('click', async e => {
       const t = e.target.closest('[data-action]');
       if (t) {
@@ -2765,7 +2785,6 @@ class GlycrApp {
     this.on('dropdown-settings', 'click', e => { e.preventDefault(); if (dropMenu) dropMenu.classList.remove('show'); this.showSettingsModal(); });
     this.on('dropdown-logout',   'click', e => { e.preventDefault(); if (dropMenu) dropMenu.classList.remove('show'); this.logout(); });
 
-    // FIX: bindEvents owns these handlers — removed duplicate inline onchange/oninput from HTML
     this.on('event-status-filter',  'change', () => this.renderMyEventsFromData());
     this.on('payout-status-filter', 'change', () => this.loadPayoutPage());
     this.on('myevents-search',      'input',  () => this.renderMyEventsFromData());
@@ -2877,7 +2896,6 @@ Object.assign(GlycrApp.prototype, {
       let stats;
       try   { stats = await this.fetchApi(`/tickets/checkin-stats?eventId=${eventId}`); }
       catch {
-        // fallback: count from local data
         const tickets = this.userTickets.filter(t => (t.eventId || t.event?._id) === eventId);
         const used    = tickets.filter(t => t.status === 'used' || t.validated).length;
         stats = { total: tickets.length, used, remaining: tickets.length - used,
@@ -2979,7 +2997,6 @@ Object.assign(GlycrApp.prototype, {
           return id.includes(query.toLowerCase()) || email.includes(query.toLowerCase());
         });
       }
-      // Scope filter — only tickets from organizer's own events
       tickets = tickets.filter(t => {
         const eid = String(t.eventId || t.event?._id || '');
         return this.acl.ownsEvent(eid);
@@ -3076,7 +3093,6 @@ Object.assign(GlycrApp.prototype, {
           s.className='status-msg error'; s.textContent=result.message||'Validation failed.'; btn.disabled=false; return;
         }
       } catch {
-        // Graceful local fallback
         this._localCheckins = this._localCheckins || [];
         this._localCheckins.unshift({ ticketId, eventId,
           validatedAt: new Date().toISOString(), validatedBy: this.currentUser?.name||'organizer', method: 'manual' });
@@ -3109,7 +3125,6 @@ Object.assign(GlycrApp.prototype, {
     if (assign) assign.innerHTML = '<option value="">Select event…</option>' + evOptions;
     if (filter) filter.innerHTML = '<option value="">All events</option>' + evOptions;
     document.getElementById('staff-create-status').style.display = 'none';
-    // Clear form
     ['staff-name','staff-email','staff-phone','staff-pin'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
     if (document.getElementById('staff-role')) document.getElementById('staff-role').value = 'scanner';
     await this._renderStaffList();
@@ -3255,7 +3270,6 @@ Object.assign(GlycrApp.prototype, {
         this.orgEvents.filter(e => !e.isCancelled)
           .map(e => `<option value="${e._id}">${e.title}</option>`).join('');
     }
-    // Populate staff filter
     const staffSel = document.getElementById('checkin-log-staff-filter');
     if (staffSel) {
       const staffNames = [...new Set(this.staffMembers.map(s => s.name))];
@@ -3352,7 +3366,7 @@ Object.assign(GlycrApp.prototype, {
         this._openValidateConfirm(tid, name, type, isUsed, eid);
       }
     });
-    
+
     safe('staff-manage-btn', () => this.openStaffModal());
     safe('checkin-log-btn',  () => this.openCheckinLog());
     safe('validation-link',  () => this.showSection('validation-page'));
@@ -3376,7 +3390,6 @@ Object.defineProperties(GlycrApp.prototype, {
 
 // ─────────────────────────────────────────────────────────────
 //  Patch init() to call _bindValidationFeatures
-//  (original init already calls it if already in the class)
 // ─────────────────────────────────────────────────────────────
 const _origInit = GlycrApp.prototype.init;
 GlycrApp.prototype.init = async function () {

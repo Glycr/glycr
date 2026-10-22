@@ -4,6 +4,7 @@ const Event = require('../models/Event'); // only used to read the title before 
 const multer = require('multer');
 const path = require('path');
 const config = require('../config');
+const { AppError } = require('../utils/appError');
 
 const ctx = (req) => ({ ip: req.ip, userAgent: req.get('user-agent') });
 
@@ -16,16 +17,30 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-// Helper to parse ticketTypes if it's a string
+// Helper to parse ticketTypes if it's a string (FormData submissions).
+// Throws AppError on bad JSON so errorHandler maps it to 400, not 500.
 const parseTicketTypes = (req) => {
   if (req.body.ticketTypes && typeof req.body.ticketTypes === 'string') {
     try {
       req.body.ticketTypes = JSON.parse(req.body.ticketTypes);
-    } catch (err) {
-      throw new Error('Invalid ticketTypes JSON');
+    } catch {
+      throw new AppError('Invalid ticketTypes JSON', 400);
     }
   }
 };
+
+// Coerce query string → typed filters. Without this, `?upcoming=false`
+// would still filter (because "false" is a truthy string).
+const parseEventFilters = (query = {}) => ({
+  search:      typeof query.search === 'string' ? query.search : undefined,
+  category:    typeof query.category === 'string' ? query.category : undefined,
+  location:    typeof query.location === 'string' ? query.location : undefined,
+  organizerId: typeof query.organizerId === 'string' ? query.organizerId : undefined,
+  upcoming:    query.upcoming === 'true' || query.upcoming === '1',
+  flagged:     query.flagged === 'true' || query.flagged === '1',
+  limit:       query.limit,
+  skip:        query.skip,
+});
 
 exports.createEvent = [
   upload.single('image'),
@@ -46,7 +61,7 @@ exports.createEvent = [
 
 exports.getEvents = async (req, res, next) => {
   try {
-    const filters = req.query;
+    const filters = parseEventFilters(req.query);
     const events = await eventService.getEvents(filters);
     res.json(events);
   } catch (err) {
@@ -82,11 +97,21 @@ exports.updateEvent = [
   }
 ];
 
-
-
 exports.deleteEvent = async (req, res, next) => {
   try {
-    const before = await Event.findById(req.params.id).select('title').lean();
+    // Pre-read the title only if the requester actually owns the event —
+    // prevents non-owners from confirming existence via the audit path.
+    // The service re-checks ownership authoritatively.
+    let before = null;
+    try {
+      const ev = await Event.findById(req.params.id).select('title organizerId').lean();
+      if (ev && String(ev.organizerId) === String(req.user.id)) {
+        before = { title: ev.title };
+      }
+    } catch {
+      // Malformed id — let the service surface the proper 400/404
+    }
+
     await eventService.deleteEvent(req.params.id, req.user.id);
     logService.audit(req.user.email, 'delete_event', before?.title || req.params.id, {
       type: 'danger', adminId: req.user.id, eventId: req.params.id, ...ctx(req),
@@ -124,28 +149,7 @@ exports.cancelEvent = async (req, res, next) => {
   }
 };
 
-exports.flagEvent = async (req, res, next) => {
-  if (!req.user.isAdmin) return res.status(403).json({ error: 'Forbidden' });
-  try {
-    const event = await eventService.flagEvent(req.params.id);
-    logService.audit(req.user.email, 'flag_event', event?.title || req.params.id, {
-      type: 'event', adminId: req.user.id, eventId: req.params.id, ...ctx(req),
-    });
-    res.json(event);
-  } catch (err) {
-    next(err);
-  }
-};
-
-exports.unflagEvent = async (req, res, next) => {
-  if (!req.user.isAdmin) return res.status(403).json({ error: 'Forbidden' });
-  try {
-    const event = await eventService.unflagEvent(req.params.id);
-    logService.audit(req.user.email, 'unflag_event', event?.title || req.params.id, {
-      type: 'event', adminId: req.user.id, eventId: req.params.id, ...ctx(req),
-    });
-    res.json(event);
-  } catch (err) {
-    next(err);
-  }
-};
+// NOTE: flagEvent / unflagEvent were removed from this controller.
+// Admin event moderation lives in adminController (which gates on the
+// /api/admin/* route stack — not on req.user.isAdmin from the JWT).
+// See the route-check block below before deploying.

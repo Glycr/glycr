@@ -8,6 +8,17 @@ const RETENTION_DAYS = {
 };
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Fail fast at load if TYPES and RETENTION_DAYS drift apart. A type present
+// in TYPES but missing from RETENTION_DAYS would silently default to "keep
+// forever" in the pre('validate') hook (because `if (days)` fails on
+// undefined), which is the opposite of the intent — new types should opt
+// into a retention window explicitly.
+for (const t of TYPES) {
+  if (!(t in RETENTION_DAYS)) {
+    throw new Error(`models/Log.js: RETENTION_DAYS missing entry for type "${t}"`);
+  }
+}
+
 const logSchema = new mongoose.Schema(
   {
     type: { type: String, enum: TYPES, required: true, immutable: true },

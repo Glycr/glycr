@@ -1,12 +1,23 @@
 const userService = require('../services/userService');
+const adminService = require('../services/adminService');
 const logService = require('../services/logService');
-const Favorite = require('../models/Favorite'); // we'll create this model
 
 const ctx = (req) => ({ ip: req.ip, userAgent: req.get('user-agent') });
 
 exports.getUsers = async (req, res, next) => {
   try {
-    res.json([]);
+    const filters = {
+      role: req.query.role,
+      isOrganizer: req.query.isOrganizer === 'true' ? true
+        : req.query.isOrganizer === 'false' ? false
+          : undefined,
+      suspended: req.query.suspended === 'true' ? true
+        : req.query.suspended === 'false' ? false
+          : undefined,
+      search: req.query.search,
+    };
+    const users = await userService.getAllUsers(filters);
+    res.json(users);
   } catch (err) {
     next(err);
   }
@@ -24,7 +35,6 @@ exports.getUser = async (req, res, next) => {
 exports.updateUser = async (req, res, next) => {
   try {
     const user = await userService.updateProfile(req.params.id, req.body);
-    // Field names only, never values
     const submittedFields = Object.keys(req.body || {}).filter((k) => k !== 'password');
     logService.audit(req.user.email, 'update_user', user?.email || req.params.id, {
       type: 'user', adminId: req.user.id, targetRole: user?.role, submittedFields, ...ctx(req),
@@ -61,27 +71,21 @@ exports.unsuspendUser = async (req, res, next) => {
 
 exports.deleteUser = async (req, res, next) => {
   try {
+    const result = await adminService.deleteUser(req.user.id, req.params.id);
+    logService.audit(req.user.email, 'delete_user', req.params.id, {
+      type: 'user', adminId: req.user.id, unresolvedRefunds: result.unresolvedRefunds, ...ctx(req),
+    });
     res.status(204).send();
   } catch (err) {
     next(err);
   }
 };
 
-// NEW: Toggle favorite
 exports.toggleFavorite = async (req, res, next) => {
   try {
-    const { eventId, action } = req.body;
-    const userId = req.user.id;
-    if (action === 'add') {
-      await Favorite.findOneAndUpdate(
-        { userId, eventId },
-        { userId, eventId },
-        { upsert: true, new: true }
-      );
-    } else if (action === 'remove') {
-      await Favorite.findOneAndDelete({ userId, eventId });
-    }
-    res.json({ success: true });
+    const { eventId, action } = req.body || {};
+    const result = await userService.toggleFavorite(req.user.id, eventId, action);
+    res.json(result);
   } catch (err) {
     next(err);
   }

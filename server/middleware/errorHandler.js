@@ -1,14 +1,28 @@
+// middleware/errorHandler.js
 const { logger } = require('../config/logger');
 const { AppError } = require('../utils/appError');
 
-// Fields that must never reach the logs
-const SENSITIVE = ['password', 'token', 'refreshToken', 'authorization', 'cardNumber', 'cvv'];
+// Fields that must never reach the logs — matches include both exact names and
+// substrings (via `isSensitiveKey`) so `refreshToken`, `cardNumber`, `newPassword`,
+// `apiKey`, etc. are all caught regardless of prefix/suffix casing.
+const SENSITIVE_EXACT = [
+  'password', 'token', 'authorization', 'cvv', 'cvc', 'pin', 'otp',
+];
+const SENSITIVE_SUBSTR = [
+  'password', 'token', 'secret', 'apikey', 'api_key',
+  'cardnumber', 'creditcard', 'ssn',
+];
+
+const isSensitiveKey = (key) => {
+  const k = String(key).toLowerCase();
+  return SENSITIVE_EXACT.includes(k) || SENSITIVE_SUBSTR.some((s) => k.includes(s));
+};
 
 const sanitize = (obj) => {
   if (!obj || typeof obj !== 'object') return obj;
   const clean = Array.isArray(obj) ? [] : {};
   for (const [k, v] of Object.entries(obj)) {
-    clean[k] = SENSITIVE.includes(k.toLowerCase()) ? '[REDACTED]' : sanitize(v);
+    clean[k] = isSensitiveKey(k) ? '[REDACTED]' : sanitize(v);
   }
   return clean;
 };
@@ -35,7 +49,7 @@ const normalizeError = (err) => {
 };
 
 // 404 for unknown routes (mount after all routes, before errorHandler)
-const notFound = (req, res, next) => {
+const notFoundHandler = (req, res, next) => {
   next(new AppError(`Route ${req.originalUrl} not found`, 404));
 };
 
@@ -45,10 +59,17 @@ const errorHandler = (err, req, res, next) => {
 
   const error = normalizeError(err);
   const isDev = process.env.NODE_ENV !== 'production';
-  const statusCode = error.statusCode || error.status || 500;
+
+  // Guard against non-integer `error.status` on third-party errors — a
+  // string like 'error' would throw inside res.status() and lose the original
+  // error entirely (Express falls through to its own 500 with HTML body).
+  const statusCode = Number.isInteger(error.statusCode) ? error.statusCode
+    : Number.isInteger(error.status)     ? error.status
+      : 500;
 
   const logMessage = `[${req.method}] ${req.originalUrl} - ${statusCode} - ${error.message}`;
   const context = {
+    requestId: req.requestId,     // set by requestLogger; correlates with the request line
     ip: req.ip,
     user: req.user?.id || 'anonymous',
     url: req.originalUrl,
@@ -77,4 +98,4 @@ const errorHandler = (err, req, res, next) => {
   });
 };
 
-module.exports = { notFound, errorHandler, AppError };
+module.exports = { notFoundHandler, errorHandler };

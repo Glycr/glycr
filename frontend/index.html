@@ -1051,8 +1051,8 @@
     <div class="modal-header"><h3 class="modal-title" id="auth-title">Sign In</h3><button class="modal-close" aria-label="Close">&times;</button></div>
     <form id="auth-form" class="form">
       <div class="form-field">
-        <label class="form-label">Email</label>
-        <input type="email" id="email" placeholder="your@email.com" class="input" required>
+        <label class="form-label">Email or Username</label>
+        <input type="text" id="email" placeholder="Email or username" class="input" required>
         <span class="field-error" id="email-err"></span>
       </div>
       <div class="form-field">
@@ -1306,10 +1306,10 @@
           <select id="payout-method" class="input" required>
             <option value="">Select method</option>
             <option value="bank">Bank Transfer</option>
-            <option value="momo">Mobile Money</option>
+            <option value="mobile_money">Mobile Money</option>
             <option value="paypal">PayPal</option>
           </select>
-        </div>
+
       </div>
       <div id="bank-details" style="display:none;">
         <div class="form-row">

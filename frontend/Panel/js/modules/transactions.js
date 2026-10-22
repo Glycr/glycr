@@ -15,7 +15,7 @@ function _buildTransactionsFromData() {
       category:   'ticket_purchase',
       amount:     t.price,
       status:     'success',
-      method:     t.paymentMethod || 'card',
+      method:     t.paymentMethod || 'momo',
       userId:     t.userId?.id || t.userId?._id?.toString() || t.userId || '',
       userName:   user?.name || t.userEmail || 'Unknown',
       userEmail:  t.userEmail || user?.email || '',

@@ -13,6 +13,15 @@ const couponSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+// ── Indexes ──
+// Cover the queries in couponService.js:
+//   find({ organizerId }).sort({ createdAt: -1 })         → getCoupons
+//   find({ isActive: true, expiryDate: { $gt: now } })     → getPublicCoupons
+//   find({ eventId })                                       → getCoupons event filter
+couponSchema.index({ organizerId: 1, createdAt: -1 });
+couponSchema.index({ isActive: 1, expiryDate: 1 });
+couponSchema.index({ eventId: 1 });
+
 couponSchema.virtual('id').get(function() { return this._id.toString(); });
 couponSchema.set('toJSON', { virtuals: true });
 couponSchema.set('toObject', { virtuals: true });

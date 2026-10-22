@@ -1,37 +1,66 @@
 const Joi = require('joi');
+const { AppError } = require('../utils/appError');
 
 // Register schema
 const registerSchema = Joi.object({
   name: Joi.string().required(),
   email: Joi.string().email().required(),
   password: Joi.string().min(8).required(),
-  username: Joi.string().required(),
+  // Must match models/User.js: minlength 3, maxlength 30, pattern ^[a-z0-9_.]+$
+  // — normalizing lowercase/trim here means the model's constraints fire in
+  // Joi first with a clean message, not as a raw Mongoose ValidationError.
+  username: Joi.string()
+    .trim()
+    .lowercase()
+    .min(3)
+    .max(30)
+    .pattern(/^[a-z0-9_.]+$/)
+    .required(),
   phone: Joi.string().pattern(/^\+233\d{9}$/).required(),
   isOrganizer: Joi.boolean().default(false),
   currency: Joi.string().valid('USD', 'EUR', 'GBP', 'CAD', 'GHC').default('GHC'),
 });
 
-// Login schema
+// Login schema — accepts email OR username.
+// The field name stays `email` (frontend already sends req.body.email),
+// but it is no longer validated as an email format, so a username like
+// `kwame_23` passes through to userService.login which looks up by
+// $or: [{ email }, { username }].
 const loginSchema = Joi.object({
-  email: Joi.string().email().required(),
+  // max(254) caps regex compilation cost downstream — userService.login
+  // builds a regex from this value and 10 MB input is a bounded DoS.
+  email: Joi.string().max(254).required(),
   password: Joi.string().required(),
 });
 
-// Update profile schema
+// Update profile schema — must match userService.updateProfile's ALLOWED
+// whitelist: name, phone, avatar, bio, email, username.
+// `currency` was removed (it was accepted here but silently dropped by the
+// service — a UI/API promise with no backing behavior).
 const updateProfileSchema = Joi.object({
   name: Joi.string().optional(),
   email: Joi.string().email().optional(),
   phone: Joi.string().pattern(/^\+233\d{9}$/).optional(),
-  currency: Joi.string().valid('USD', 'EUR', 'GBP', 'CAD', 'GHC').optional(),
+  username: Joi.string()
+    .trim()
+    .lowercase()
+    .min(3)
+    .max(30)
+    .pattern(/^[a-z0-9_.]+$/)
+    .allow('', null)
+    .optional(),
+  bio: Joi.string().max(500).allow('', null).optional(),
+  avatar: Joi.string().allow('', null).optional(),
 });
 
-// Event schema
+// Event schema — must match eventService.ORGANIZER_WRITABLE_FIELDS and
+// models/Event.js.
 const eventSchema = Joi.object({
   title: Joi.string().required(),
   description: Joi.string().required(),
   date: Joi.date().iso().required(),
   venue: Joi.string().required(),
-  location: Joi.string().optional(),
+  location: Joi.string().optional().allow('', null),
   category: Joi.string().required(),
   currency: Joi.string().valid('USD', 'EUR', 'GBP', 'CAD', 'GHC').required(),
   ticketTypes: Joi.object().pattern(
@@ -39,63 +68,113 @@ const eventSchema = Joi.object({
     Joi.object({
       price: Joi.number().min(0).required(),
       capacity: Joi.number().integer().min(1).required(),
-      earlyBirdPrice: Joi.number().min(0).optional(),
-      earlyBirdEnd: Joi.date().iso().optional(),
+      earlyBirdPrice: Joi.number().min(0).optional().allow(null),
+      earlyBirdEnd: Joi.date().iso().optional().allow('', null),
       groupDiscount: Joi.number().min(0).max(50).default(10),
+      groupDiscountMinQty: Joi.number().integer().min(1).default(5),
     })
   ).required(),
-  image: Joi.string().optional(),
-  lat: Joi.number().optional(),
-  lng: Joi.number().optional(),
-  address: Joi.string().optional(),
+  image: Joi.string().optional().allow('', null),
+  lat: Joi.number().optional().allow(null),
+  lng: Joi.number().optional().allow(null),
+  address: Joi.string().optional().allow('', null),
+  organizerEmail: Joi.string().email().optional(),
+  organizerPhone: Joi.string().pattern(/^\+233\d{9}$/).optional(),
+  // Added in the model pass — scheduled publication. Without this field in
+  // the Joi schema, `stripUnknown: true` would silently discard it and
+  // scheduled publishing would be dead again.
+  publishAt: Joi.date().iso().optional().allow(null),
 });
 
 // Waitlist schema
 const waitlistSchema = Joi.object({
-  eventId: Joi.string().required(), // changed from number to string for ObjectId
+  eventId: Joi.string().required(),
   ticketType: Joi.string().required(),
   name: Joi.string().required(),
   email: Joi.string().email().required(),
   phone: Joi.string().pattern(/^\+233\d{9}$/).required(),
 });
 
-// Payout schema
+// ═══════════════════════════════════════════════════════════
+//  PAYOUT SCHEMA — aligned with frontend + payoutService
+//    canonical methods: bank | mobile_money | paypal | stripe
+// ═══════════════════════════════════════════════════════════
 const payoutSchema = Joi.object({
-  amount: Joi.number().min(10).required(),
-  method: Joi.string().valid('bank', 'momo', 'paypal').required(),
-  email: Joi.string().email().required(),
-  notes: Joi.string().optional(),
+  amount: Joi.number()
+    .min(10)
+    .required()
+    .messages({
+      'number.base':  'Amount must be a number',
+      'number.min':   'Minimum payout amount is ₵10.00',
+      'any.required': 'Amount is required',
+    }),
+
+  method: Joi.string()
+    .valid('bank', 'mobile_money', 'paypal', 'stripe')
+    .required()
+    .messages({
+      'any.only':     'Method must be one of: bank, mobile_money, paypal, stripe',
+      'any.required': 'Method is required',
+    }),
+
+  email: Joi.string()
+    .email()
+    .required()
+    .messages({
+      'string.email': 'Email must be a valid email address',
+      'any.required': 'Email is required',
+    }),
+
+  notes: Joi.string()
+    .allow('', null)
+    .max(500)
+    .optional()
+    .messages({
+      'string.max': 'Notes must be 500 characters or fewer',
+    }),
+
   bankDetails: Joi.when('method', {
     is: 'bank',
     then: Joi.object({
-      bankName: Joi.string().required(),
+      bankName:      Joi.string().required(),
+      branchName:    Joi.string().optional().allow('', null),
       accountNumber: Joi.string().required(),
-      accountName: Joi.string().required(),
+      accountName:   Joi.string().required(),
     }).required(),
     otherwise: Joi.forbidden(),
   }),
+
   momoDetails: Joi.when('method', {
-    is: 'momo',
+    is: 'mobile_money',
     then: Joi.object({
-      phone: Joi.string().pattern(/^\+233\d{9}$/).required(),
+      phone: Joi.string().pattern(/^\+233\d{9}$/).required()
+        .messages({ 'string.pattern.base': 'MoMo number must be +233XXXXXXXXX' }),
     }).required(),
     otherwise: Joi.forbidden(),
   }),
+
+  details: Joi.object().optional().allow(null),
 });
 
 // Generic validation middleware factory
 const validate = (schema) => (req, res, next) => {
-  const { error } = schema.validate(req.body, { abortEarly: false });
+  const { error, value } = schema.validate(req.body, {
+    abortEarly: false,
+    stripUnknown: true,
+    convert: true,
+  });
   if (error) {
-    const messages = error.details.map(detail => detail.message).join(', ');
-    return res.status(400).json({ error: messages });
+    const messages = error.details.map((d) => d.message).join(', ');
+    // Route through errorHandler so validation failures get the same
+    // { success: false, message } shape as every other error path, plus
+    // winston logging on 4xx.
+    return next(new AppError(messages, 400));
   }
+  req.body = value;          // write coerced/whitelisted values back
   next();
 };
 
-// For express-validator style sanitization (if needed, but not used in this file)
-// We'll keep a dummy export for compatibility
-const sanitizeText = (field) => (req, res, next) => { next(); }; // placeholder
+const sanitizeText = (field) => (req, res, next) => { next(); };
 
 module.exports = {
   registerSchema,

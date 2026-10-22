@@ -11,60 +11,74 @@ const serviceRequestController = require('../controllers/serviceRequestControlle
 const auth = require('../middleware/auth');
 const { requireAdmin, requireModeratorOrAdmin } = require('../middleware/rbac');
 
-// Runs once, only for /admin/*: authenticated + moderator or admin.
-// Everything below inherits this; add requireAdmin only where stricter.
-router.use('/admin', auth, requireModeratorOrAdmin);
+// Every /admin/* route is authenticated here. Role gates per-route below.
+router.use('/admin', auth);
 
-// Dashboard
-router.get('/admin/stats', adminController.getStats);
+// ── Dashboard ──
+router.get('/admin/stats', requireModeratorOrAdmin, adminController.getStats);
 
-// Users
-router.get('/admin/users', adminController.getAllUsers);
+// ── Users ──
+// Moderators can list and suspend (service blocks them from suspending admins/mods).
+// Everything else (create, edit, role, delete) is admin-only.
+router.get('/admin/users', requireModeratorOrAdmin, adminController.getAllUsers);
+router.patch('/admin/users/:id/suspend', requireModeratorOrAdmin, adminController.suspendUser);
 router.post('/admin/users', requireAdmin, adminController.createUser);
-router.put('/admin/users/:id', adminController.updateUser);
-router.patch('/admin/users/:id/suspend', adminController.suspendUser);
+router.put('/admin/users/:id', requireAdmin, adminController.updateUser);
 router.patch('/admin/users/:id/role', requireAdmin, adminController.changeUserRole);
 router.delete('/admin/users/:id', requireAdmin, adminController.deleteUser);
 
-// Waitlist
-router.get('/admin/waitlists', adminController.getAllWaitlists);
-router.post('/admin/waitlist/:id/notify', adminController.notifyWaitlistEntry);
-router.post('/admin/waitlist/:id/convert', adminController.convertWaitlistToTicket);
-router.delete('/admin/waitlist/:id', adminController.deleteWaitlistEntry);
+// ── Waitlist ──
+// Moderators can view and notify (SMS budget is real but bounded by NOTIFY_COOLDOWN).
+// Converting creates a free ticket — financial, admin-only.
+// Deleting removes someone from the queue — admin-only (destructive).
+router.get('/admin/waitlists', requireModeratorOrAdmin, adminController.getAllWaitlists);
+router.post('/admin/waitlist/:id/notify', requireModeratorOrAdmin, adminController.notifyWaitlistEntry);
+router.post('/admin/waitlist/:id/convert', requireAdmin, adminController.convertWaitlistToTicket);
+router.delete('/admin/waitlist/:id', requireAdmin, adminController.deleteWaitlistEntry);
 
-// Events
-router.get('/admin/events', adminController.getAllEvents);
-router.patch('/admin/events/:id/flag', adminController.flagEvent);
-router.patch('/admin/events/:id/publish', adminController.togglePublish);
-router.delete('/admin/events/:id', adminController.deleteEvent);
+// ── Events ──
+// All event moderation is moderator territory. Delete cascades to tickets /
+// favorites / waitlists / refunds — admin-only. Publish/unpublish lets a
+// moderator hide a suspicious event without destroying data.
+router.get('/admin/events', requireModeratorOrAdmin, adminController.getAllEvents);
+router.patch('/admin/events/:id/flag', requireModeratorOrAdmin, adminController.flagEvent);
+router.patch('/admin/events/:id/unflag', requireModeratorOrAdmin, adminController.unflagEvent);
+router.patch('/admin/events/:id/publish', requireModeratorOrAdmin, adminController.togglePublish);
+router.delete('/admin/events/:id', requireAdmin, adminController.deleteEvent);
 
-// Tickets
-router.get('/admin/tickets', adminController.getAllTickets);
-router.patch('/admin/tickets/:id/validate', ticketController.validateTicket);
-router.patch('/admin/tickets/:id/cancel', ticketController.cancelTicket);
+// ── Tickets ──
+// Listing is moderator-visible. Validate/cancel affect ticket state and
+// trigger refunds — admin-only (the ticket service also has an isAdmin guard).
+router.get('/admin/tickets', requireModeratorOrAdmin, adminController.getAllTickets);
+router.patch('/admin/tickets/:id/validate', requireAdmin, ticketController.validateTicket);
+router.patch('/admin/tickets/:id/cancel', requireAdmin, ticketController.cancelTicket);
+
+// ── Coupons ──
 router.get('/admin/coupons', requireAdmin, adminController.getAllCoupons);
 
-// Service requests
+// ── Service requests ──
+// Customer support triage is a moderator's day job — restore full access.
 router.get('/admin/service-requests', requireModeratorOrAdmin, serviceRequestController.getAllRequests);
-router.patch('/admin/service-requests/:id/status', serviceRequestController.updateStatus);
-router.patch('/admin/service-requests/:id/resolve', serviceRequestController.resolveRequest);
-router.patch('/admin/service-requests/:id/in-progress', serviceRequestController.markInProgress);
+router.patch('/admin/service-requests/:id/status', requireModeratorOrAdmin, serviceRequestController.updateStatus);
+router.patch('/admin/service-requests/:id/resolve', requireModeratorOrAdmin, serviceRequestController.resolveRequest);
+router.patch('/admin/service-requests/:id/in-progress', requireModeratorOrAdmin, serviceRequestController.markInProgress);
 
-// Payouts
+// ── Payouts ──
+// Money. Moderator can see the queue (for investigation), admin approves.
 router.get('/admin/payouts', requireModeratorOrAdmin, adminController.getAllPayouts);
-router.patch('/admin/payouts/:id/approve', requireModeratorOrAdmin, adminController.approvePayout);
-router.patch('/admin/payouts/:id/reject', requireModeratorOrAdmin, adminController.rejectPayout);
+router.patch('/admin/payouts/:id/approve', requireAdmin, adminController.approvePayout);
+router.patch('/admin/payouts/:id/reject', requireAdmin, adminController.rejectPayout);
 
-// Logs
-router.get('/admin/logs', requireModeratorOrAdmin,logController.getLogs);
-router.post('/admin/logs', requireModeratorOrAdmin, logController.addLog);
+// ── Logs ──
+// Moderator reads logs (for investigation), admin can clear them.
+router.get('/admin/logs', requireModeratorOrAdmin, logController.getLogs);
 router.delete('/admin/logs', requireAdmin, logController.clearLogs);
 
-// Settings
-router.get('/admin/settings', settingsController.getSettings);
+// ── Settings ──
+router.get('/admin/settings', requireModeratorOrAdmin, settingsController.getSettings);
 router.put('/admin/settings', requireAdmin, settingsController.updateSettings);
 
-// Refunds
+// ── Refunds ──
 router.get('/admin/refunds/all', requireAdmin, refundController.getAllRefunds);
 
 module.exports = router;

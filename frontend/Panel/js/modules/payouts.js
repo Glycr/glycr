@@ -2,6 +2,35 @@
 // PAYOUTS MANAGEMENT
 // ===============================================
 
+
+// Render a compact one-line destination string for the table cell.
+const payoutDestination = (p) => {
+  const d = p.details || {};
+  switch (p.method) {
+    case 'mobile_money':
+      return d.phone || '—';
+    case 'bank':
+      return [d.bankName, d.accountNumber, d.accountName].filter(Boolean).join(' · ') || '—';
+    case 'paypal':
+      return d.email || '—';
+    case 'stripe':
+      return d.accountId || d.customerId || d.email || '—';
+    default:
+      return '—';
+  }
+};
+
+// Icon + display label for the method pill.
+const payoutMethodMeta = (method) => {
+  switch (method) {
+    case 'mobile_money': return { icon: 'fa-solid fa-mobile-screen-button', label: 'Mobile Money' };
+    case 'bank':         return { icon: 'fa-solid fa-building-columns',     label: 'Bank' };
+    case 'paypal':       return { icon: 'fa-brands fa-paypal',              label: 'PayPal' };
+    case 'stripe':       return { icon: 'fa-brands fa-stripe-s',            label: 'Stripe' };
+    default:             return { icon: 'fa-solid fa-money-bill-transfer',  label: method || 'Unknown' };
+  }
+};
+
 function renderPayouts() {
   const tb      = document.getElementById('payouts-table');
   const base    = getFilteredPayouts();
@@ -13,21 +42,24 @@ function renderPayouts() {
   const sorted  = applySorting(enriched, 'payouts');
   const { rows, page, totalPages, total, pp } = paginate(sorted, 'payouts');
   setText('pending-payout-amount', `₵${stats.pendingPayouts.toFixed(2)}`);
+
   if (!rows.length) {
     tb.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fa-solid fa-money-bill-transfer" style="font-size:1.5rem;display:block;margin-bottom:0.5rem;"></i>No payout requests found</td></tr>';
     renderPaginationBar('payouts-pagination', 'payouts', 0, 1, 1, pp);
     return;
   }
+
   tb.innerHTML = rows.map(p => {
     const org      = p.organizerId;
     const orgName  = org?.name || org?.email || 'Unknown';
     const orgEmail = org?.email || '—';
-    const mIcon    = p.method === 'momo' ? 'fa-solid fa-mobile-screen-button' : 'fa-solid fa-building-columns';
-    const mLabel   = p.method === 'momo' ? 'MoMo' : 'Bank';
+    const { icon: mIcon, label: mLabel } = payoutMethodMeta(p.method);
+    const destination = payoutDestination(p);
     const sMap     = { pending:'fa-clock', completed:'fa-circle-check', rejected:'fa-circle-xmark' };
     const sIcon    = sMap[p.status] || 'fa-clock';
     const shortId  = String(p.id).substring(0, 8).toUpperCase();
     const sel      = selectedIds.payouts.has(p.id);
+
     return `
       <tr class="${sel ? 'row-selected' : ''}">
         <td><input type="checkbox" class="row-checkbox" data-id="${p.id}" ${sel ? 'checked' : ''} onchange="toggleRowSelect('payouts','${p.id}',this)"></td>
@@ -43,6 +75,9 @@ function renderPayouts() {
         <td>
           <div class="payout-table-amount">₵${p.amount.toFixed(2)}</div>
           <div class="payout-table-method"><i class="${mIcon}"></i> ${mLabel}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:#94a3b8;margin-top:0.35rem;word-break:break-all;">
+            <i class="fa-solid fa-location-dot" style="margin-right:0.3rem;color:#6366f1;"></i>${destination}
+          </div>
         </td>
         <td>
           <span class="badge badge-${p.status}"><i class="fa-solid ${sIcon}"></i> ${p.status.charAt(0).toUpperCase()+p.status.slice(1)}</span>
@@ -57,6 +92,7 @@ function renderPayouts() {
         </div></td>
       </tr>`;
   }).join('');
+
   renderPaginationBar('payouts-pagination', 'payouts', total, page, totalPages, pp);
 }
 
@@ -66,45 +102,96 @@ function getFilteredPayouts() {
   const method = document.getElementById('payout-method-filter')?.value || 'all';
   const dfrom  = document.getElementById('payout-date-from')?.value;
   const dto    = document.getElementById('payout-date-to')?.value;
+
   return [...payouts].sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt)).filter(p => {
     const org  = p.organizerId;
     const name = (org?.name || org?.email || '').toLowerCase();
-    const mSearch = !search || name.includes(search) || p.email.toLowerCase().includes(search) || String(p.id).toLowerCase().includes(search);
-    return mSearch && (status === 'all' || p.status === status) && (method === 'all' || p.method === method) && applyDateRangeFilter(p.requestedAt, dfrom, dto);
+    const dest = payoutDestination(p).toLowerCase();
+    const mSearch = !search
+      || name.includes(search)
+      || (p.email || '').toLowerCase().includes(search)
+      || String(p.id).toLowerCase().includes(search)
+      || dest.includes(search);
+    return mSearch
+      && (status === 'all' || p.status === status)
+      && (method === 'all' || p.method === method)
+      && applyDateRangeFilter(p.requestedAt, dfrom, dto);
   });
 }
 
 function viewPayout(payoutId) {
   const p = payouts.find(p => p.id === payoutId);
   if (!p) return;
+
   const org  = p.organizerId;
   const sMap = { pending:'fa-clock', completed:'fa-circle-check', rejected:'fa-circle-xmark' };
+  const { icon: mIcon, label: mLabel } = payoutMethodMeta(p.method);
+
+  // Per-method destination block
+  let destinationBlock = '';
+  const d = p.details || {};
+
+  if (p.method === 'bank') {
+    destinationBlock = `<div style="margin-top:1rem;padding:1rem;background:#0f172a;border-radius:0.5rem;">
+      <h4 style="font-weight:700;margin-bottom:0.75rem;"><i class="fa-solid fa-building-columns" style="color:#6366f1;margin-right:0.4rem;"></i>Bank Details</h4>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;font-size:0.875rem;">
+        <div><div style="color:#94a3b8;font-size:0.75rem;">Bank</div><div style="font-weight:600;">${d.bankName || '—'}</div></div>
+        <div><div style="color:#94a3b8;font-size:0.75rem;">Account No.</div><div style="font-weight:600;">${d.accountNumber || '—'}</div></div>
+        <div><div style="color:#94a3b8;font-size:0.75rem;">Account Name</div><div style="font-weight:600;">${d.accountName || '—'}</div></div>
+        ${d.branchName ? `<div><div style="color:#94a3b8;font-size:0.75rem;">Branch</div><div style="font-weight:600;">${d.branchName}</div></div>` : ''}
+      </div>
+    </div>`;
+  } else if (p.method === 'mobile_money') {
+    destinationBlock = `<div style="margin-top:1rem;padding:1rem;background:#0f172a;border-radius:0.5rem;">
+      <h4 style="font-weight:700;margin-bottom:0.75rem;"><i class="fa-solid fa-mobile-screen-button" style="color:#6366f1;margin-right:0.4rem;"></i>Mobile Money</h4>
+      <div style="font-size:0.875rem;">
+        <div style="color:#94a3b8;font-size:0.75rem;">Phone Number</div>
+        <div style="font-weight:600;font-family:'JetBrains Mono',monospace;font-size:1rem;">${d.phone || '—'}</div>
+      </div>
+    </div>`;
+  } else if (p.method === 'paypal') {
+    destinationBlock = `<div style="margin-top:1rem;padding:1rem;background:#0f172a;border-radius:0.5rem;">
+      <h4 style="font-weight:700;margin-bottom:0.75rem;"><i class="fa-brands fa-paypal" style="color:#6366f1;margin-right:0.4rem;"></i>PayPal</h4>
+      <div style="font-size:0.875rem;">
+        <div style="color:#94a3b8;font-size:0.75rem;">Account Email</div>
+        <div style="font-weight:600;">${d.email || '—'}</div>
+      </div>
+    </div>`;
+  } else if (p.method === 'stripe') {
+    destinationBlock = `<div style="margin-top:1rem;padding:1rem;background:#0f172a;border-radius:0.5rem;">
+      <h4 style="font-weight:700;margin-bottom:0.75rem;"><i class="fa-brands fa-stripe-s" style="color:#6366f1;margin-right:0.4rem;"></i>Stripe</h4>
+      <div style="font-size:0.875rem;">
+        <div style="color:#94a3b8;font-size:0.75rem;">Account / Customer ID</div>
+        <div style="font-weight:600;font-family:'JetBrains Mono',monospace;">${d.accountId || d.customerId || d.email || '—'}</div>
+      </div>
+    </div>`;
+  }
+
   document.getElementById('payout-modal-body').innerHTML = `
     <div class="detail-grid">
       <div class="detail-item"><div class="detail-label"><i class="fa-solid fa-fingerprint"></i> Payout ID</div><div class="detail-value" style="font-family:monospace;font-size:0.85rem;">${p.id}</div></div>
       <div class="detail-item"><div class="detail-label"><i class="fa-solid fa-circle-dot"></i> Status</div><div class="detail-value"><span class="badge badge-${p.status}"><i class="fa-solid ${sMap[p.status]||'fa-clock'}"></i> ${p.status.charAt(0).toUpperCase()+p.status.slice(1)}</span></div></div>
       <div class="detail-item"><div class="detail-label"><i class="fa-solid fa-coins"></i> Amount</div><div class="detail-value" style="font-size:1.25rem;color:#10b981;">₵${p.amount.toFixed(2)}</div></div>
-      <div class="detail-item"><div class="detail-label"><i class="fa-solid fa-credit-card"></i> Method</div><div class="detail-value">${p.method.toUpperCase()}</div></div>
+      <div class="detail-item"><div class="detail-label"><i class="fa-solid fa-credit-card"></i> Method</div><div class="detail-value"><i class="${mIcon}" style="margin-right:0.4rem;"></i>${mLabel}</div></div>
       <div class="detail-item"><div class="detail-label"><i class="fa-regular fa-user"></i> Organizer</div><div class="detail-value">${org?.name || 'Unknown'}</div></div>
       <div class="detail-item"><div class="detail-label"><i class="fa-regular fa-envelope"></i> Payout Email</div><div class="detail-value">${p.email}</div></div>
       <div class="detail-item"><div class="detail-label"><i class="fa-regular fa-calendar"></i> Requested</div><div class="detail-value">${new Date(p.requestedAt).toLocaleString()}</div></div>
       ${p.completedAt ? `<div class="detail-item"><div class="detail-label"><i class="fa-solid fa-calendar-check"></i> Completed</div><div class="detail-value">${new Date(p.completedAt).toLocaleString()}</div></div>` : '<div></div>'}
     </div>
-    ${p.method==='bank'&&p.details ? `<div style="margin-top:1rem;padding:1rem;background:#0f172a;border-radius:0.5rem;"><h4 style="font-weight:700;margin-bottom:0.75rem;"><i class="fa-solid fa-building-columns" style="color:#6366f1;margin-right:0.4rem;"></i>Bank Details</h4><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;font-size:0.875rem;"><div><div style="color:#94a3b8;font-size:0.75rem;">Bank</div><div style="font-weight:600;">${p.details.bankName}</div></div><div><div style="color:#94a3b8;font-size:0.75rem;">Account No.</div><div style="font-weight:600;">${p.details.accountNumber}</div></div><div><div style="color:#94a3b8;font-size:0.75rem;">Account Name</div><div style="font-weight:600;">${p.details.accountName}</div></div></div></div>` : ''}
-    ${p.method==='momo'&&p.details ? `<div style="margin-top:1rem;padding:1rem;background:#0f172a;border-radius:0.5rem;"><h4 style="font-weight:700;margin-bottom:0.75rem;"><i class="fa-solid fa-mobile-screen-button" style="color:#6366f1;margin-right:0.4rem;"></i>MoMo</h4><div style="font-size:0.875rem;"><div style="color:#94a3b8;font-size:0.75rem;">Phone</div><div style="font-weight:600;">${p.details.phone}</div></div></div>` : ''}
+    ${destinationBlock}
+    ${p.notes ? `<div style="margin-top:1rem;padding:1rem;background:#0f172a;border-radius:0.5rem;"><h4 style="font-weight:700;margin-bottom:0.5rem;"><i class="fa-regular fa-comment" style="color:#6366f1;margin-right:0.4rem;"></i>Organizer Notes</h4><div style="font-size:0.875rem;color:#cbd5e1;white-space:pre-wrap;">${p.notes}</div></div>` : ''}
     ${p.status==='rejected'&&p.rejectionReason ? `<div class="info-box error" style="margin-top:1rem;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:0.4rem;"></i><strong>Rejection Reason:</strong> ${p.rejectionReason}</div>` : ''}
     ${p.status==='pending' ? `<div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
       <button class="btn btn-success" style="flex:1;" onclick="approvePayout('${p.id}');closeModal('payout-modal');"><i class="fa-solid fa-check"></i> Approve</button>
       <button class="btn btn-danger"  style="flex:1;" onclick="rejectPayout('${p.id}');closeModal('payout-modal');"><i class="fa-solid fa-xmark"></i> Reject</button>
     </div>` : ''}`;
-  //addLog('payout', 'Viewed payout details', { adminName: currentAdmin.name, adminRole: currentAdmin.role, payoutId });
+
   openModal('payout-modal');
 }
 
 async function approvePayout(payoutId) {
   try { await apiRequest(`/admin/payouts/${payoutId}/approve`, { method: 'PATCH' }); }
   catch { const p = payouts.find(p => p.id === payoutId); if (p) { p.status = 'completed'; p.completedAt = new Date().toISOString(); } }
-  //await addLog('payout', 'Payout approved', { adminName: currentAdmin.name, adminRole: currentAdmin.role, payoutId });
   await loadData();
   toast.success('Payout approved', 'The payment will be processed shortly.');
 }
@@ -114,7 +201,6 @@ async function rejectPayout(payoutId) {
   if (!reason) return;
   try { await apiRequest(`/admin/payouts/${payoutId}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) }); }
   catch { const p = payouts.find(p => p.id === payoutId); if (p) { p.status = 'rejected'; p.rejectionReason = reason; } }
- // await addLog('warning', 'Payout rejected', { adminName: currentAdmin.name, adminRole: currentAdmin.role, payoutId, reason });
   await loadData();
   toast.warning('Payout rejected', 'The organizer will be notified.');
 }
@@ -129,7 +215,6 @@ async function bulkApprovePayouts() {
       catch { const p = payouts.find(p => p.id === id); if (p) { p.status = 'completed'; p.completedAt = new Date().toISOString(); } }
       ok++;
     }
-    //await addLog('payout', `Bulk approved ${ok} payout(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
     selectedIds.payouts.clear();
     await loadData();
     toast.success('Done', `${ok} payout(s) approved.`);
@@ -147,7 +232,6 @@ async function bulkRejectPayouts() {
     catch { const p = payouts.find(p => p.id === id); if (p) { p.status = 'rejected'; p.rejectionReason = reason; } }
     ok++;
   }
-  //await addLog('warning', `Bulk rejected ${ok} payout(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok, reason });
   selectedIds.payouts.clear();
   await loadData();
   toast.warning('Done', `${ok} payout(s) rejected.`);

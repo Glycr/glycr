@@ -1,32 +1,49 @@
 const settingsService = require('../services/settingsService');
 const logService = require('../services/logService');
+const { AppError } = require('../utils/appError');
 
 const ctx = (req) => ({ ip: req.ip, userAgent: req.get('user-agent') });
 
 exports.getSettings = async (req, res, next) => {
-  console.log('User:', req.user); // see what's there
   try {
     const settings = await settingsService.getSettings();
     res.json(settings);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 exports.updateSettings = async (req, res, next) => {
   try {
-    const { platformFee } = req.body;
-    if (platformFee === undefined) {
-      return res.status(400).json({ error: 'platformFee is required' });
+    if (!req.user?.isAdmin) {
+      throw new AppError('Forbidden', 403);
     }
-    if (typeof platformFee !== 'number' || platformFee < 0 || platformFee > 50) {
-      return res.status(400).json({ error: 'platformFee must be a number between 0 and 50' });
-    }
-    // Read the current value first so the entry shows what it changed from
+
+    const updates = req.body || {};
+
+    // Snapshot the current doc so the audit reflects the actual before/after.
+    // The service's whitelist (EDITABLE_FIELDS) silently drops unknown keys,
+    // so logging the full snapshot is safer than trying to predict which
+    // fields will survive.
     const before = await settingsService.getSettings();
-    const settings = await settingsService.updateSettings({ platformFee });
-    logService.audit(req.user.email, 'update_settings', 'platformFee', {
+    const beforeSnapshot = {
+      platformFee: before.platformFee,
+      refundDeadlineDays: before.refundDeadlineDays,
+    };
+
+    const settings = await settingsService.updateSettings(updates);
+
+    logService.audit(req.user.email, 'update_settings', 'settings', {
       type: 'system', adminId: req.user.id,
-      previousPlatformFee: before?.platformFee, newPlatformFee: settings?.platformFee ?? platformFee, ...ctx(req),
+      attemptedFields: Object.keys(updates),
+      before: beforeSnapshot,
+      after: {
+        platformFee: settings.platformFee,
+        refundDeadlineDays: settings.refundDeadlineDays,
+      },
+      ...ctx(req),
     });
+
     res.json(settings);
   } catch (err) {
     next(err);

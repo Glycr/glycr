@@ -2,9 +2,12 @@ const mongoose = require('mongoose');
 
 const refundSchema = new mongoose.Schema({
   ticketId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ticket', required: true },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  // userId is nullable: guest tickets have no userId, and admins must be able
+  // to cancel guest tickets via ticketService.cancelTicket. Service-level
+  // ownership is enforced in refundService.requestRefund, not here.
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
-  amount: { type: Number, required: true },            // refund amount (could be partial)
+  amount: { type: Number, required: true, min: 0 },    // refund amount (could be partial)
   reason: { type: String, required: true },
   status: {
     type: String,
@@ -19,6 +22,15 @@ const refundSchema = new mongoose.Schema({
   isPartial: { type: Boolean, default: false },
   originalPrice: { type: Number },
 });
+
+// --- Indexes ---
+// Cover the sort queries in refundService.js:
+//   find({ userId }).sort('-requestedAt')                 → getUserRefunds
+//   find({ eventId: { $in } }).sort('-requestedAt')       → getOrganizerRefunds
+//   find().sort('-requestedAt')                           → getAllRefunds (admin)
+refundSchema.index({ userId: 1, requestedAt: -1 });
+refundSchema.index({ eventId: 1, requestedAt: -1 });
+refundSchema.index({ requestedAt: -1 });
 
 refundSchema.virtual('id').get(function() { return this._id.toString(); });
 refundSchema.set('toJSON', { virtuals: true });

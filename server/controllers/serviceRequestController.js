@@ -1,40 +1,32 @@
 const serviceRequestService = require('../services/serviceRequestService');
 const logService = require('../services/logService');
+const { AppError } = require('../utils/appError');
 
 const ctx = (req) => ({ ip: req.ip, userAgent: req.get('user-agent') });
 
 exports.createRequest = async (req, res, next) => {
   try {
-    const { name, email, category, subject, message } = req.body;
+    const actingUser = req.user ? { id: req.user.id, email: req.user.email } : null;
+    const request = await serviceRequestService.createRequest(actingUser, req.body || {});
 
-    // If user is logged in, use their info; otherwise use provided name/email
-    let userId = null;
-    let userName = name;
-    let userEmail = email;
+    // Logged-in users are audited in MongoDB. Anonymous submissions go to the
+    // winston files only, so anyone can't flood the admin log from the public form.
+    // Use the friendly requestId (SR-01...) as the audit target — that's what
+    // appears in the admin UI and what the user references in follow-ups.
+    const friendlyId = request?.requestId || String(request?._id || request?.id || '');
+    const entry = {
+      requestId: friendlyId,
+      category: request?.category,
+      subject: String(request?.subject || '').slice(0, 100),
+      ...ctx(req),
+    };
 
     if (req.user) {
-      userId = req.user.id;
-      userName = req.user.name || name;
-      userEmail = req.user.email || email;
-    }
-
-    // Validate required fields
-    if (!userName || !userEmail || !subject || !message) {
-      return res.status(400).json({ error: 'Name, email, subject and message are required.' });
-    }
-
-    const request = await serviceRequestService.createRequest(
-      userId, userName, userEmail, category, subject, message
-    );
-
-    // Logged-in users are audited in MongoDB. Anonymous submissions go to the winston files only,
-    // so anyone can't flood the admin log from the public form.
-    const requestId = String(request?._id || request?.id || '');
-    const entry = { requestId, category, subject: String(subject).slice(0, 100), ...ctx(req) };
-    if (req.user) {
-      logService.audit(userEmail, 'create_service_request', requestId, { type: 'system', adminId: userId, ...entry });
+      logService.audit(request.userEmail, 'create_service_request', friendlyId, {
+        type: 'system', adminId: req.user.id, ...entry,
+      });
     } else {
-      logService.trace('system', `anonymous -> create_service_request ${requestId}`, entry);
+      logService.trace('system', `anonymous -> create_service_request ${friendlyId}`, entry);
     }
 
     res.status(201).json(request);
@@ -45,7 +37,13 @@ exports.createRequest = async (req, res, next) => {
 
 exports.getAllRequests = async (req, res, next) => {
   try {
-    const requests = await serviceRequestService.getAllRequests();
+    if (!req.user?.isAdmin) {
+      throw new AppError('Forbidden', 403);
+    }
+    const requests = await serviceRequestService.getAllRequests({
+      limit: req.query.limit,
+      skip: req.query.skip,
+    });
     res.json(requests);
   } catch (err) {
     next(err);
@@ -54,12 +52,17 @@ exports.getAllRequests = async (req, res, next) => {
 
 exports.updateStatus = async (req, res, next) => {
   try {
+    if (!req.user?.isAdmin) {
+      throw new AppError('Forbidden', 403);
+    }
     const { id } = req.params;
-    const { status, resolutionNotes } = req.body;
+    const { status, resolutionNotes } = req.body || {};
     const request = await serviceRequestService.updateStatus(id, status, resolutionNotes);
+    const friendlyId = request?.requestId || String(id);
     // Notes are not logged, only whether any were added
-    logService.audit(req.user.email, 'update_service_request_status', String(id), {
-      type: 'system', adminId: req.user.id, requestId: id, status, hasNotes: !!resolutionNotes, ...ctx(req),
+    logService.audit(req.user.email, 'update_service_request_status', friendlyId, {
+      type: 'system', adminId: req.user.id, requestId: friendlyId, _id: id,
+      status, hasNotes: !!resolutionNotes, ...ctx(req),
     });
     res.json(request);
   } catch (err) {
@@ -69,11 +72,16 @@ exports.updateStatus = async (req, res, next) => {
 
 exports.resolveRequest = async (req, res, next) => {
   try {
+    if (!req.user?.isAdmin) {
+      throw new AppError('Forbidden', 403);
+    }
     const { id } = req.params;
-    const { resolutionNotes } = req.body;
+    const { resolutionNotes } = req.body || {};
     const request = await serviceRequestService.resolveRequest(id, resolutionNotes);
-    logService.audit(req.user.email, 'resolve_service_request', String(id), {
-      type: 'system', adminId: req.user.id, requestId: id, hasNotes: !!resolutionNotes, ...ctx(req),
+    const friendlyId = request?.requestId || String(id);
+    logService.audit(req.user.email, 'resolve_service_request', friendlyId, {
+      type: 'system', adminId: req.user.id, requestId: friendlyId, _id: id,
+      hasNotes: !!resolutionNotes, ...ctx(req),
     });
     res.json(request);
   } catch (err) {
@@ -83,10 +91,14 @@ exports.resolveRequest = async (req, res, next) => {
 
 exports.markInProgress = async (req, res, next) => {
   try {
+    if (!req.user?.isAdmin) {
+      throw new AppError('Forbidden', 403);
+    }
     const { id } = req.params;
     const request = await serviceRequestService.markInProgress(id);
-    logService.audit(req.user.email, 'mark_service_request_in_progress', String(id), {
-      type: 'system', adminId: req.user.id, requestId: id, ...ctx(req),
+    const friendlyId = request?.requestId || String(id);
+    logService.audit(req.user.email, 'mark_service_request_in_progress', friendlyId, {
+      type: 'system', adminId: req.user.id, requestId: friendlyId, _id: id, ...ctx(req),
     });
     res.json(request);
   } catch (err) {

@@ -1,6 +1,7 @@
 // middleware/rateLimit.js
 const rateLimit = require('express-rate-limit');
-const { ipKeyGenerator } = require('express-rate-limit'); // Helper for IPv6 normalization
+const { ipKeyGenerator } = require('express-rate-limit');
+const { logger } = require('../config/logger');
 
 // ============================================================
 // 1. HELPER: Get username from request body
@@ -8,86 +9,150 @@ const { ipKeyGenerator } = require('express-rate-limit'); // Helper for IPv6 nor
 // ============================================================
 const getUsername = (req) => req.body?.email || req.body?.username || null;
 
+// Real client IP — respects trust proxy via req.ip.
+const clientIp = (req) => {
+  const ip = req.ip ?? req.socket?.remoteAddress;
+  return ip ? ipKeyGenerator(ip) : 'unknown';
+};
+
+// Shared handler: logs the block AND returns the standard error shape used
+// everywhere else in the app ({ success: false, message }). Without this, the
+// limiter would return { error: '...' }, which no other endpoint produces.
+const buildHandler = (limiterName) => (req, res, next, options) => {
+  logger.warn('Rate limit exceeded', {
+    limiter: limiterName,
+    ip: req.ip,
+    path: req.originalUrl,
+    method: req.method,
+    userId: req.user?.id || req.user?.staffId || undefined,
+  });
+  res.status(options.statusCode).json({
+    success: false,
+    message: String(options.message || 'Too many requests. Please try again later.'),
+  });
+};
+
 // ============================================================
 // 2. GLOBAL API LIMITER (Blocks scrapers)
-//    Protects all routes from excessive traffic
 // ============================================================
 const apiLimiter = rateLimit({
-  // --- Time Window ---
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
 
-  // --- Request Limit ---
-  // v7 uses 'limit' (formerly 'max')
-  limit: process.env.NODE_ENV === 'production' ? 100 : 1000,
+  limit: process.env.NODE_ENV === 'production' ? 300 : 1000,
 
-  // --- Headers ---
-  standardHeaders: true, // Send standard RateLimit-* headers
-  legacyHeaders: false,   // Disable X-RateLimit-* headers (cleaner)
+  standardHeaders: true,
+  legacyHeaders: false,
 
-  // --- Response ---
-  message: { error: 'Too many requests. Please wait.' },
+  message: 'Too many requests. Please wait.',
+  handler: buildHandler('api'),
 
-  // --- Skip Rules ---
-  skip: (req) => req.path === '/health' || req.path === '/', // Never block health checks
+  skip: (req) => req.path === '/health' || req.path === '/',
 
-  // --- FIX: IPv6‑safe keyGenerator ---
-  // Using req.ip directly would cause each IPv6 address to be treated separately.
-  // ipKeyGenerator() normalises IPv6 to /56 subnet → fair grouping.
-  keyGenerator: (req) => {
-    const ip = req.ip ?? req.socket?.remoteAddress;
-    return ip ? ipKeyGenerator(ip) : 'unknown';
-  },
+  keyGenerator: (req) => clientIp(req),
 });
 
 // ============================================================
 // 3. AUTH LIMITER (Blocks brute-force attacks)
-//    Protects login/register endpoints from password guessing
 // ============================================================
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 5,                 // 5 failures → hard block
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // Successful logins don't count toward limit
-  message: { error: 'Excessive login attempts. Try again later.' },
 
-  // --- Key Generator (Username + IP for precision) ---
-  // Also IPv6‑safe
+  skipSuccessfulRequests: true,
+
+  message: 'Excessive login attempts. Try again later.',
+  handler: buildHandler('auth'),
+
+  // If req.body has no identifier AND the user isn't authenticated, the
+  // request is malformed for an auth-flow endpoint. Skip the limiter so the
+  // 400 from Joi/service fires normally instead of being blocked as 'anon'.
+  //
+  // Authenticated endpoints (e.g. /change-password) don't have an email in
+  // the body, but the auth middleware has populated req.user — the key
+  // generator below handles those, so we don't want to skip them here.
+  skip: (req) => !req.user && !getUsername(req),
+
   keyGenerator: (req) => {
-    const user = getUsername(req) || 'anon';
-    const ip = req.ip ?? req.socket?.remoteAddress;
-    const normalizedIp = ip ? ipKeyGenerator(ip) : 'unknown';
-    return `auth_${user}_${normalizedIp}`;
+    // Prefer req.user.email (set by auth middleware on authenticated routes
+    // like /change-password). This avoids the 'anon' bucket collision where
+    // every user behind the same NAT would share one rate-limit counter.
+    // Falls back to body for unauthenticated endpoints (/login, /register).
+    const identifier = req.user?.email || getUsername(req) || 'anon';
+    return `auth_${identifier}_${clientIp(req)}`;
   },
-
-  skip: (req) => !getUsername(req), // Ignore malformed requests
 });
 
 // ============================================================
 // 4. RESET LIMITER (Protects email sending budget)
-//    Prevents abuse of password reset endpoint
 // ============================================================
 const resetLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  limit: 3,                 // Only 3 reset attempts per hour
+  windowMs: 60 * 60 * 1000,
+  limit: 3,
+
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many reset attempts. Wait an hour.' },
 
-  // --- IPv6‑safe keyGenerator ---
+  message: 'Too many reset attempts. Wait an hour.',
+  handler: buildHandler('reset'),
+
   keyGenerator: (req) => {
     const user = getUsername(req) || 'anon';
-    const ip = req.ip ?? req.socket?.remoteAddress;
-    const normalizedIp = ip ? ipKeyGenerator(ip) : 'unknown';
-    return `reset_${user}_${normalizedIp}`;
+    return `reset_${user}_${clientIp(req)}`;
   },
 });
 
 // ============================================================
-// 5. EXPORT
+// 5. REGISTER LIMITER (Blocks bulk account creation)
+//    Distinct from authLimiter, which keys on (email, IP) and skips
+//    successes — a bot using unique emails bypasses it. This one keys on
+//    IP only, regardless of how many different emails they try.
+// ============================================================
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 3,
+
+  standardHeaders: true,
+  legacyHeaders: false,
+
+  message: 'Too many accounts created from this IP. Try again later.',
+  handler: buildHandler('register'),
+
+  // Key on IP only — the whole point is to cap total account creation from
+  // one source regardless of email. 3/hour is generous for shared NAT (office,
+  // café, campus WiFi) while stopping bot bulk-creation cold.
+  keyGenerator: (req) => clientIp(req),
+});
+
+// ============================================================
+// 7. SUBMIT LIMITER (Protects the public support form from spam)
+//    Tighter than the global apiLimiter: 5 submissions per IP per hour.
+//    Real users file 1-2 tickets, a spammer fills the collection.
+// ============================================================
+const submitLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+
+  standardHeaders: true,
+  legacyHeaders: false,
+
+  message: 'Too many support requests. Please wait before submitting another.',
+  handler: buildHandler('submit'),
+
+  // IPv6-safe — MUST use ipKeyGenerator, otherwise express-rate-limit v7
+  // throws ERR_ERL_KEY_GEN_IPV6 at module load.
+  keyGenerator: (req) => clientIp(req),
+});
+
+// ============================================================
+// 6. EXPORT
 // ============================================================
 module.exports = {
   apiLimiter,
   authLimiter,
   resetLimiter,
+  registerLimiter,
+  submitLimiter,
 };

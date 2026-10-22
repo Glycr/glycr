@@ -80,8 +80,10 @@ const ACTIONS = {
   update_settings: A('Settings updated'),
   clear_logs:      A('Logs cleared'),
   // auth
+  // auth
   register:                 A('Account registered'),
   login:                    A('Logged in'),
+  login_failed:             A('Login failed'),
   update_profile:           A('Profile updated'),
   password_reset_requested: A('Password reset requested'),
   reset_password:           A('Password reset'),
@@ -123,9 +125,25 @@ class LogService {
   // Never throws, so logging can't break a request.
   // actor = name/email snapshot (not an id); put the id in extra.adminId.
   async audit(actor, action, target, extra = {}) {
-    const { type = 'event', ip, userAgent, adminId, role, targetName, ...rest } = extra;
+    let { type = 'event', ip, userAgent, adminId, role, targetName, ...rest } = extra;
     const info = ACTIONS[action] || { message: humanize(action) };
     const actorName = String(actor || 'system');
+
+    // Validate `type` against the Log model's enum BEFORE creating the doc.
+    // Without this check, an unknown `type` silently loses the audit entry:
+    // Log.create throws on the enum mismatch, the try/catch below swallows
+    // the error, and the caller never sees the failure. Falling back to
+    // 'system' preserves the entry (with action, target, actor, meta intact)
+    // so nothing disappears; the warning tells you which callsite needs fixing.
+    const validTypes = Log.schema.path('type').enumValues;
+    if (!validTypes.includes(type)) {
+      logger.warn('Unknown audit type — falling back to system', {
+        received: type,
+        action,
+        validTypes,
+      });
+      type = 'system';
+    }
 
     try {
       // The JWT only carries id, email and role, so the admin's name comes from the database
@@ -160,7 +178,7 @@ class LogService {
         { actor: actorName, action, target: target ? String(target) : undefined, ip }
       );
     } catch (err) {
-      logger.error('Audit log failed', { err: err.message, action });
+      logger.error('Audit log failed', { err: err.message, action, type });
       return null;
     }
   }

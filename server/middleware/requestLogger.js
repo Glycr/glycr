@@ -1,32 +1,66 @@
 // middleware/requestLogger.js
+const crypto = require('crypto');
 const { logger } = require('../config/logger');
 
 const SLOW_MS = 1000;
-const SENSITIVE_PARAMS = ['token', 'password', 'secret', 'code', 'key', 'auth'];
+const MAX_URL_LEN = 500;
 
-// Paths that would only add noise
-const shouldSkip = (url) => url === '/health' || url.startsWith('/uploads');
+// Query params that should always be redacted when they match exactly.
+// "code" is intentionally excluded — countryCode, discountCode, and postalCode
+// are legitimate non-secret params that would otherwise be over-redacted.
+const SENSITIVE_EXACT = [
+  'token', 'password', 'secret', 'key', 'auth',
+  'apikey', 'api_key', 'accesstoken', 'refreshtoken',
+  'resetcode', 'verificationcode', 'otpcode', 'otp', 'pin',
+];
 
-// Strip secrets from query strings (reset tokens, API keys...) before they reach the log files
+// Substring matches that indicate a field is probably sensitive regardless of
+// prefix/suffix (e.g. newPassword, refreshToken, clientSecret).
+const SENSITIVE_SUBSTR = ['password', 'token', 'secret', 'apikey'];
+
+const isSensitiveParam = (key) => {
+  const k = String(key).toLowerCase();
+  return SENSITIVE_EXACT.includes(k) || SENSITIVE_SUBSTR.some((s) => k.includes(s));
+};
+
+// Paths/methods that would only add noise.
+// OPTIONS skipped because every CORS preflight fires one — halving log volume
+// without losing any real request tracking.
+const shouldSkip = (req) =>
+  req.method === 'OPTIONS' ||
+  req.originalUrl === '/health' ||
+  (req.originalUrl || '').startsWith('/uploads');
+
+// Strip secrets from query strings before they reach the log files, and cap
+// total URL length so a 10 MB `?q=...` doesn't bloat the log file.
 const safeUrl = (req) => {
-  const raw = req.originalUrl || req.url;
+  const raw = req.originalUrl || req.url || '';
   const i = raw.indexOf('?');
-  if (i === -1) return raw;
+  if (i === -1) {
+    return raw.length > MAX_URL_LEN ? raw.slice(0, MAX_URL_LEN) + '…' : raw;
+  }
 
+  const path = raw.slice(0, i);
   const params = new URLSearchParams(raw.slice(i + 1));
   for (const key of [...params.keys()]) {
-    if (SENSITIVE_PARAMS.some((s) => key.toLowerCase().includes(s))) params.set(key, 'REDACTED');
+    if (isSensitiveParam(key)) params.set(key, 'REDACTED');
   }
-  return `${raw.slice(0, i)}?${params}`;
+  const result = `${path}?${params}`;
+  return result.length > MAX_URL_LEN ? result.slice(0, MAX_URL_LEN) + '…' : result;
 };
 
 // Real client IP. With `trust proxy` set, req.ip already handles X-Forwarded-For safely.
 const getClientIp = (req) => req.ip || req.socket?.remoteAddress || 'unknown';
 
 const requestLogger = (req, res, next) => {
-  const url = safeUrl(req);
-  if (shouldSkip(req.originalUrl || req.url)) return next();
+  // Short request ID for correlation across logs. `errorHandler` can include
+  // this in its log context so 4xx/5xx errors are linkable to the request line.
+  const requestId = crypto.randomUUID().slice(0, 8);
+  req.requestId = requestId;
 
+  if (shouldSkip(req)) return next();
+
+  const url = safeUrl(req);
   const start = Date.now();
   let finished = false;
 
@@ -46,7 +80,7 @@ const requestLogger = (req, res, next) => {
 
     logger.log(
       level,
-      `[${req.method}] ${url} - ${status} - ${duration}ms${slow} - ${getClientIp(req)} - user:${user}`
+      `[${requestId}] [${req.method}] ${url} - ${status} - ${duration}ms${slow} - ${getClientIp(req)} - user:${user}`
     );
   });
 
@@ -54,7 +88,7 @@ const requestLogger = (req, res, next) => {
   res.on('close', () => {
     if (finished) return;
     logger.warn(
-      `[${req.method}] ${url} - aborted after ${Date.now() - start}ms - ${getClientIp(req)}`
+      `[${requestId}] [${req.method}] ${url} - aborted after ${Date.now() - start}ms - ${getClientIp(req)}`
     );
   });
 

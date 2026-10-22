@@ -3,44 +3,45 @@ const router = express.Router();
 const ticketController = require('../controllers/ticketController');
 const staffController  = require('../controllers/staffController');
 const auth = require('../middleware/auth');
-const jwt = require('jsonwebtoken');
-const config = require('../config');
+const optionalAuth = require('../middleware/optionalAuth');
+const { requireOrganizerOrStaff } = require('../middleware/rbac');
 
-// FIX: optionalAuth allows guests through without a token,
-// but still populates req.user for logged-in users
-const optionalAuth = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    req.user = null;
-    return next();
-  }
-  try {
-    req.user = jwt.verify(authHeader.split(' ')[1], config.jwtSecret);
-  } catch {
-    req.user = null;
-  }
-  next();
-};
+// ── Public / guest-allowed ──
+// optionalAuth uses the same verification as auth.js (suspended, passwordChangedAt,
+// staff status), but allows guests through with req.user = null. Suspended users
+// with valid tokens are still rejected — they can't bypass suspension by hitting
+// a guest endpoint.
+router.post('/tickets/purchase', optionalAuth, ticketController.purchase);
 
-// Base path: /tickets
-router.post('/tickets/purchase', optionalAuth, ticketController.purchase); // FIX: guests can purchase
-router.get('/tickets/my', auth, ticketController.getMyTickets);             // still requires login
-router.post('/tickets/validate', auth, ticketController.validateTicket);    // still requires login
+// ── Authenticated ──
+router.get('/tickets/my', auth, ticketController.getMyTickets);
 
-// ── Ticket validation routes ───────────────────────────────────
-// These must come BEFORE :id-style staff routes to avoid param conflicts.
+// ── Scan log / stats / search — organizer or staff only ──
+// Role gate at the route layer so a customer gets a clean 403 instead of a
+// 200-with-empty-array (from getScanLogs) or a confusing service-layer 403
+// (from searchTickets). The service still enforces per-event ownership.
+//
+// Route order: specific paths before :id-style routes so /tickets/search
+// doesn't collide with /tickets/:id.
+router.get('/tickets/validations',
+  auth, requireOrganizerOrStaff, staffController.getScanLogs);
 
-// GET  /tickets/validations        — scan log for organizer
-router.get  ('/tickets/validations',          auth, staffController.getScanLogs);
+router.get('/tickets/checkin-stats',
+  auth, requireOrganizerOrStaff, staffController.getCheckinStats);
 
-// GET  /tickets/checkin-stats      — check-in summary for an event
-router.get  ('/tickets/checkin-stats',        auth, staffController.getCheckinStats);
+router.get('/tickets/search',
+  auth, requireOrganizerOrStaff, staffController.searchTickets);
 
-// GET  /tickets/search             — ticket lookup by ID or email
-router.get  ('/tickets/search',               auth, staffController.searchTickets);
+// ── Ticket validation (scan) ──
+// Accepts both user tokens (organizer scanning their own event) and staff
+// tokens (staff scanning their assigned event). The controller resolves the
+// acting organizer from req.user and calls staffService.validateTicket.
+router.patch('/tickets/:ticketId/validate',
+  auth, requireOrganizerOrStaff, staffController.validateTicket);
 
-// PATCH /tickets/:ticketId/validate — validate (mark as used) a ticket
-router.patch('/tickets/:ticketId/validate',   auth, staffController.validateTicket);
-
+// Note: removed `POST /tickets/validate` — that route was dead after
+// ticketController.validateTicket was refactored to read req.params.id
+// (no :id on POST /tickets/validate → always 400).
+// Admin manual validation uses PATCH /admin/tickets/:id/validate.
 
 module.exports = router;

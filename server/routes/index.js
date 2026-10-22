@@ -1,40 +1,88 @@
 const express = require('express');
-const authRoutes = require('./auth');
-const userRoutes = require('./users');
-const eventRoutes = require('./events');
-const ticketRoutes = require('./tickets');
-const waitlistRoutes = require('./waitlists');
-const payoutRoutes = require('./payouts');
-const adminRoutes = require('./admin');
-const userSettingsRoutes = require('./settings');
-const notificationRoutes = require('./notifications');
-const analyticsRoutes = require('./analytics');
-const refundRoutes = require('./refunds');
+
+// ── Sub-routers ──
+// Each mounts at the root ('/api') and defines its own path prefix
+// (e.g. authRoutes handles '/auth/*', adminRoutes handles '/admin/*').
+// Express matches in the order they're `.use()`d below — first match wins.
+const authRoutes           = require('./auth');
+const userRoutes           = require('./users');
+const eventRoutes          = require('./events');
+const ticketRoutes         = require('./tickets');
+const waitlistRoutes       = require('./waitlists');
+const payoutRoutes         = require('./payouts');
+const adminRoutes          = require('./admin');
+const userSettingsRoutes   = require('./settings');
+// const notificationRoutes = require('./notifications');  // see note below
+const analyticsRoutes      = require('./analytics');
+const refundRoutes         = require('./refunds');
 const serviceRequestRoutes = require('./serviceRequests');
-const messageRoutes = require('./messages');
-const couponRoutes = require('./coupons');
-const staffRoutes = require('./staff');
-
-
-
-
+const messageRoutes        = require('./messages');
+const couponRoutes         = require('./coupons');
+const staffRoutes          = require('./staff');
 
 const router = express.Router();
-router.use(staffRoutes);
+
+// ── Mount order rationale ──
+//
+// All sub-routers define disjoint path prefixes (auth/*, admin/*, staff/*,
+// etc.), so order is theoretically arbitrary. It becomes meaningful only if
+// two sub-routers accidentally define the same method+path — the first one
+// mounted wins, the second is dead code with no warning.
+//
+// To verify no shadowing exists, run at boot (dev only):
+//   const listEndpoints = require('express-list-endpoints');
+//   console.table(listEndpoints(app));
+// Duplicate method+path pairs in the output indicate a collision.
+//
+// The current order groups related domains: auth/staff first (login paths),
+// public resources next (events/tickets/waitlists), then user-scoped
+// (payouts/settings), then admin (last, since it's the most-specific prefix).
+
+// ── Auth + staff ──
+// Login surfaces. /staff/pin-login should be mounted with authLimiter inside
+// staff.js — verify the route file includes it, otherwise PIN brute-force is
+// unbounded.
 router.use(authRoutes);
-router.use(userRoutes);
+router.use(staffRoutes);
+
+// ── Public-facing reads ──
+// Event browsing, ticket purchase (guest + auth), waitlist join (guest + auth).
+// These are the endpoints a logged-out visitor hits.
 router.use(eventRoutes);
 router.use(ticketRoutes);
-router.use(serviceRequestRoutes);
 router.use(waitlistRoutes);
+
+// ── Authenticated user scope ──
+// Data scoped to req.user.id — payouts (organizer), settings (self), refunds
+// (self + organizer), analytics (organizer), coupons (organizer), service
+// requests (submit + admin list), messages (admin-only).
 router.use(payoutRoutes);
 router.use(userSettingsRoutes);
-router.use(notificationRoutes);
-router.use(analyticsRoutes);
 router.use(refundRoutes);
-router.use(messageRoutes);
+router.use(analyticsRoutes);
 router.use(couponRoutes);
+router.use(serviceRequestRoutes);
+router.use(messageRoutes);
+
+// ── User CRUD (admin) ──
+// All endpoints in users.js should be requireAdmin-gated.
+router.use(userRoutes);
+
+// ── Admin (mounted last) ──
+// Every endpoint here needs requireAdmin. If any admin route is
+// accidentally reachable without requireAdmin, this is the highest-value
+// target — admin can manage users, delete events, approve payouts, wipe logs.
 router.use(adminRoutes);
 
+// ── Notifications ──
+// Currently disabled. The notificationController was flagged during the
+// controller review as a spam/phishing/toll-fraud gateway: it lets any
+// authenticated caller send arbitrary emails/SMS through Resend/Twilio.
+// Nothing in the codebase calls it. Re-enable ONLY after either:
+//   (a) deleting notificationController.js + routes/notifications.js entirely, OR
+//   (b) adding requireAdmin to every route in notifications.js AND
+//       rate-limiting to prevent budget exhaustion.
+//
+// router.use(notificationRoutes);
 
 module.exports = router;

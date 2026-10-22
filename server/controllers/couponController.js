@@ -7,15 +7,13 @@ const ctx = (req) => ({ ip: req.ip, userAgent: req.get('user-agent') });
 // Organizer: Create coupon
 exports.createCoupon = async (req, res, next) => {
   try {
-    const { code, type, value, expiryDate, usageLimit, eventId } = req.body;
-    if (!code || !type || !value || !expiryDate) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+    const { code, type, value, expiryDate, usageLimit, eventId } = req.body || {};
     const coupon = await couponService.createCoupon(req.user.id, {
       code, type, value, expiryDate, usageLimit, eventId,
     });
     logService.audit(req.user.email, 'create_coupon', coupon?.code || code, {
-      type: 'event', adminId: req.user.id, couponType: type, value, usageLimit, eventId, ...ctx(req),
+      type: 'event', adminId: req.user.id,
+      couponType: type, value, usageLimit, eventId, ...ctx(req),
     });
     res.status(201).json(coupon);
   } catch (err) {
@@ -26,8 +24,16 @@ exports.createCoupon = async (req, res, next) => {
 // Organizer: Get my coupons
 exports.getMyCoupons = async (req, res, next) => {
   try {
-    const { eventId, isActive } = req.query;
-    const coupons = await couponService.getCoupons(req.user.id, { eventId, isActive });
+    // Query strings are HTTP-level input — coerce to typed values here so
+    // the service deals with real booleans, not the strings 'true'/'false'.
+    const isActive = req.query.isActive === 'true' ? true
+      : req.query.isActive === 'false' ? false
+        : undefined;
+
+    const coupons = await couponService.getCoupons(req.user.id, {
+      eventId: req.query.eventId,
+      isActive,
+    });
     res.json(coupons);
   } catch (err) {
     next(err);
@@ -37,8 +43,7 @@ exports.getMyCoupons = async (req, res, next) => {
 // Public: Get active coupons (for a specific event)
 exports.getPublicCoupons = async (req, res, next) => {
   try {
-    const { eventId } = req.query;
-    const coupons = await couponService.getPublicCoupons(eventId);
+    const coupons = await couponService.getPublicCoupons(req.query.eventId);
     res.json(coupons);
   } catch (err) {
     next(err);
@@ -48,10 +53,7 @@ exports.getPublicCoupons = async (req, res, next) => {
 // Public: Validate a coupon code
 exports.validateCoupon = async (req, res, next) => {
   try {
-    const { code, eventId } = req.body;
-    if (!code || !eventId) {
-      return res.status(400).json({ error: 'Code and eventId required' });
-    }
+    const { code, eventId } = req.body || {};
     const coupon = await couponService.validateCoupon(code, eventId, req.user?.id);
     res.json({
       valid: true,
@@ -60,18 +62,17 @@ exports.validateCoupon = async (req, res, next) => {
       value: coupon.value,
     });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    next(err);
   }
 };
 
 // Authenticated: Apply coupon to calculate discount
 exports.applyCoupon = async (req, res, next) => {
   try {
-    const { code, eventId, subtotal } = req.body;
-    if (!code || !eventId || subtotal === undefined) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-    const { discount, coupon } = await couponService.applyCoupon(code, eventId, subtotal, req.user?.id);
+    const { code, eventId, subtotal } = req.body || {};
+    const { discount, coupon } = await couponService.applyCoupon(
+      code, eventId, subtotal, req.user?.id
+    );
     res.json({
       discount: discount.toFixed(2),
       finalTotal: (subtotal - discount).toFixed(2),
@@ -82,7 +83,7 @@ exports.applyCoupon = async (req, res, next) => {
       },
     });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    next(err);
   }
 };
 

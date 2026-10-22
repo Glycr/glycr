@@ -1,6 +1,5 @@
 const adminService = require('../services/adminService');
 const logService = require('../services/logService');
-const Payout = require('../models/Payout');
 const Event = require('../models/Event');
 const User = require('../models/User'); // only used to read a record before it is deleted / its role changes
 
@@ -100,7 +99,6 @@ exports.changeUserRole = async (req, res, next) => {
   }
 };
 
-
 exports.getAllEvents = async (req, res, next) => {
   try {
     const events = await adminService.getAllEvents();
@@ -114,6 +112,18 @@ exports.flagEvent = async (req, res, next) => {
   try {
     const event = await adminService.flagEvent(req.params.id);
     logService.audit(req.user.email, 'flag_event', event?.title || req.params.id, {
+      type: 'event', adminId: req.user.id, eventId: req.params.id, ...ctx(req),
+    });
+    res.json(event);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.unflagEvent = async (req, res, next) => {
+  try {
+    const event = await adminService.unflagEvent(req.params.id);
+    logService.audit(req.user.email, 'unflag_event', event?.title || req.params.id, {
       type: 'event', adminId: req.user.id, eventId: req.params.id, ...ctx(req),
     });
     res.json(event);
@@ -153,18 +163,9 @@ exports.getAllPayouts = async (req, res, next) => {
   }
 };
 
-exports.getAllPayouts = async (req, res, next) => {
-  try {
-    const payouts = await Payout.find().populate('organizerId', 'name email');
-    res.json(payouts);
-  } catch (err) {
-    next(err);
-  }
-};
-
 exports.approvePayout = async (req, res, next) => {
   try {
-    const payout = await adminService.approvePayout(req.params.id);
+    const payout = await adminService.approvePayout(req.params.id, req.user.id);
     logService.audit(req.user.email, 'approve_payout', String(req.params.id), {
       type: 'payout', adminId: req.user.id, amount: payout?.amount,
       organizerId: String(payout?.organizerId?._id || payout?.organizerId || ''), ...ctx(req),
@@ -179,7 +180,7 @@ exports.rejectPayout = async (req, res, next) => {
   try {
     const { reason } = req.body;
     if (!reason) return res.status(400).json({ error: 'Rejection reason required' });
-    const payout = await adminService.rejectPayout(req.params.id, reason);
+    const payout = await adminService.rejectPayout(req.params.id, reason, req.user.id);
     logService.audit(req.user.email, 'reject_payout', String(req.params.id), {
       type: 'payout', adminId: req.user.id, amount: payout?.amount,
       organizerId: String(payout?.organizerId?._id || payout?.organizerId || ''),
@@ -191,13 +192,9 @@ exports.rejectPayout = async (req, res, next) => {
   }
 };
 
-
 exports.togglePublish = async (req, res, next) => {
   try {
-    const event = await Event.findById(req.params.id);
-    if (!event) return res.status(404).json({ error: 'Event not found' });
-    event.isPublished = !event.isPublished;
-    await event.save();
+    const event = await adminService.togglePublish(req.params.id);
     logService.audit(req.user.email, event.isPublished ? 'publish_event' : 'unpublish_event', event.title || req.params.id, {
       type: 'event', adminId: req.user.id, eventId: req.params.id, ...ctx(req),
     });
@@ -206,7 +203,6 @@ exports.togglePublish = async (req, res, next) => {
     next(err);
   }
 };
-
 
 // Waitlist Management
 exports.getAllWaitlists = async (req, res, next) => {
@@ -260,10 +256,11 @@ exports.deleteWaitlistEntry = async (req, res, next) => {
   }
 };
 
-
 exports.getAllCoupons = async (req, res, next) => {
   try {
-    const coupons = await Coupon.find().populate('organizerId', 'name email').sort('-createdAt');
+    const coupons = await adminService.getAllCoupons();
     res.json(coupons);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };

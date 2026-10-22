@@ -66,7 +66,7 @@ async function suspendUser(userId) {
   try { await apiRequest(`/admin/users/${userId}/suspend`, { method: 'PATCH' }); }
   catch { if (user) user.suspended = !user.suspended; }
 
-  await addLog('user', `User ${suspend ? 'suspended' : 'unsuspended'}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, targetUser: user?.email, targetRole: user?.role });
+  //await addLog('user', `User ${suspend ? 'suspended' : 'unsuspended'}`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, targetUser: user?.email, targetRole: user?.role });
   await loadData();
   toast.success('User updated', `Account has been ${suspend ? 'suspended' : 'unsuspended'}.`);
 }
@@ -77,7 +77,7 @@ async function deleteUser(userId) {
   const ok = await customConfirm(`Delete "${user?.name || user?.email}"? This will permanently remove their account and all associated data.`, 'Delete User', 'Delete', '#ef4444');
   if (!ok) return;
   try { await apiRequest(`/admin/users/${userId}`, { method: 'DELETE' }); } catch {}
-  await addLog('danger', 'User deleted', { adminName: currentAdmin.name, adminRole: currentAdmin.role, targetUser: user?.email, targetRole: user?.role });
+  //await addLog('danger', 'User deleted', { adminName: currentAdmin.name, adminRole: currentAdmin.role, targetUser: user?.email, targetRole: user?.role });
   await loadData();
   toast.success('User deleted', 'The account has been permanently removed.');
 }
@@ -128,7 +128,7 @@ async function submitAddUser() {
   if (!name || !email || !password) { errEl.style.display = 'block'; errMsg.textContent = 'Name, email and password are required.'; return; }
   try {
     await apiRequest('/admin/users', { method: 'POST', body: JSON.stringify({ name, email, phone, password, role }) });
-    await addLog('user', 'New user created by admin', { adminName: currentAdmin.name, adminRole: currentAdmin.role, targetUser: email, targetRole: role });
+    //await addLog('user', 'New user created by admin', { adminName: currentAdmin.name, adminRole: currentAdmin.role, targetUser: email, targetRole: role });
     closeModal('add-user-modal');
     await loadData();
     toast.success('User created', `${name} has been added to the platform.`);
