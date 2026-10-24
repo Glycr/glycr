@@ -93,7 +93,7 @@ const requireRole = (allowedRoles, options = {}) => (req, res, next) => {
 
 const requireAdmin               = requireRole(['admin']);
 const requireModeratorOrAdmin    = requireRole(['moderator', 'admin']);
-const requireOrganizer           = requireRole(['organizer', 'admin']);
+const requireOrganizer           = requireRole(['organizer', 'moderator', 'admin']);
 // Organizer-only (excludes admin) — used for routes where an admin has no
 // business acting on behalf of an organizer, e.g. per-organizer staff
 // management. Admin gets a clean 403 at the route layer instead of the

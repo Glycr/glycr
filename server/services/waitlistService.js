@@ -52,9 +52,8 @@ class WaitlistService {
       eventId, ticketType, email: normalizedEmail,
     }).lean();
     if (existing) {
-      throw new AppError('You are already on the waitlist for this ticket type', 409);
+      return existing;
     }
-
     // ── Assign position (non-atomic, but display-only — order by joinedAt) ──
     const count = await Waitlist.countDocuments({ eventId, ticketType });
     const position = count + 1;

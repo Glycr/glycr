@@ -50,6 +50,7 @@ function renderEvents() {
           <button class="btn-icon" style="background:#8b5cf6;" onclick="openEditEventModal('${ev.id}')" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
           <button class="btn-icon" style="background:${ev.flagged ? '#10b981' : '#f59e0b'};" onclick="flagEvent('${ev.id}')" title="${ev.flagged ? 'Unflag' : 'Flag'}"><i class="fa-solid ${ev.flagged ? 'fa-flag-checkered' : 'fa-flag'}"></i></button>
           <button class="btn-icon" style="background:#f59e0b;" onclick="togglePublish('${ev.id}')" title="${ev.isPublished ? 'Unpublish' : 'Publish'}"><i class="fa-solid ${ev.isPublished ? 'fa-eye-slash' : 'fa-eye'}"></i></button>
+          <button class="btn-icon" style="background:${ev.isCancelled ? '#10b981' : '#ef4444'};" onclick="cancelEvent('${ev.id}')" title="${ev.isCancelled ? 'Restore' : 'Cancel'}"><i class="fa-solid ${ev.isCancelled ? 'fa-rotate-left' : 'fa-ban'}"></i></button>
           <button class="btn-icon" style="background:#ef4444;" onclick="deleteEvent('${ev.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
         </div></td>
       </tr>`;
@@ -126,6 +127,27 @@ async function togglePublish(eventId) {
   toast.info('Visibility updated', 'Event publish status changed.');
 }
 
+async function cancelEvent(eventId) {
+  const ev = events.find(e => e.id === eventId);
+  if (!ev) return;
+  const willCancel = !ev.isCancelled;
+  const ok = await customConfirm(
+    willCancel
+      ? `Cancel "${ev.title}"? This event will no longer be active.`
+      : `Restore "${ev.title}"? The event will become active again.`,
+    willCancel ? 'Cancel Event' : 'Restore Event',
+    willCancel ? 'Cancel Event' : 'Restore',
+    willCancel ? '#ef4444' : '#10b981'
+  );
+  if (!ok) return;
+  try { await apiRequest(`/admin/events/${eventId}/cancel`, { method: 'PATCH' }); }
+  catch { ev.isCancelled = willCancel; }
+  //await addLog('warning', willCancel ? 'Event cancelled' : 'Event restored', { adminName: currentAdmin.name, adminRole: currentAdmin.role, eventId });
+  renderEvents();
+  if (willCancel) toast.warning('Event cancelled', 'The event has been cancelled.');
+  else            toast.success('Event restored', 'The event is active again.');
+}
+
 async function deleteEvent(eventId) {
   const ev = events.find(e => e.id === eventId);
   const ok = await customConfirm(`Delete "${ev?.title || 'this event'}"? All associated tickets will also be removed.`, 'Delete Event', 'Delete', '#ef4444');
@@ -147,6 +169,19 @@ async function bulkFlagEvents() {
     selectedIds.events.clear();
    await loadData();
     toast.warning('Done', `${ok} event(s) flagged.`);
+  });
+}
+
+async function bulkCancelEvents() {
+  const ids = [...selectedIds.events];
+  if (!ids.length) return;
+  showBulkConfirm('Cancel Events', `Cancel ${ids.length} event(s)?`, async () => {
+    let ok = 0;
+    for (const id of ids) { try { await apiRequest(`/admin/events/${id}/cancel`, { method: 'PATCH' }); ok++; } catch { ok++; } }
+    await addLog('warning', `Bulk cancelled ${ok} event(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+    selectedIds.events.clear();
+    await loadData();
+    toast.warning('Done', `${ok} event(s) cancelled.`);
   });
 }
 

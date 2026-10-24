@@ -13,40 +13,24 @@ router.post('/coupons/validate', couponController.validateCoupon);
 
 // ── Guest-allowed: apply a code at checkout ──
 // optionalAuth: guests can apply coupons during guest checkout; logged-in
-// users get req.user populated. Must be defined BEFORE the blanket
-// `router.use(auth)` below, otherwise auth runs first and 401s guests.
-//
-// Controller uses req.user?.id (optional) — this endpoint was always
-// intended for both authenticated and guest flows.
+// users get req.user populated.
 router.post('/coupons/apply', optionalAuth, couponController.applyCoupon);
 
 // ── Authenticated + organizer-only: coupon management ──
-// Everything below requires a valid JWT via router.use(auth).
-router.use(auth);
-
-// requireOrganizerOnly on the three mutation/listing routes:
-//   - Without it, any customer could POST /coupons with a 100%-off code
-//     pointing at any event, then use it at checkout → free ticket.
+// auth is applied per-route (NOT router.use(auth)) so this sub-router
+// cannot 401 unrelated /api/* requests that fall through it — e.g.
+// POST /api/service-requests. A pathless router.use(auth) here would
+// reject every guest request that enters this router without matching
+// one of the routes above.
+//   - requireOrganizerOnly prevents any customer from POSTing a 100%-off
+//     code pointing at any event → free ticket.
 //   - Admins manage coupons via /admin/coupons (global view); they don't
 //     need to create per-event coupons here.
-//   - The service still enforces per-event ownership on delete; the route
-//     gate ensures customers never even reach it.
-router.get(
-  '/coupons',
-  requireOrganizerOnly,
-  couponController.getMyCoupons
-);
+//   - The service still enforces per-event ownership on delete.
+router.get('/coupons', auth, requireOrganizerOnly, couponController.getMyCoupons);
 
-router.post(
-  '/coupons',
-  requireOrganizerOnly,
-  couponController.createCoupon
-);
+router.post('/coupons', auth, requireOrganizerOnly, couponController.createCoupon);
 
-router.delete(
-  '/coupons/:id',
-  requireOrganizerOnly,
-  couponController.deleteCoupon
-);
+router.delete('/coupons/:id', auth, requireOrganizerOnly, couponController.deleteCoupon);
 
 module.exports = router;

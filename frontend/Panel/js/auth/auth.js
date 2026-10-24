@@ -18,13 +18,13 @@ async function handleLogin() {
     initSession();
     await loadPlatformFee();
     await loadData();
-    await addLog('auth', 'Admin login successful', { user: email });
+   // await addLog('auth', 'Admin login successful', { user: email });
     toast.success('Welcome back!', `Signed in as ${currentAdmin.name || email}`);
   } catch (err) {
     errorEl.style.display = 'flex';
     document.getElementById('login-error-msg').textContent = err.message;
-    toast.error('Login failed', err.message);
-    await addLog('danger', 'Failed admin login attempt', { email });
+    toast.error('Login failed: wrong email or password ', err.message);
+    //await addLog('danger', 'Failed admin login attempt', { email });
   }
 }
 

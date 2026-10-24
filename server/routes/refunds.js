@@ -26,24 +26,14 @@ router.get('/refunds/my', auth, refundController.getMyRefunds);
 // get a confusing error message; with the gate, they get a clean 403 from the
 // route layer.
 router.get(
-  '/refunds/organizer',
-  auth,
-  requireOrganizer,
-  refundController.getOrganizerRefunds
+  '/refunds/organizer', auth, requireOrganizer, refundController.getOrganizerRefunds
 );
 
 router.patch(
-  '/refunds/:id/approve',
-  auth,
-  requireOrganizer,
-  refundController.approveRefund
+  '/refunds/:id/approve', auth, requireOrganizer, refundController.approveRefund
 );
 
 router.patch(
-  '/refunds/:id/reject',
-  auth,
-  requireOrganizer,
-  refundController.rejectRefund
-);
+  '/refunds/:id/reject', auth, requireOrganizer, refundController.rejectRefund);
 
 module.exports = router;

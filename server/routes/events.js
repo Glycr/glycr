@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const eventController = require('../controllers/eventController');
 const auth = require('../middleware/auth');
-const { requireOrganizerOnly } = require('../middleware/rbac');
+const { requireOrganizerOnly, requireOrganizer } = require('../middleware/rbac');
 const { validate, eventSchema } = require('../middleware/validation');
 
 // ── Public: event browsing ──
@@ -55,11 +55,6 @@ router.patch(
   eventController.togglePublish
 );
 
-router.patch(
-  '/events/:id/cancel',
-  auth,
-  requireOrganizerOnly,
-  eventController.cancelEvent
-);
+router.patch('/events/:id/cancel', auth, requireOrganizer, eventController.cancelEvent);
 
 module.exports = router;

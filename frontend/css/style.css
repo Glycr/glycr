@@ -4,7 +4,48 @@
    Fonts: Syne (display) · Outfit (body) · JetBrains Mono (data)
 ============================================================ */
 
+/* LIGHT (default) */
 :root {
+  color-scheme: light;
+  --bg:         #f4f7fa;
+  --bg-2:       #ffffff;
+  --bg-3:       #eef2f7;
+  --surface:    #e5ebf2;
+  --border:     #dbe3ec;
+  --border-2:   #c5d0dd;
+  --muted:      #6b7f93;
+  --dim:        #4a6075;
+  --text:       #1f2d3d;
+  --bright:     #0b1624;
+  --coral:      #e5484d;
+  --coral-d:    #c93a3f;
+  --coral-glow: rgba(229,72,77,0.14);
+  --teal:       #0d9488;
+  --teal-d:     #0f766e;
+  --teal-glow:  rgba(13,148,136,0.10);
+  --mint:       #059669;
+  --sky:        #0284c7;
+  --gold:       #b45309;
+  --success:    #059669;
+  --error:      #e5484d;
+  --warning:    #b45309;
+  --radius:     6px;
+  --radius-lg:  14px;
+  --ease:       cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* extra tokens for values that were hard-coded */
+  --on-teal:    #ffffff;
+  --nav-bg:     rgba(255,255,255,0.92);
+  --badge-bg:   rgba(255,255,255,0.85);
+  --backdrop:   rgba(15,23,42,0.45);
+  --profile-bg: linear-gradient(135deg, #d6f2ee 0%, #dbeafe 60%, #f4f7fa 100%);
+  --profile-fade: rgba(255,255,255,0.8);
+  --detail-img-filter: brightness(0.75) saturate(0.9);
+}
+
+/* DARK (your original palette) */
+:root[data-theme="dark"] {
+  color-scheme: dark;
   --bg:         #0d1117;
   --bg-2:       #131a23;
   --bg-3:       #192130;
@@ -27,9 +68,14 @@
   --success:    #6ee7b7;
   --error:      #ff6b6b;
   --warning:    #fbbf24;
-  --radius:     6px;
-  --radius-lg:  14px;
-  --ease:       cubic-bezier(0.22, 1, 0.36, 1);
+
+  --on-teal:    #0d1117;
+  --nav-bg:     rgba(13,17,23,0.92);
+  --badge-bg:   rgba(13,17,23,0.75);
+  --backdrop:   rgba(5,8,13,0.82);
+  --profile-bg: linear-gradient(135deg, #0d2030 0%, #0d2d2a 40%, #131a23 100%);
+  --profile-fade: rgba(19,26,35,0.8);
+  --detail-img-filter: brightness(0.45) saturate(0.7);
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1131,3 +1177,41 @@ input[type="file"] { display: none; }
   .ticket-type-headers span:nth-child(n+4),
   .ticket-type-row input:nth-child(n+4) { display: none; }
 }
+
+
+/* ============================================================
+   THEME OVERRIDES + TOGGLE
+============================================================ */
+body { transition: background 0.25s var(--ease), color 0.25s var(--ease); }
+
+.navbar, .filters-bar { background: var(--nav-bg); }
+.card-cat-badge, .detail-cat-badge { background: var(--badge-bg); }
+.modal-backdrop { background: var(--backdrop); }
+
+/* text sitting on teal/mint fills */
+.btn-primary, .btn-success, .hero-search-row button, .profile-avatar-lg,
+.profile-avatar-small, .back-to-top-btn, .newsletter-input-wrap button,
+.about-card-icon { color: var(--on-teal); }
+.about-card-icon { color: var(--teal); } /* this one is an outline icon, keep teal */
+
+/* profile header */
+.profile-hero-bg { background: var(--profile-bg); }
+.profile-hero-bg::after { background: linear-gradient(to bottom, transparent, var(--profile-fade)); }
+
+/* event detail hero image */
+.detail-hero img { filter: var(--detail-img-filter); }
+
+/* hero carousel stays dark in both themes (it sits on photos) */
+.carousel-title { color: #fff; }
+.carousel-venue { color: #cbd5e1; }
+.carousel-cat   { color: #2dd4bf; }
+
+/* theme toggle button */
+.theme-toggle-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid var(--border-2);
+  color: var(--dim); cursor: pointer; font-size: 0.9rem;
+  transition: all 0.2s var(--ease);
+}
+.theme-toggle-btn:hover { color: var(--teal); border-color: var(--teal); background: var(--teal-glow); transform: rotate(15deg); }
