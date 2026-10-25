@@ -66,9 +66,16 @@ function getFilteredWaitlist() {
   const evFilter = document.getElementById('waitlist-event-filter')?.value || 'all';
   const dfrom    = document.getElementById('waitlist-date-from')?.value;
   const dto      = document.getElementById('waitlist-date-to')?.value;
+  const posFrom  = parseInt(document.getElementById('waitlist-position-from')?.value, 10);
+  const posTo    = parseInt(document.getElementById('waitlist-position-to')?.value, 10);
   return waitlist.filter(w => {
     const mSearch = !search || (w.userName||'').toLowerCase().includes(search) || (w.userEmail||'').toLowerCase().includes(search) || (w.eventTitle||'').toLowerCase().includes(search);
-    return mSearch && (evFilter === 'all' || w.eventId === evFilter) && applyDateRangeFilter(w.joinedAt, dfrom, dto);
+    const pos  = Number(w.position);
+    const mPos = (isNaN(posFrom) && isNaN(posTo))
+      || (isNaN(posFrom) ? pos <= posTo
+        : isNaN(posTo)  ? pos >= posFrom
+          : pos >= posFrom && pos <= posTo);
+    return mSearch && (evFilter === 'all' || w.eventId === evFilter) && mPos && applyDateRangeFilter(w.joinedAt, dfrom, dto);
   });
 }
 
