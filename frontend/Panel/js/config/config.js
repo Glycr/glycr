@@ -2,7 +2,7 @@
 // CONFIGURATION + GLOBAL DATA
 // ===============================================
 
-const API_BASE = 'http://localhost:5040/api';
+const API_BASE = 'https://glycr.onrender.com';
 let authToken = null;
 let currentAdmin = { name: 'Admin', email: '', role: '' };
 
