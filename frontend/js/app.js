@@ -949,7 +949,7 @@ class GlycrApp {
     if (!container) return;
 
     const tickets = this.userTickets;
-    const now = this.currentDate;
+    const now = new Date();
     if (countEl) countEl.textContent = `${tickets.length} ticket${tickets.length !== 1 ? 's' : ''}`;
 
     if (!tickets.length) {
@@ -957,28 +957,42 @@ class GlycrApp {
       return;
     }
 
-
     container.innerHTML = tickets.map(t => {
-      const ev    = this.allEvents.find(e => e._id === t.eventId);
+      // the API may send eventId as a plain id or as a populated object
+      const evId  = (t.eventId && typeof t.eventId === 'object') ? (t.eventId._id || t.eventId.id) : t.eventId;
+      const ev    = this.allEvents.find(e => e._id === evId);
       const sym   = this.getCurrencySymbol((ev && ev.currency) || 'GHC');
-      const title = ev ? ev.title : 'Event';
+      const title = ev ? ev.title : (t.eventId && t.eventId.title) || 'Event';
       const evDate = ev ? new Date(ev.date) : null;
       const isPast = evDate && evDate <= now;
-      const canRefund   = evDate && evDate > now && !t.refunded;
-      const canTransfer = evDate && evDate > now && !t.transferred;
-      const canReview   = isPast && !t.reviewed;
-      const d = `data-ticket-id="${esc(t.id)}" data-event-id="${esc(t.eventId)}" data-title="${esc(title)}" data-type="${esc(t.ticketType)}" data-price="${esc(t.price)}"`;
+
+      // a ticket is "voided" once its event is cancelled or its money is being/was returned
+      const eventCancelled = !!(ev && ev.isCancelled);
+      const voided = eventCancelled || t.refunded || ['cancelled', 'refund_pending', 'refunded'].includes(t.status);
+      const used   = t.status === 'used' || !!t.validated;
+
+      const canRefund   = !voided && !used && evDate && evDate > now;
+      const canTransfer = !voided && !used && evDate && evDate > now && !t.transferred;
+      const canReview   = !voided && isPast && !t.reviewed;
+
+      let statusLabel = '', statusColor = 'var(--muted)';
+      if (eventCancelled || t.status === 'cancelled') { statusLabel = 'Event cancelled · full refund'; statusColor = 'var(--coral)'; }
+      else if (t.status === 'refund_pending')         { statusLabel = 'Refund requested';              statusColor = 'var(--gold)'; }
+      else if (t.status === 'refunded' || t.refunded) { statusLabel = 'Refunded';                      statusColor = 'var(--mint)'; }
+      else if (used)                                  { statusLabel = 'Used';                          statusColor = 'var(--muted)'; }
+
+      const d = `data-ticket-id="${esc(t.id)}" data-event-id="${esc(evId)}" data-title="${esc(title)}" data-type="${esc(t.ticketType)}" data-price="${esc(t.price)}"`;
       return `<div class="purchase-item">
-    <div class="purchase-item-body">
-      <div class="purchase-item-title">${esc(title)}</div>
-      <div class="purchase-item-meta">${esc(String(t.ticketType).toUpperCase())} · ${t.price === 0 ? 'Free' : esc(sym) + esc(t.price)} · ${esc(new Date(t.purchasedAt).toLocaleDateString())}</div>
-    </div>
-    <div class="purchase-item-actions">
-      ${canTransfer ? `<button class="btn btn-ghost btn-sm" style="color:var(--sky); border-color:rgba(125,211,252,0.3);" data-ui-action="transfer" ${d}><i class="fas fa-paper-plane"></i> Transfer</button>` : ''}
-      ${canRefund   ? `<button class="btn btn-ghost btn-sm" style="color:var(--coral); border-color:rgba(255,107,107,0.3);" data-ui-action="refund" ${d}><i class="fas fa-undo"></i> Refund</button>` : ''}
-      ${canReview   ? `<button class="btn btn-ghost btn-sm" style="color:var(--gold); border-color:rgba(251,191,36,0.3);" data-ui-action="review" ${d}><i class="fas fa-star"></i> Review</button>` : ''}
-    </div>
-  </div>`;
+  <div class="purchase-item-body">
+    <div class="purchase-item-title">${esc(title)}</div>
+    <div class="purchase-item-meta">${esc(String(t.ticketType).toUpperCase())} · ${t.price === 0 ? 'Free' : esc(sym) + esc(t.price)} · ${esc(new Date(t.purchasedAt).toLocaleDateString())}${statusLabel ? ` · <span style="color:${statusColor};">${esc(statusLabel)}</span>` : ''}</div>
+  </div>
+  <div class="purchase-item-actions">
+    ${canTransfer ? `<button class="btn btn-ghost btn-sm" style="color:var(--sky); border-color:rgba(125,211,252,0.3);" data-ui-action="transfer" ${d}><i class="fas fa-paper-plane"></i> Transfer</button>` : ''}
+    ${canRefund   ? `<button class="btn btn-ghost btn-sm" style="color:var(--coral); border-color:rgba(255,107,107,0.3);" data-ui-action="refund" ${d}><i class="fas fa-undo"></i> Refund</button>` : ''}
+    ${canReview   ? `<button class="btn btn-ghost btn-sm" style="color:var(--gold); border-color:rgba(251,191,36,0.3);" data-ui-action="review" ${d}><i class="fas fa-star"></i> Review</button>` : ''}
+  </div>
+</div>`;
     }).join('');
   }
 
