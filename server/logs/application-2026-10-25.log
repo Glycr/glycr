@@ -1,0 +1,14 @@
+{"level":"info","message":"MongoDB connected: ac-gx5dckq-shard-00-01.fuggr6t.mongodb.net","timestamp":"2026-10-25T07:04:23.151Z"}
+{"level":"info","message":"✅ Database connected","timestamp":"2026-10-25T07:04:23.165Z"}
+{"level":"info","message":"🚀 Server running on port 5040","timestamp":"2026-10-25T07:04:23.171Z"}
+{"level":"info","message":"📡 Environment: production","timestamp":"2026-10-25T07:04:23.171Z"}
+{"level":"info","message":"🌐 URL: http://localhost:5040","timestamp":"2026-10-25T07:04:23.171Z"}
+{"level":"info","message":"📦 Node v20.20.1 | darwin","timestamp":"2026-10-25T07:04:23.172Z"}
+{"level":"warn","message":"⚠️ Received SIGINT, shutting down gracefully...","timestamp":"2026-10-25T07:05:40.040Z"}
+{"level":"info","message":"MongoDB connected: ac-gx5dckq-shard-00-01.fuggr6t.mongodb.net","timestamp":"2026-10-25T07:05:46.515Z"}
+{"level":"info","message":"✅ Database connected","timestamp":"2026-10-25T07:05:46.517Z"}
+{"level":"info","message":"🚀 Server running on port 5040","timestamp":"2026-10-25T07:05:46.523Z"}
+{"level":"info","message":"📡 Environment: production","timestamp":"2026-10-25T07:05:46.523Z"}
+{"level":"info","message":"🌐 URL: http://localhost:5040","timestamp":"2026-10-25T07:05:46.523Z"}
+{"level":"info","message":"📦 Node v20.20.1 | darwin","timestamp":"2026-10-25T07:05:46.523Z"}
+{"level":"warn","message":"⚠️ Received SIGINT, shutting down gracefully...","timestamp":"2026-10-25T07:06:11.297Z"}

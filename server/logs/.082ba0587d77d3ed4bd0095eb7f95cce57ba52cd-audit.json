@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/Users/macbookpro/WebstormProjects/glycr/server/logs/.082ba0587d77d3ed4bd0095eb7f95cce57ba52cd-audit.json",
+    "files": [
+        {
+            "date": 1792911860284,
+            "name": "/Users/macbookpro/WebstormProjects/glycr/server/logs/application-2026-10-25.log",
+            "hash": "b49f24650e81bd1cb0ba8b8eecc394f884871ebd79e13386b0f8ea8fca286f2d"
+        }
+    ],
+    "hashType": "sha256"
+}
