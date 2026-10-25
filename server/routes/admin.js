@@ -7,6 +7,7 @@ const ticketController = require('../controllers/ticketController');
 const logController = require('../controllers/logController');
 const refundController = require('../controllers/refundController');
 const serviceRequestController = require('../controllers/serviceRequestController');
+const featuredController = require('../controllers/featuredController');
 
 const auth = require('../middleware/auth');
 const { requireAdmin, requireModeratorOrAdmin } = require('../middleware/rbac');
@@ -45,6 +46,8 @@ router.patch('/admin/events/:id/flag', requireModeratorOrAdmin, adminController.
 router.patch('/admin/events/:id/unflag', requireModeratorOrAdmin, adminController.unflagEvent);
 router.patch('/admin/events/:id/publish', requireModeratorOrAdmin, adminController.togglePublish);
 router.delete('/admin/events/:id', requireAdmin, adminController.deleteEvent);
+router.patch('/admin/events/:id/cancel',  requireModeratorOrAdmin, adminController.cancelEvent);
+router.patch('/admin/events/:id/restore', requireModeratorOrAdmin, adminController.restoreEvent);
 
 // ── Tickets ──
 // Listing is moderator-visible. Validate/cancel affect ticket state and
@@ -80,5 +83,9 @@ router.put('/admin/settings', requireAdmin, settingsController.updateSettings);
 
 // ── Refunds ──
 router.get('/admin/refunds/all', requireAdmin, refundController.getAllRefunds);
+
+// ---Featured----
+
+router.patch('/admin/events/:id/featured', auth, requireModeratorOrAdmin, featuredController.setFeatured);
 
 module.exports = router;

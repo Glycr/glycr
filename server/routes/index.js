@@ -7,6 +7,7 @@ const express = require('express');
 const authRoutes           = require('./auth');
 const userRoutes           = require('./users');
 const serviceRequestRoutes = require('./serviceRequests');
+const featuredRoutes = require('./featured');
 const eventRoutes          = require('./events');
 const ticketRoutes         = require('./tickets');
 const waitlistRoutes       = require('./waitlists');
@@ -16,6 +17,7 @@ const userSettingsRoutes   = require('./settings');
 // const notificationRoutes = require('./notifications');  // see note below
 const analyticsRoutes      = require('./analytics');
 const refundRoutes         = require('./refunds');
+const reviewRoutes         = require('./reviews');
 const messageRoutes        = require('./messages');
 const couponRoutes         = require('./coupons');
 const staffRoutes          = require('./staff');
@@ -48,6 +50,7 @@ router.use(staffRoutes);
 // ── Public-facing reads ──
 // Event browsing, ticket purchase (guest + auth), waitlist join (guest + auth).
 // These are the endpoints a logged-out visitor hits.
+router.use(featuredRoutes);
 router.use(eventRoutes);
 router.use(ticketRoutes);
 router.use(waitlistRoutes);
@@ -59,6 +62,7 @@ router.use(serviceRequestRoutes);
 router.use(payoutRoutes);
 router.use(userSettingsRoutes);
 router.use(refundRoutes);
+router.use(reviewRoutes);
 router.use(analyticsRoutes);
 router.use(couponRoutes);
 router.use(messageRoutes);

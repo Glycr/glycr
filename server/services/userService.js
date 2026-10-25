@@ -7,11 +7,13 @@ const Payout = require('../models/Payout');
 const Refund = require('../models/Refund');
 const Waitlist = require('../models/Waitlist');
 const Favorite = require('../models/Favorite');
+const Review = require('../models/Review');      // ← add this line
 const config = require('../config');
 const { AppError } = require('../utils/appError');
 const { logger } = require('../config/logger');
 const { sendEmail } = require('./notificationService');
 const { escapeHtml } = require('../utils/htmlSecurity');
+const { isObjectIdString } = require('../utils/validators');
 
 const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -330,6 +332,8 @@ class UserService {
       await Favorite.deleteMany({ eventId: { $in: ownedEventIds } });
       await Waitlist.deleteMany({ eventId: { $in: ownedEventIds } });
       await Refund.deleteMany({ eventId: { $in: ownedEventIds } });
+      await Review.deleteMany({ eventId: { $in: ownedEventIds } });
+
     }
 
     // The user's own activity
@@ -338,6 +342,7 @@ class UserService {
     await Payout.deleteMany({ organizerId: userId });
     await Refund.deleteMany({ userId });
     await Waitlist.deleteMany({ email: target.email });
+    await Review.deleteMany({ userId });
 
     return { deleted: true, unresolvedRefunds };
   }
@@ -345,12 +350,14 @@ class UserService {
   // ── Toggle favorite — business logic that was previously in userController ──
   async toggleFavorite(userId, eventId, action) {
     if (!userId) throw new AppError('userId is required', 400);
-    if (!eventId) throw new AppError('eventId is required', 400);
+    if (!isObjectIdString(eventId)) throw new AppError('Invalid event', 400);
     if (!['add', 'remove'].includes(action)) {
       throw new AppError('action must be "add" or "remove"', 400);
     }
 
     if (action === 'add') {
+      const exists = await Event.exists({ _id: eventId });
+      if (!exists) throw new AppError('Event not found', 404);
       await Favorite.findOneAndUpdate(
         { userId, eventId },
         { userId, eventId },
@@ -361,6 +368,12 @@ class UserService {
     }
 
     return { success: true };
+  }
+
+  async getFavorites(userId) {
+    if (!userId) throw new AppError('userId is required', 400);
+    const rows = await Favorite.find({ userId }).select('eventId').lean();
+    return rows.map((f) => String(f.eventId));
   }
 }
 

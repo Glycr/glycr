@@ -60,6 +60,11 @@ class GlycrApp {
     this._isRefreshing = false;
     this.dataLoaded = false;
     this.isLoadingData = false;
+    this.setupInfiniteScroll();
+    this.renderNotificationBadge();
+    this.initCookieBanner();
+    this.initBackToTop();
+    if (!this.currentUser) this.renderEvents(true);   // guests: nothing else triggers the first load
 
     this.faqs = [
       { cat: 'tickets', q: 'How do I get my ticket after purchase?', a: 'Your ticket is generated instantly after payment. You can download it as a PDF from the ticket modal, or access it anytime from your Profile → Purchase History.' },
@@ -347,11 +352,13 @@ class GlycrApp {
 
   setupInfiniteScroll() {
     window.addEventListener('scroll', () => {
+      const home = document.getElementById('home-section');
+      if (!home || home.style.display === 'none') return;   // not on the events page
       if (this.isLoadingEvents || !this.hasMoreEvents) return;
       if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
         this.renderEvents(false);
       }
-    });
+    }, { passive: true });
   }
 
   bindNavLinks() {
@@ -470,41 +477,77 @@ class GlycrApp {
     this.renderNotificationsPanel();
   }
 
-  buildCarousel() {
+  async buildCarousel() {
     const slidesEl = document.getElementById('carousel-slides');
     const dotsEl   = document.getElementById('carousel-dots');
     if (!slidesEl || !dotsEl) return;
-    const FEATURED = this.allEvents.slice(0, 4);
-    if (!FEATURED.length) return;
-    slidesEl.innerHTML = FEATURED.map((ev, i) => {
+
+    // stop any previous autoplay so rebuilding never stacks timers
+    if (this._carouselTimer) { clearInterval(this._carouselTimer); this._carouselTimer = null; }
+
+    let featured = [];
+    const pick = r => (Array.isArray(r) ? r : (r?.events || r?.data || [])).filter(ev => !ev.isCancelled);
+
+    // 1) curated list from admins/moderators
+    try {
+      featured = pick(await this.fetchApi('/events/featured'));
+    } catch (err) {
+      console.warn('Carousel: featured endpoint failed, using upcoming events instead', err);
+    }
+
+    // 2) fallback: next upcoming events, so the hero is never empty
+    if (!featured.length) {
+      try {
+        featured = pick(await this.fetchApi('/events?limit=4&upcoming=true'));
+      } catch (err) {
+        console.error('Carousel: could not load events', err);
+      }
+    }
+
+    featured = featured.slice(0, 6);
+    if (!featured.length) return;
+
+    slidesEl.innerHTML = featured.map((ev, i) => {
       const sym = this.getCurrencySymbol(ev.currency);
-      const tt = this.parseTicketTypes(ev.ticketTypes);
-      let minP = Infinity;
-      Object.values(tt).forEach(t => { if (t.price < minP) minP = t.price; });
-      const price = minP === 0 ? 'Free' : `${sym}${minP}`;
-      return `<div class="carousel-slide${i === 0 ? ' active' : ''}" data-event-id="${ev._id}" role="button" tabindex="0" aria-label="${ev.title}">
-        <img src="${this.getFullImageUrl(ev.image)}" alt="${ev.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=900'">
-        <div class="carousel-info">
-          <div class="carousel-cat">${this.getCategoryName(ev.category)}</div>
-          <div class="carousel-title">${ev.title}</div>
-          <div class="carousel-venue"><i class="fas fa-map-marker-alt"></i> ${ev.venue}, ${ev.location || 'Ghana'}</div>
-          <span class="carousel-price-tag">${price}</span>
-        </div>
-      </div>`;
+      const tt  = this.parseTicketTypes(ev.ticketTypes);
+      const prices = Object.keys(tt).map(type => this.getTicketPrice(ev, type));
+      const minP = prices.length ? Math.min(...prices) : null;
+      const priceHtml = minP == null ? '' : `<span class="carousel-price-tag">${minP === 0 ? 'Free' : esc(sym) + esc(minP)}</span>`;
+
+      return `<div class="carousel-slide${i === 0 ? ' active' : ''}" data-event-id="${esc(ev._id)}" role="button" tabindex="0" aria-label="${esc(ev.title)}">
+    <img src="${esc(this.getFullImageUrl(ev.image))}" alt="${esc(ev.title)}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=900'">
+    <div class="carousel-info">
+      <div class="carousel-cat">${esc(this.getCategoryName(ev.category))}</div>
+      <div class="carousel-title">${esc(ev.title)}</div>
+      <div class="carousel-venue"><i class="fas fa-map-marker-alt"></i> ${esc(ev.venue)}, ${esc(ev.location || 'Ghana')}</div>
+      ${priceHtml}
+    </div>
+  </div>`;
     }).join('');
-    dotsEl.innerHTML = FEATURED.map((_, i) => `<button class="carousel-dot${i === 0 ? ' active' : ''}" data-index="${i}" aria-label="Go to slide ${i + 1}"></button>`).join('');
+
+    dotsEl.innerHTML = featured.map((_, i) =>
+      `<button class="carousel-dot${i === 0 ? ' active' : ''}" data-index="${i}" aria-label="Go to slide ${i + 1}"></button>`
+    ).join('');
+
     let cur = 0;
     const go = n => {
       slidesEl.querySelectorAll('.carousel-slide').forEach((s, i) => s.classList.toggle('active', i === n));
       dotsEl.querySelectorAll('.carousel-dot').forEach((d, i) => d.classList.toggle('active', i === n));
       cur = n;
     };
-    dotsEl.querySelectorAll('.carousel-dot').forEach(dot => dot.addEventListener('click', () => go(parseInt(dot.dataset.index))));
+
+    dotsEl.querySelectorAll('.carousel-dot').forEach(dot =>
+      dot.addEventListener('click', () => go(parseInt(dot.dataset.index, 10))));
     slidesEl.querySelectorAll('.carousel-slide').forEach(slide => {
       slide.addEventListener('click', () => { if (slide.dataset.eventId) this.showEventDetail(slide.dataset.eventId); });
       slide.addEventListener('keydown', e => { if (e.key === 'Enter') slide.click(); });
     });
-    setInterval(() => go((cur + 1) % FEATURED.length), 4500);
+
+    // autoplay only with several slides, and not for people who asked for reduced motion
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (featured.length > 1 && !reduce) {
+      this._carouselTimer = setInterval(() => go((cur + 1) % featured.length), 4500);
+    }
   }
 
   initBackToTop() {
@@ -803,22 +846,7 @@ class GlycrApp {
 
     container.innerHTML = myEvents.map(e => this.renderEventAdminCard(e)).join('');
 
-    container.querySelectorAll('[data-action]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const action = btn.dataset.action;
-        const eventId = btn.dataset.eventId;
-        if (action === 'edit-event') {
-          const ev = await this.fetchApi(`/events/${eventId}`);
-          this.showEventForm(ev);
-        } else if (action === 'cancel-event') {
-          this.showCancelModal(eventId);
-        } else if (action === 'toggle-publish') {
-          await this.togglePublish(eventId);
-        } else if (action === 'delete-event') {
-          await this.deleteEvent(eventId);
-        }
-      });
-    });
+
   }
 
   renderEventAdminCard(event) {
@@ -1067,6 +1095,7 @@ class GlycrApp {
     if (reset) {
       grid.innerHTML = '<div class="loading-placeholder"><div class="spinner"></div><p>Loading events…</p></div>';
     } else {
+      grid.querySelectorAll('.loading-placeholder').forEach(el => el.remove());
       const loader = document.createElement('div');
       loader.className = 'loading-placeholder'; loader.id = 'scroll-loader';
       loader.innerHTML = '<div class="spinner"></div><p>Loading more…</p>';
@@ -1964,7 +1993,7 @@ class GlycrApp {
     safeSet('total-pending-amount', `${sym}${totalPend.toFixed(2)}`);
     safeSet('total-payout-count', payouts.length);
     const tbody = document.getElementById('payout-table-body');
-    if (!payouts.length) { tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No payouts found</td><tr>'; }
+    if (!payouts.length) { tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No payouts found</td></tr>'; }
     else {
       tbody.innerHTML = payouts.map(p => {
         const sc = p.status === 'completed' ? 'completed' : p.status === 'pending' ? 'pending' : 'failed';
@@ -3492,6 +3521,7 @@ GlycrApp.prototype.init = async function () {
   this._watchSystemTheme();
   await _origInit.call(this);
   this._bindValidationFeatures();
+
 };
 
 // Patch showSection to handle validation-page
@@ -3499,6 +3529,13 @@ const _origShowSection = GlycrApp.prototype.showSection;
 GlycrApp.prototype.showSection = function (section) {
   _origShowSection.call(this, section);
   if (section === 'validation-page') this.initValidationPage();
+};
+
+
+GlycrApp.prototype.showSection = function (section) {
+  _origShowSection.call(this, section);
+  if (section === 'validation-page') this.initValidationPage();
+  if (['dashboard', 'payout-page', 'myevents-page', 'report-page'].includes(section)) this._refreshOrgIfStale();
 };
 
 // Bootstrap

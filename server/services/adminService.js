@@ -12,6 +12,7 @@ const { sendEmail, sendSMS } = require('./notificationService');
 const { AppError } = require('../utils/appError');
 const { logger } = require('../config/logger');
 const { escapeHtml, sanitizeHtml } = require('../utils/htmlSecurity');
+const eventService = require('../services/eventService');
 const payoutService = require('./payoutService');
 const userService = require('./userService');
 
@@ -248,6 +249,14 @@ class AdminService {
     event.isPublished = !event.isPublished;
     await event.save();
     return event;
+  }
+
+  async cancelEvent(adminId, eventId) {
+    return eventService.cancelEvent(eventId, adminId, true);
+  }
+
+  async restoreEvent(adminId, eventId) {
+    return eventService.restoreEvent(eventId);
   }
 
   // ---------- Tickets ----------

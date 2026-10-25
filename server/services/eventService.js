@@ -193,14 +193,15 @@ class EventService {
     return event;
   }
 
-  async cancelEvent(eventId, organizerId) {
+  async cancelEvent(eventId, requesterId, isAdmin = false) {
     const event = await Event.findById(eventId).populate('organizerId', 'name');
     if (!event) throw new AppError('Event not found', 404);
 
     const ownerId = event.organizerId?._id || event.organizerId;
-    if (ownerId.toString() !== organizerId.toString()) {
+    if (!isAdmin && ownerId.toString() !== requesterId.toString()) {
       throw new AppError('You do not have permission to cancel this event', 403);
     }
+
     if (event.isCancelled) {
       throw new AppError('Event is already cancelled', 400);
     }
@@ -296,6 +297,25 @@ class EventService {
     // NOTE: automatic refund creation is still a future feature. The
     // notification tells attendees to contact the organizer for refunds —
     // that matches the current refundService flow (manual approve/reject).
+    return event;
+  }
+
+  async restoreEvent(eventId) {
+    const event = await Event.findById(eventId);
+    if (!event) throw new AppError('Event not found', 404);
+    if (!event.isCancelled) throw new AppError('Event is not cancelled', 400);
+    if (new Date(event.date) <= new Date()) {
+      throw new AppError('Past events cannot be restored', 400);
+    }
+
+    event.isCancelled = false;
+    await event.save();
+
+    // tickets that were voided by the cancellation become scannable again
+    await Ticket.updateMany(
+      { eventId, status: 'cancelled', refunded: { $ne: true } },
+      { $set: { status: 'active' } }
+    );
     return event;
   }
 

@@ -30,6 +30,8 @@ const eventSchema = new mongoose.Schema({
   isPublished: { type: Boolean, default: true },
   isCancelled: { type: Boolean, default: false },
   flagged: { type: Boolean, default: false },
+  isFeatured:    { type: Boolean, default: false, index: true },
+  featuredOrder: { type: Number, default: 0 },
 
   // Scheduling — stored for future use. Actual scheduled publishing requires
   // a background job that flips isPublished when this timestamp arrives.

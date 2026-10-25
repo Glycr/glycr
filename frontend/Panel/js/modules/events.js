@@ -18,6 +18,8 @@ function renderEvents() {
     const evTix   = tickets.filter(t => (t.eventId?.id || t.eventId?._id?.toString() || t.eventId) === ev.id);
     const revenue = evTix.reduce((s, t) => s + (t.price || 0), 0);
     const isLive  = ev.isPublished && !ev.isCancelled && new Date(ev.date) > new Date();
+    // an event can be featured only while live; one that is already featured can always be un-featured
+    const canFeature = ev.isFeatured || isLive;
     const dateStr = new Date(ev.date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
     let badges = '';
     if (ev.flagged)        badges += `<span class="badge badge-flagged"><i class="fa-solid fa-flag"></i> Flagged</span>`;
@@ -25,6 +27,7 @@ function renderEvents() {
     else if (isLive)       badges += `<span class="badge badge-live"><i class="fa-solid fa-circle-dot"></i> Live</span>`;
     else if (!ev.isPublished) badges += `<span class="badge badge-unpublished"><i class="fa-solid fa-eye-slash"></i> Unpublished</span>`;
     else                   badges += `<span class="badge badge-info"><i class="fa-solid fa-check"></i> Ended</span>`;
+    if (ev.isFeatured && isLive) badges += `<span class="badge badge-featured"><i class="fa-solid fa-star"></i> Featured${ev.featuredOrder ? ' #' + ev.featuredOrder : ''}</span>`;
     const sel = selectedIds.events.has(ev.id);
     return `
       <tr class="${sel ? 'row-selected' : ''}">
@@ -50,6 +53,7 @@ function renderEvents() {
           <button class="btn-icon" style="background:#8b5cf6;" onclick="openEditEventModal('${ev.id}')" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
           <button class="btn-icon" style="background:${ev.flagged ? '#10b981' : '#f59e0b'};" onclick="flagEvent('${ev.id}')" title="${ev.flagged ? 'Unflag' : 'Flag'}"><i class="fa-solid ${ev.flagged ? 'fa-flag-checkered' : 'fa-flag'}"></i></button>
           <button class="btn-icon" style="background:#f59e0b;" onclick="togglePublish('${ev.id}')" title="${ev.isPublished ? 'Unpublish' : 'Publish'}"><i class="fa-solid ${ev.isPublished ? 'fa-eye-slash' : 'fa-eye'}"></i></button>
+          <button class="btn-icon" style="background:${ev.isFeatured ? '#eab308' : '#0ea5e9'};${canFeature ? '' : 'opacity:0.35;cursor:not-allowed;'}" ${canFeature ? '' : 'disabled'} onclick="toggleFeatured('${ev.id}')" title="${ev.isFeatured ? 'Remove from carousel' : canFeature ? 'Feature in carousel' : 'Only live events can be featured'}"><i class="fa-${ev.isFeatured ? 'solid' : 'regular'} fa-star"></i></button>
           <button class="btn-icon" style="background:${ev.isCancelled ? '#10b981' : '#ef4444'};" onclick="cancelEvent('${ev.id}')" title="${ev.isCancelled ? 'Restore' : 'Cancel'}"><i class="fa-solid ${ev.isCancelled ? 'fa-rotate-left' : 'fa-ban'}"></i></button>
           <button class="btn-icon" style="background:#ef4444;" onclick="deleteEvent('${ev.id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
         </div></td>
@@ -69,7 +73,8 @@ function getFilteredEvents() {
       || (filter === 'live'        && e.isPublished && !e.isCancelled && new Date(e.date) > new Date())
       || (filter === 'cancelled'   && e.isCancelled)
       || (filter === 'flagged'     && e.flagged)
-      || (filter === 'unpublished' && !e.isPublished && !e.isCancelled);
+      || (filter === 'unpublished' && !e.isPublished && !e.isCancelled)
+      || (filter === 'featured'    && e.isFeatured);
     return mSearch && mFilter && applyDateRangeFilter(e.date, dfrom, dto);
   });
 }
@@ -105,7 +110,7 @@ async function saveEditEvent() {
   const payload = { title, description, date, venue, location, category };
   try { await apiRequest(`/admin/events/${eventId}`, { method: 'PUT', body: JSON.stringify(payload) }); }
   catch { const ev = events.find(e => e.id === eventId); if (ev) Object.assign(ev, payload); }
- // await addLog('event', 'Event details edited', { adminName: currentAdmin.name, adminRole: currentAdmin.role, eventId, title });
+  // await addLog('event', 'Event details edited', { adminName: currentAdmin.name, adminRole: currentAdmin.role, eventId, title });
   closeModal('edit-event-modal');
   renderEvents();
   toast.success('Event updated', 'Changes have been saved.');
@@ -127,6 +132,79 @@ async function togglePublish(eventId) {
   toast.info('Visibility updated', 'Event publish status changed.');
 }
 
+// ===============================================
+// HOMEPAGE CAROUSEL (featured events)
+// ===============================================
+
+// uses the error toast if the panel has one, otherwise falls back to the warning toast
+function notifyFeaturedError(title, message) {
+  if (typeof toast.error === 'function') toast.error(title, message);
+  else toast.warning(title, message);
+}
+
+// next free carousel position = highest current position + 1
+function nextFeaturedOrder() {
+  const used = events.filter(e => e.isFeatured).map(e => e.featuredOrder || 0);
+  return Math.min(99, Math.max(0, ...used) + 1);
+}
+
+async function toggleFeatured(eventId) {
+  const ev = events.find(e => e.id === eventId);
+  if (!ev) return;
+  const willFeature = !ev.isFeatured;
+
+  if (!willFeature) {
+    const ok = await customConfirm(
+      `Remove "${ev.title}" from the homepage carousel?`,
+      'Remove from Carousel', 'Remove', '#ef4444'
+    );
+    if (!ok) return;
+  }
+
+  const payload = willFeature ? { featured: true, order: nextFeaturedOrder() } : { featured: false };
+
+  try {
+    const updated = await apiRequest(`/admin/events/${eventId}/featured`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+    ev.isFeatured    = updated?.isFeatured ?? willFeature;
+    ev.featuredOrder = updated?.featuredOrder ?? (willFeature ? payload.order : 0);
+  } catch (err) {
+    // no local fallback: if the server refused, the carousel did not change
+    notifyFeaturedError('Could not update carousel', err.message || 'Please try again.');
+    return;
+  }
+
+  renderEvents();
+  if (willFeature) toast.success('Featured', `"${ev.title}" now appears in the homepage carousel.`);
+  else             toast.info('Removed', `"${ev.title}" was removed from the carousel.`);
+}
+
+async function saveFeaturedOrder(eventId) {
+  const ev = events.find(e => e.id === eventId);
+  if (!ev) return;
+  const order = Number(document.getElementById('featured-order-input')?.value);
+  if (!Number.isInteger(order) || order < 0 || order > 99) {
+    toast.warning('Invalid position', 'Enter a whole number between 0 and 99.');
+    return;
+  }
+  try {
+    const updated = await apiRequest(`/admin/events/${eventId}/featured`, {
+      method: 'PATCH',
+      body: JSON.stringify({ featured: true, order }),
+    });
+    ev.featuredOrder = updated?.featuredOrder ?? order;
+  } catch (err) {
+    notifyFeaturedError('Could not save position', err.message || 'Please try again.');
+    return;
+  }
+  renderEvents();
+  toast.success('Position saved', 'Lower numbers appear first in the carousel.');
+}
+
+// ===============================================
+
 async function cancelEvent(eventId) {
   const ev = events.find(e => e.id === eventId);
   if (!ev) return;
@@ -140,12 +218,20 @@ async function cancelEvent(eventId) {
     willCancel ? '#ef4444' : '#10b981'
   );
   if (!ok) return;
-  try { await apiRequest(`/admin/events/${eventId}/cancel`, { method: 'PATCH' }); }
-  catch { ev.isCancelled = willCancel; }
-  //await addLog('warning', willCancel ? 'Event cancelled' : 'Event restored', { adminName: currentAdmin.name, adminRole: currentAdmin.role, eventId });
-  renderEvents();
-  if (willCancel) toast.warning('Event cancelled', 'The event has been cancelled.');
-  else            toast.success('Event restored', 'The event is active again.');
+
+  try {
+    await apiRequest(`/admin/events/${eventId}/${willCancel ? 'cancel' : 'restore'}`, { method: 'PATCH' });
+  } catch (err) {
+    notifyFeaturedError(
+      willCancel ? 'Could not cancel event' : 'Could not restore event',
+      err.message || 'Please try again.'
+    );
+    return;
+  }
+
+  await loadData();   // ticket statuses changed too, so refresh everything
+  if (willCancel) toast.warning('Event cancelled', 'Ticket holders are being notified.');
+  else            toast.success('Event restored', 'The event and its tickets are active again.');
 }
 
 async function deleteEvent(eventId) {
@@ -154,7 +240,7 @@ async function deleteEvent(eventId) {
   if (!ok) return;
   try { await apiRequest(`/admin/events/${eventId}`, { method: 'DELETE' }); }
   catch { events.splice(events.findIndex(e => e.id === eventId), 1); }
- // await addLog('danger', 'Event deleted', { adminName: currentAdmin.name, adminRole: currentAdmin.role, eventId });
+  // await addLog('danger', 'Event deleted', { adminName: currentAdmin.name, adminRole: currentAdmin.role, eventId });
   await loadData();
   toast.success('Event deleted', 'The event has been removed.');
 }
@@ -165,9 +251,9 @@ async function bulkFlagEvents() {
   showBulkConfirm('Flag Events', `Flag ${ids.length} event(s)?`, async () => {
     let ok = 0;
     for (const id of ids) { try { await apiRequest(`/admin/events/${id}/flag`, { method: 'PATCH' }); ok++; } catch { ok++; } }
-   // await addLog('warning', `Bulk flagged ${ok} event(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+    // await addLog('warning', `Bulk flagged ${ok} event(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
     selectedIds.events.clear();
-   await loadData();
+    await loadData();
     toast.warning('Done', `${ok} event(s) flagged.`);
   });
 }
@@ -176,12 +262,16 @@ async function bulkCancelEvents() {
   const ids = [...selectedIds.events];
   if (!ids.length) return;
   showBulkConfirm('Cancel Events', `Cancel ${ids.length} event(s)?`, async () => {
-    let ok = 0;
-    for (const id of ids) { try { await apiRequest(`/admin/events/${id}/cancel`, { method: 'PATCH' }); ok++; } catch { ok++; } }
-    await addLog('warning', `Bulk cancelled ${ok} event(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+    let ok = 0, failed = 0, lastError = '';
+    for (const id of ids) {
+      try { await apiRequest(`/admin/events/${id}/cancel`, { method: 'PATCH' }); ok++; }
+      catch (err) { failed++; lastError = err.message || ''; }
+    }
+    await addLog('warning', `Bulk cancelled ${ok} event(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok, failed });
     selectedIds.events.clear();
     await loadData();
-    toast.warning('Done', `${ok} event(s) cancelled.`);
+    if (failed) notifyFeaturedError('Some events were not cancelled', `${ok} cancelled, ${failed} failed. ${lastError}`);
+    else        toast.warning('Done', `${ok} event(s) cancelled.`);
   });
 }
 
@@ -191,7 +281,7 @@ async function bulkDeleteEvents() {
   showBulkConfirm('Delete Events', `Permanently delete ${ids.length} event(s) and all their tickets?`, async () => {
     let ok = 0;
     for (const id of ids) { try { await apiRequest(`/admin/events/${id}`, { method: 'DELETE' }); ok++; } catch { ok++; } }
-   // await addLog('danger', `Bulk deleted ${ok} event(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
+    // await addLog('danger', `Bulk deleted ${ok} event(s)`, { adminName: currentAdmin.name, adminRole: currentAdmin.role, count: ok });
     selectedIds.events.clear();
     await loadData();
     toast.success('Done', `${ok} event(s) deleted.`);
@@ -239,6 +329,16 @@ function viewEvent(eventId) {
         <div style="background:#334155;padding:1rem;border-radius:0.5rem;"><div style="color:#94a3b8;font-size:0.75rem;">Platform Fee (${platformFeePercent}%)</div><div style="font-size:1.5rem;font-weight:700;color:#8b5cf6;">₵${feeAmt.toFixed(2)}</div></div>
       </div>
     </div>
+    ${ev.isFeatured ? `
+    <div style="margin-top:1.5rem;">
+      <h4 style="font-weight:700;margin-bottom:0.75rem;"><i class="fa-solid fa-star" style="margin-right:0.4rem;color:#eab308;"></i>Carousel position</h4>
+      <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+        <input type="number" id="featured-order-input" min="0" max="99" value="${ev.featuredOrder || 1}"
+               style="width:90px;background:#334155;border:1px solid #475569;color:#e2e8f0;border-radius:0.5rem;padding:0.5rem 0.75rem;">
+        <button class="btn btn-primary" onclick="saveFeaturedOrder('${ev.id}')"><i class="fa-solid fa-floppy-disk"></i> Save position</button>
+        <span style="font-size:0.78rem;color:#94a3b8;">Lower numbers show first</span>
+      </div>
+    </div>` : ''}
     <div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
       <button class="btn btn-primary" onclick="openEditEventModal('${ev.id}');closeModal('event-modal');"><i class="fa-solid fa-pen-to-square"></i> Edit Event</button>
     </div>`;

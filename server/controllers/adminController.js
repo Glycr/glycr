@@ -69,6 +69,30 @@ exports.suspendUser = async (req, res, next) => {
   }
 };
 
+exports.cancelEvent = async (req, res, next) => {
+  try {
+    const event = await adminService.cancelEvent(req.user.id, req.params.id);
+    logService.audit(req.user.email, 'cancel_event', event?.title || req.params.id, {
+      type: 'danger', adminId: req.user.id, eventId: req.params.id, ...ctx(req),
+    });
+    res.json(event);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.restoreEvent = async (req, res, next) => {
+  try {
+    const event = await adminService.restoreEvent(req.user.id, req.params.id);
+    logService.audit(req.user.email, 'restore_event', event?.title || req.params.id, {
+      type: 'event', adminId: req.user.id, eventId: req.params.id, ...ctx(req),
+    });
+    res.json(event);
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.deleteUser = async (req, res, next) => {
   try {
     const target = await User.findById(req.params.id).select('email role').lean();

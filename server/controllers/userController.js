@@ -90,3 +90,12 @@ exports.toggleFavorite = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.getFavorites = async (req, res, next) => {
+  try {
+    const favorites = await userService.getFavorites(req.user.id);
+    res.json({ favorites });
+  } catch (err) {
+    next(err);
+  }
+};

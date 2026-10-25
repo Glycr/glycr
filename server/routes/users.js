@@ -20,6 +20,7 @@ const auth = require('../middleware/auth');
 //   - DELETE /users/:id        → cascade-delete any account
 // All removed. Use /admin/users/* for admin operations.
 
+router.get('/users/favorites',  auth, userController.getFavorites);
 router.post('/users/favorites', auth, userController.toggleFavorite);
 
 module.exports = router;

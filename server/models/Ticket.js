@@ -34,6 +34,9 @@ const ticketSchema = new mongoose.Schema({
   refundId: { type: mongoose.Schema.Types.ObjectId, ref: 'Refund', default: null },
   refundedAt: { type: Date, default: null },
 
+
+  reviewed: { type: Boolean, default: false },
+
   status: {
     type: String,
     enum: ['active', 'used', 'cancelled', 'refunded', 'refund_pending'],
