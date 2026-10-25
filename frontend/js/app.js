@@ -262,101 +262,30 @@ class GlycrApp {
 
   // ─── MASTER DATA LOADER (Admin Panel Pattern) ─────────────
   async loadAllData() {
-    if (this.isLoadingData) return;
-    this.isLoadingData = true;
-
-    try {
-      const userId = this.currentUser?.id;
-
-      const promises = [
-        this.fetchApi('/events?limit=1000&upcoming=false'),
-      ];
-
-      if (this.currentUser) {
-        promises.push(this.fetchApi('/tickets/my'));
-      }
-
-      if (this.currentUser?.isOrganizer) {
-        promises.push(
-          this.fetchApi(`/events?organizerId=${userId}&limit=1000`),
-          this.fetchApi('/payouts'),
-          this.fetchApi('/refunds/organizer')
-        );
-      }
-
-      const results = await Promise.all(promises);
-
-      this.allEvents = results[0] || [];
-      let resultIndex = 1;
-
-      if (this.currentUser) {
-        this.userTickets = results[resultIndex++] || [];
-      }
-
-      if (this.currentUser?.isOrganizer) {
-        this.orgEvents = results[resultIndex++] || [];
-        this.allPayouts = results[resultIndex++] || [];
-        this.orgRefunds = results[resultIndex++] || [];
-      }
-
-      this.events = this.allEvents;
-
+    if (this._loadAllPromise) return this._loadAllPromise;
+    this._loadAllPromise = (async () => {
+      const jobs = [this.loadEvents()];
+      if (this.currentUser) jobs.push(this.loadUserTickets(), this.loadUserPrefs());
+      if (this.currentUser?.isOrganizer) jobs.push(this.loadOrgEvents(), this.loadPayouts(), this.loadOrgRefunds(), this.loadOrgSummary());
+      const res = await Promise.allSettled(jobs);
+      res.filter(r => r.status === 'rejected').forEach(r => console.error(r.reason));
+      if (res.some(r => r.status === 'rejected')) this.showToast('Some data failed to load. Try refreshing.', 'warning');
       this.dataLoaded = true;
-      this.isLoadingData = false;
-
       await this.refreshCurrentView();
-
-    } catch (err) {
-      console.error('Failed to load all data:', err);
-      this.isLoadingData = false;
-      this.showToast('Failed to load data. Please refresh the page.', 'error');
-    }
+    })().finally(() => { this._loadAllPromise = null; });
+    return this._loadAllPromise;
   }
 
   calculateOrganizerStats() {
     if (!this.currentUser?.isOrganizer) return null;
-
-    const stats = {
+    const s = this.orgSummary;
+    return {
       totalEvents: this.orgEvents.length,
-      totalTicketsSold: 0,
-      totalRevenue: 0,
-      pendingPayouts: 0,
-      completedPayouts: 0,
-      pendingRefunds: 0,
-      netEarnings: 0
+      totalTicketsSold: s ? s.ticketsSold : null,
+      totalRevenue: s ? s.grossRevenue : null,
+      availableBalance: s ? s.availableForPayout : null,
+      pendingRefunds: (this.orgRefunds || []).filter(r => r.status === 'pending').reduce((a, r) => a + (r.amount || 0), 0),
     };
-
-    this.orgEvents.forEach(event => {
-      const tt = this.parseTicketTypes(event.ticketTypes);
-      Object.values(tt).forEach(ticketType => {
-        const sold = ticketType.sold || 0;
-        const price = ticketType.price || 0;
-        stats.totalTicketsSold += sold;
-        stats.totalRevenue += sold * price;
-      });
-    });
-
-    if (this.allPayouts) {
-      this.allPayouts.forEach(payout => {
-        if (payout.status === 'pending') {
-          stats.pendingPayouts += payout.amount;
-        } else if (payout.status === 'completed') {
-          stats.completedPayouts += payout.amount;
-        }
-      });
-    }
-
-    if (this.orgRefunds) {
-      this.orgRefunds.forEach(refund => {
-        if (refund.status === 'pending') {
-          stats.pendingRefunds += refund.amount || 0;
-        }
-      });
-    }
-
-    stats.netEarnings = stats.totalRevenue * (1 - this.platformFeePercent / 100) - stats.completedPayouts;
-
-    return stats;
   }
 
   async refreshCurrentView() {
@@ -601,7 +530,16 @@ class GlycrApp {
   }
 
   async fetchPlatformFee() {
-    try { const s = await this.fetchApi('/settings'); this.platformFeePercent = s.platformFee || 10; } catch { this.platformFeePercent = 10; }
+    try {
+      const s = await this.fetchApi('/settings');
+      const fee = Number(s.platformFee);
+      if (!Number.isFinite(fee)) throw new Error('Invalid platform fee');
+      this.platformFeePercent = fee;
+    } catch (err) {
+      this.platformFeePercent = null;
+      console.error('Platform fee unavailable:', err);
+      if (this.currentUser?.isOrganizer) this.showToast('Could not load the platform fee. Fee figures are hidden until it loads.', 'warning');
+    }
   }
 
   async handleAuth() {
@@ -778,7 +716,7 @@ class GlycrApp {
     if (!stats) return;
 
     const sym = this.getCurrencySymbol(this.currentUser.currency || 'GHC');
-    const now = this.currentDate;
+    const now = new Date();
 
     const liveEvents = this.orgEvents.filter(e =>
       e.isPublished && !e.isCancelled && new Date(e.date) > now
@@ -789,12 +727,17 @@ class GlycrApp {
       if (el) el.textContent = v;
     };
 
-    safeSet('total-revenue', `${sym}${stats.totalRevenue.toFixed(0)}`);
-    safeSet('total-sold', stats.totalTicketsSold);
+    // null means the summary endpoint failed, so show a dash instead of a wrong number
+    const money = v => v == null
+      ? '—'
+      : `${sym}${Number(v).toLocaleString('en-GB', { maximumFractionDigits: 2 })}`;
+
+    safeSet('total-revenue', money(stats.totalRevenue));
+    safeSet('total-sold', stats.totalTicketsSold ?? '—');
     safeSet('total-events', stats.totalEvents);
     safeSet('events-live', liveEvents);
-    safeSet('pending-payouts', `${sym}${Math.max(0, stats.netEarnings).toFixed(0)}`);
-    safeSet('platform-fee-display', `${this.platformFeePercent}%`);
+    safeSet('pending-payouts', money(stats.availableBalance));
+    safeSet('platform-fee-display', this.platformFeePercent == null ? '—' : `${this.platformFeePercent}%`);
 
     await this._renderDashChart();
   }
@@ -881,16 +824,20 @@ class GlycrApp {
   renderEventAdminCard(event) {
     const tt = this.parseTicketTypes(event.ticketTypes);
     const esym = this.getCurrencySymbol(event.currency);
-    const eRev = Object.values(tt).reduce((a, t) => a + ((t.sold || 0) * t.price), 0);
+
+    // revenue comes from the server summary; '—' if it failed to load
+    const pe = this.orgSummary?.perEvent?.[event._id];
+    const eRevText = pe ? `${esym}${pe.revenue.toFixed(0)}` : '—';
+
     const bars = Object.entries(tt).map(([type, t]) => {
       const s = t.sold || 0, pct = t.capacity ? (s / t.capacity * 100) : 0;
       return `<div class="ticket-bar-row">
-        <span class="ticket-bar-label">${type}</span>
-        <div class="ticket-bar-track">
-          <div class="ticket-bar-fill" style="width:${pct}%"></div>
-        </div>
-        <span class="ticket-bar-count">${s}/${t.capacity}</span>
-      </div>`;
+      <span class="ticket-bar-label">${esc(type)}</span>
+      <div class="ticket-bar-track">
+        <div class="ticket-bar-fill" style="width:${pct}%"></div>
+      </div>
+      <span class="ticket-bar-count">${esc(s)}/${esc(t.capacity)}</span>
+    </div>`;
     }).join('');
 
     const statusBadge = event.isCancelled ?
@@ -903,34 +850,34 @@ class GlycrApp {
       `<span class="scheduled-badge"><i class="fas fa-clock"></i> Scheduled ${new Date(event.publishAt).toLocaleDateString()}</span>` : '';
 
     return `<div class="event-admin-card">
-      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
-        <div>
-          <div class="event-admin-title">${event.title} ${scheduleBadge}</div>
-          <div class="event-admin-meta">
-            <i class="fas fa-calendar-alt"></i> ${new Date(event.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'})}
-            &nbsp;·&nbsp; <i class="fas fa-coins"></i> ${esym}${eRev.toFixed(0)}
-            &nbsp;${statusBadge}
-          </div>
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+      <div>
+        <div class="event-admin-title">${esc(event.title)} ${scheduleBadge}</div>
+        <div class="event-admin-meta">
+          <i class="fas fa-calendar-alt"></i> ${new Date(event.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'})}
+          &nbsp;·&nbsp; <i class="fas fa-coins"></i> ${eRevText}
+          &nbsp;${statusBadge}
         </div>
       </div>
-      <div style="margin:0.5rem 0;">${bars}</div>
-      <div class="event-admin-actions">
-        <button class="btn btn-ghost" style="font-size:0.75rem;" data-action="edit-event" data-event-id="${event._id}">
-          <i class="fas fa-edit"></i> Edit
+    </div>
+    <div style="margin:0.5rem 0;">${bars}</div>
+    <div class="event-admin-actions">
+      <button class="btn btn-ghost" style="font-size:0.75rem;" data-action="edit-event" data-event-id="${esc(event._id)}">
+        <i class="fas fa-edit"></i> Edit
+      </button>
+      ${!event.isCancelled ? `
+        <button class="btn btn-ghost" style="font-size:0.75rem; color:var(--gold); border-color:rgba(251,191,36,0.3);" data-action="cancel-event" data-event-id="${esc(event._id)}">
+          <i class="fas fa-ban"></i> Cancel
         </button>
-        ${!event.isCancelled ? `
-          <button class="btn btn-ghost" style="font-size:0.75rem; color:var(--gold); border-color:rgba(251,191,36,0.3);" data-action="cancel-event" data-event-id="${event._id}">
-            <i class="fas fa-ban"></i> Cancel
-          </button>
-        ` : ''}
-        <button class="btn btn-ghost" style="font-size:0.75rem;" data-action="toggle-publish" data-event-id="${event._id}">
-          <i class="fas fa-${event.isPublished ? 'eye-slash' : 'eye'}"></i> ${event.isPublished ? 'Unpublish' : 'Publish'}
-        </button>
-        <button class="btn btn-danger" style="font-size:0.75rem;" data-action="delete-event" data-event-id="${event._id}">
-          <i class="fas fa-trash"></i> Delete
-        </button>
-      </div>
-    </div>`;
+      ` : ''}
+      <button class="btn btn-ghost" style="font-size:0.75rem;" data-action="toggle-publish" data-event-id="${esc(event._id)}">
+        <i class="fas fa-${event.isPublished ? 'eye-slash' : 'eye'}"></i> ${event.isPublished ? 'Unpublish' : 'Publish'}
+      </button>
+      <button class="btn btn-danger" style="font-size:0.75rem;" data-action="delete-event" data-event-id="${esc(event._id)}">
+        <i class="fas fa-trash"></i> Delete
+      </button>
+    </div>
+  </div>`;
   }
 
   // ─── Profile ──────────────────────────────────────────────
@@ -2039,36 +1986,30 @@ class GlycrApp {
     }
 
     const myEvents = this.orgEvents;
-    const payouts = this.allPayouts;
+    const payouts  = this.allPayouts;
     const sym = this.getCurrencySymbol(this.currentUser.currency || 'GHC');
-    const fee = this.platformFeePercent;
-    let tickets = 0, gross = 0;
-    myEvents.forEach(e => {
-      const tt = this.parseTicketTypes(e.ticketTypes);
-      tickets  += Object.values(tt).reduce((a, t) => a + (t.sold || 0), 0);
-      gross    += Object.values(tt).reduce((a, t) => a + ((t.sold || 0) * t.price), 0);
-    });
-    const net = gross * (1 - fee / 100);
     const safeSet = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
+    // ── Figures come from the server summary; null means it failed to load ──
+    const s = this.orgSummary;
+    const money = v => v == null ? '—' : `${sym}${Number(v).toFixed(2)}`;
     safeSet('report-total-events',  myEvents.length);
-    safeSet('report-total-tickets', tickets);
-    safeSet('report-total-revenue', `${sym}${gross.toFixed(2)}`);
-    safeSet('report-net-revenue',   `${sym}${net.toFixed(2)}`);
-    const sorted = [...myEvents].sort((a, b) => {
-      const ra = Object.values(this.parseTicketTypes(a.ticketTypes)).reduce((s, t) => s + ((t.sold || 0) * t.price), 0);
-      const rb = Object.values(this.parseTicketTypes(b.ticketTypes)).reduce((s, t) => s + ((t.sold || 0) * t.price), 0);
-      return rb - ra;
-    });
+    safeSet('report-total-tickets', s ? s.ticketsSold : '—');
+    safeSet('report-total-revenue', money(s?.grossRevenue));
+    safeSet('report-net-revenue',   money(s?.netRevenue));
+
+    const revOf = e => s?.perEvent?.[e._id]?.revenue ?? -1;
+    const sorted = [...myEvents].sort((a, b) => revOf(b) - revOf(a));
     const tbody = document.getElementById('report-events-tbody');
     if (tbody) {
       tbody.innerHTML = sorted.slice(0, 10).map(e => {
-        const tt   = this.parseTicketTypes(e.ticketTypes);
-        const sold = Object.values(tt).reduce((a, t) => a + (t.sold || 0), 0);
-        const rev  = Object.values(tt).reduce((a, t) => a + ((t.sold || 0) * t.price), 0);
+        const pe = s?.perEvent?.[e._id];
         const badge = e.isCancelled ? '<span class="status-pill failed">Cancelled</span>' : e.isPublished ? '<span class="status-pill completed">Published</span>' : '<span class="status-pill pending">Draft</span>';
-        return `<tr><td style="font-weight:600; color:var(--bright);">${e.title}</td><td>${new Date(e.date).toLocaleDateString('en-GB')}</td><td>${sold}</td><td style="color:var(--teal); font-family:'JetBrains Mono',monospace;">${sym}${rev.toFixed(2)}</td><td>${badge}</td></tr>`;
+        return `<tr><td style="font-weight:600; color:var(--bright);">${esc(e.title)}</td><td>${new Date(e.date).toLocaleDateString('en-GB')}</td><td>${pe ? pe.sold : '—'}</td><td style="color:var(--teal); font-family:'JetBrains Mono',monospace;">${pe ? money(pe.revenue) : '—'}</td><td>${badge}</td></tr>`;
       }).join('') || '<tr><td colspan="5" class="table-empty">No events yet</td></tr>';
     }
+
+    // ── Revenue trend chart (unchanged) ──
     let salesData = { labels: [], tickets: [], revenue: [] };
     try { salesData = await this.fetchApi('/analytics/sales-trend?days=7'); } catch {}
     const rCtx = document.getElementById('report-revenue-chart');
@@ -2076,19 +2017,22 @@ class GlycrApp {
       if (this.reportRevenueChart) this.reportRevenueChart.destroy();
       this.reportRevenueChart = new Chart(rCtx, { type: 'bar', data: { labels: salesData.labels, datasets: [{ label: 'Revenue (₵)', data: salesData.revenue, backgroundColor: 'rgba(45,212,191,0.3)', borderColor: '#2dd4bf', borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#4a6278', font: { size: 10 } }, grid: { color: '#192130' } }, x: { ticks: { color: '#4a6278', font: { size: 10 } }, grid: { color: '#192130' } } } } });
     }
-    const typeTotals = {};
-    myEvents.forEach(e => { const tt = this.parseTicketTypes(e.ticketTypes); Object.entries(tt).forEach(([type, t]) => { typeTotals[type] = (typeTotals[type] || 0) + (t.sold || 0); }); });
+
+    // ── Tickets by type (from the server) ──
+    const typeTotals = s?.byType || {};
     const tCtx = document.getElementById('report-ticket-chart');
     if (tCtx && Object.keys(typeTotals).length) {
       if (this.reportTicketChart) this.reportTicketChart.destroy();
       this.reportTicketChart = new Chart(tCtx, { type: 'doughnut', data: { labels: Object.keys(typeTotals), datasets: [{ data: Object.values(typeTotals), backgroundColor: ['rgba(45,212,191,0.75)', 'rgba(110,231,183,0.75)', 'rgba(251,191,36,0.75)', 'rgba(255,107,107,0.75)', 'rgba(125,211,252,0.75)'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#7a96aa', font: { family: 'JetBrains Mono', size: 10 }, padding: 12 } } } } });
     }
+
+    // ── Export buttons (unchanged) ──
     const filterByDate = (arr, field) => {
-      const s = (document.getElementById('report-start-date') || {}).value;
-      const e = (document.getElementById('report-end-date') || {}).value;
+      const sd = (document.getElementById('report-start-date') || {}).value;
+      const ed = (document.getElementById('report-end-date') || {}).value;
       let out = [...arr];
-      if (s) out = out.filter(x => new Date(x[field]) >= new Date(s));
-      if (e) out = out.filter(x => new Date(x[field]) <= new Date(e + 'T23:59:59'));
+      if (sd) out = out.filter(x => new Date(x[field]) >= new Date(sd));
+      if (ed) out = out.filter(x => new Date(x[field]) <= new Date(ed + 'T23:59:59'));
       return out;
     };
     const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
@@ -2362,22 +2306,8 @@ class GlycrApp {
   //  resulting in a 400 error after the user filled out the form.
   // ═══════════════════════════════════════════════════════════
   async getNetAvailablePayout() {
-    const [myPayouts, myEvents] = await Promise.all([
-      this.fetchApi('/payouts'),
-      this.fetchApi(`/events?organizerId=${this.currentUser.id}`),
-    ]);
-
-    // Include BOTH completed and pending payouts (matches backend behaviour)
-    const totalCommitted = myPayouts
-      .filter(p => p.status === 'completed' || p.status === 'pending')
-      .reduce((s, p) => s + (p.amount || 0), 0);
-
-    const gross = myEvents.reduce((s, e) => {
-      const tt = this.parseTicketTypes(e.ticketTypes);
-      return s + Object.values(tt).reduce((a, t) => a + ((t.sold || 0) * t.price), 0);
-    }, 0);
-
-    return Math.max(0, gross * (1 - this.platformFeePercent / 100) - totalCommitted);
+    this.orgSummary = await this.fetchApi('/analytics/organizer-summary');
+    return Math.max(0, Number(this.orgSummary.availableForPayout) || 0);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -2644,6 +2574,49 @@ class GlycrApp {
   checkResetToken() {
     const t = new URLSearchParams(window.location.search).get('reset_token');
     if (t) { localStorage.setItem('reset_token', t); window.history.replaceState({}, '', window.location.pathname); this.openModal('reset-password-modal'); }
+  }
+
+  _list(r) { return Array.isArray(r) ? r : (r?.events || r?.data || []); }
+
+  async loadEvents()      { this.allEvents = this._list(await this.fetchApi('/events?limit=200&upcoming=false')); }
+  async loadUserTickets() { if (this.currentUser) this.userTickets = this._list(await this.fetchApi('/tickets/my')); }
+  async loadOrgEvents()   { this.orgEvents = this._list(await this.fetchApi(`/events?organizerId=${encodeURIComponent(this.currentUser.id)}&limit=500`)); this._orgLoadedAt = Date.now(); }
+  async loadPayouts()     { this.allPayouts = this._list(await this.fetchApi('/payouts')); }
+  async loadOrgRefunds()  { this.orgRefunds = this._list(await this.fetchApi('/refunds/organizer')); }
+  async loadOrgSummary()  {
+    this.orgSummary = await this.fetchApi('/analytics/organizer-summary');
+    if (this.orgSummary.feePercent != null) this.platformFeePercent = this.orgSummary.feePercent;
+  }
+
+  async loadUserPrefs() {          // favourites + reviews follow the account (see item 7)
+    const uid = this.currentUser?.id; if (!uid) return;
+    const [favs, revs] = await Promise.allSettled([this.fetchApi('/users/favorites'), this.fetchApi('/reviews/my')]);
+    if (favs.status === 'fulfilled') {
+      this.favorites[uid] = this._list(favs.value.favorites || favs.value).map(f => typeof f === 'string' ? f : (f._id || f.eventId));
+      this.saveToStorage('glycr_favorites', this.favorites);
+    }
+    if (revs.status === 'fulfilled') {
+      const mine = this._list(revs.value).map(r => ({
+        id: r._id || r.id, userId: uid, eventId: r.eventId,
+        eventTitle: r.eventTitle || this.allEvents.find(e => e._id === r.eventId)?.title || 'Event',
+        rating: r.rating, text: r.text, createdAt: r.createdAt,
+      }));
+      this.reviews = [...this.reviews.filter(r => r.userId !== uid), ...mine];
+      this.saveToStorage('glycr_reviews', this.reviews);
+    }
+  }
+
+// reload only what changed, then repaint the current screen once
+  async _reload(...loaders) {
+    const res = await Promise.allSettled(loaders.map(fn => fn.call(this)));
+    const failed = res.find(r => r.status === 'rejected');
+    if (failed) { console.error(failed.reason); this.showToast('Some data could not be refreshed.', 'warning'); }
+    await this.refreshCurrentView();
+  }
+
+  async _refreshOrgIfStale(ttl = 60000) {
+    if (!this.currentUser?.isOrganizer || Date.now() - this._orgLoadedAt < ttl) return;
+    await this._reload(this.loadOrgEvents, this.loadPayouts, this.loadOrgRefunds, this.loadOrgSummary);
   }
 
   async handleResetPassword() {

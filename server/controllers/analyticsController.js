@@ -15,3 +15,15 @@ exports.getSalesTrend = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.getOrganizerSummary = async (req, res, next) => {
+  try {
+    if (!req.user?.id) {
+      throw new AppError('Authentication required', 401);
+    }
+    const data = await analyticsService.getOrganizerSummary(req.user.id);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+};

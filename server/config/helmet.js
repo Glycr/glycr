@@ -33,6 +33,7 @@ const helmetConfig = {
         "'self'",
         "'unsafe-inline'",              // required by current frontend (see note above)
         "http://localhost:63342",       // local dev server
+        "https://glycr.netlify.app/",
         "https://cdn.jsdelivr.net",     // Chart.js, jsPDF
         "https://cdnjs.cloudflare.com", // jsPDF, QRCode, Font Awesome
       ],
@@ -55,6 +56,7 @@ const helmetConfig = {
       connectSrc: [
         "'self'",
         "http://localhost:63342",
+        "https://glycr.netlify.app/",
       ],
 
       // Hardening directives — cheap defense-in-depth even though inert on JSON

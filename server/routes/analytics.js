@@ -23,4 +23,11 @@ router.get(
   analyticsController.getSalesTrend
 );
 
+router.get(
+  '/analytics/organizer-summary',
+  auth,
+  requireOrganizerOnly,
+  analyticsController.getOrganizerSummary
+);
+
 module.exports = router;

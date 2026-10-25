@@ -2,7 +2,7 @@
 const { logger } = require('./logger');
 const { AppError } = require('../utils/appError');
 
-const isProd = process.env.NODE_ENV === 'production';
+const isProd = process.env.NODE_ENV;
 
 // Comma-separated list in .env, e.g. ALLOWED_ORIGINS=https://glycr.com,https://admin.glycr.com
 // Normalize: strip whitespace AND trailing slashes. Browsers never send a
@@ -42,7 +42,7 @@ const corsOptions = {
     if (!origin) return callback(null, true);
 
     // Outside production, allow everything (dev convenience).
-    if (!isProd || allowedOrigins.includes(origin)) return callback(null, true);
+    if (!isProd || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') return callback(null, true);
 
     logger.warn(`CORS blocked origin: ${origin}`);
     // AppError instead of Error+.statusCode — consistent with every other
