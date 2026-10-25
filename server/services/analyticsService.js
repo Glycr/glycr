@@ -74,7 +74,7 @@ class AnalyticsService {
 
     const [rows, payoutRows] = await Promise.all([
       Ticket.aggregate([
-        { $match: { eventId: { $in: eventIds }, refunded: { $ne: true } } },
+        { $match: { eventId: { $in: eventIds }, status: { $nin: ['cancelled', 'refund_pending', 'refunded'] } } },
         { $group: {
             _id: { eventId: '$eventId', type: '$ticketType' },
             sold: { $sum: QTY },

@@ -83,6 +83,7 @@ router.put('/admin/settings', requireAdmin, settingsController.updateSettings);
 
 // ── Refunds ──
 router.get('/admin/refunds/all', requireAdmin, refundController.getAllRefunds);
+router.patch('/admin/refunds/:id/complete', auth, requireAdmin, refundController.completeRefund);
 
 // ---Featured----
 

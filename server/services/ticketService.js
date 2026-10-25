@@ -305,6 +305,7 @@ class TicketService {
     let refund;
     try {
       refund = new Refund({
+        source: 'admin_cancelled',
         ticketId: ticket._id,
         userId: ticket.userId,
         eventId: ticket.eventId._id,

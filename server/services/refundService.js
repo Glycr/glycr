@@ -8,6 +8,7 @@ const { sendEmail, sendSMS } = require('./notificationService');
 const { AppError } = require('../utils/appError');
 const { logger } = require('../config/logger');
 const { escapeHtml, sanitizeHeader } = require('../utils/htmlSecurity');
+const { isObjectIdString } = require('../utils/validators');
 
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 
@@ -39,6 +40,13 @@ class RefundService {
 
     if (ticket.status === 'refund_pending') {
       throw new AppError('A refund request for this ticket is already pending', 409);
+    }
+    // Tickets of a cancelled event are refunded automatically; nothing to request.
+    if (ticket.status === 'cancelled') {
+      throw new AppError(
+        'This ticket was cancelled together with its event and is being refunded automatically',
+        409
+      );
     }
     if (ticket.status !== 'active') {
       throw new AppError('Ticket already used, cancelled, or refunded', 400);
@@ -100,6 +108,7 @@ class RefundService {
       isPartial: !!isPartial,
       originalPrice: round2(ticket.price),
       status: 'pending',
+      source: 'buyer_request',
     });
 
     try {
@@ -289,6 +298,144 @@ class RefundService {
       })
     );
 
+    return refund;
+  }
+
+  // ── Event cancelled: refund every unused ticket in full, automatically ──
+  // Called by eventService.cancelEvent. The buyer does not ask and the
+  // organizer does not approve their own cancellation.
+  //  - Free tickets: nothing to refund, they are simply voided.
+  //  - Buyers who already filed a request: it is settled in full instead of
+  //    creating a duplicate.
+  //  - Everyone else: a new refund, already approved.
+  // Tickets end up `cancelled` and linked to their refund. Event capacity is
+  // not restored (the event is cancelled). The buyer is told by the
+  // cancellation email, so no separate "refund approved" message is sent.
+  // Idempotent: safe to run again if a previous run failed halfway.
+  async refundCancelledEvent(event, actorId = null) {
+    if (!event?._id) throw new AppError('event is required', 400);
+
+    const tickets = await Ticket.find({
+      eventId: event._id,
+      status: { $in: ['active', 'refund_pending'] },
+    }).select('_id userId price').lean();
+
+    if (!tickets.length) return { created: 0, promoted: 0, free: 0, total: 0 };
+
+    const paid = tickets.filter((t) => Number(t.price) > 0);
+    const free = tickets.filter((t) => !(Number(t.price) > 0));
+
+    if (free.length) {
+      await Ticket.updateMany(
+        { _id: { $in: free.map((t) => t._id) } },
+        { $set: { status: 'cancelled' } }
+      );
+    }
+    if (!paid.length) return { created: 0, promoted: 0, free: free.length, total: 0 };
+
+    const ids = paid.map((t) => t._id);
+    const now = new Date();
+
+    // Tickets that already have a live refund (the buyer asked earlier)
+    const existing = await Refund.find({
+      ticketId: { $in: ids },
+      status: { $in: ['pending', 'approved'] },
+    }).select('ticketId status amount originalPrice reason').lean();
+    const covered = new Set(existing.map((r) => String(r.ticketId)));
+
+    // 1) Pending requests: the cancellation settles them in full
+    const pending = existing.filter((r) => r.status === 'pending');
+    if (pending.length) {
+      await Refund.bulkWrite(pending.map((r) => ({
+        updateOne: {
+          filter: { _id: r._id, status: 'pending' },
+          update: { $set: {
+              status: 'approved',
+              isPartial: false,
+              amount: r.originalPrice ?? r.amount,
+              reason: `${r.reason || 'Refund request'} (settled in full: event cancelled)`,
+              processedAt: now,
+              processedBy: actorId,
+            } },
+        },
+      })));
+    }
+
+    // 2) Everyone else gets a new, already-approved refund
+    const docs = paid
+      .filter((t) => !covered.has(String(t._id)))
+      .map((t) => ({
+        ticketId: t._id,
+        userId: t.userId,
+        eventId: event._id,
+        amount: round2(t.price),
+        originalPrice: round2(t.price),
+        isPartial: false,
+        reason: 'Event cancelled by organizer',
+        status: 'approved',
+        source: 'event_cancelled',
+        requestedAt: now,
+        processedAt: now,
+        processedBy: actorId,
+      }));
+    const created = docs.length ? await Refund.insertMany(docs) : [];
+
+    // 3) Tickets show "cancelled" and point at their refund
+    if (created.length) {
+      await Ticket.bulkWrite(created.map((r) => ({
+        updateOne: {
+          filter: { _id: r.ticketId },
+          update: { $set: { status: 'cancelled', refundId: r._id } },
+        },
+      })));
+    }
+    const coveredIds = paid.filter((t) => covered.has(String(t._id))).map((t) => t._id);
+    if (coveredIds.length) {
+      await Ticket.updateMany({ _id: { $in: coveredIds } }, { $set: { status: 'cancelled' } });
+    }
+
+    const total = round2(paid.reduce((sum, t) => sum + Number(t.price), 0));
+
+    // ⚠️ Same placeholder as approveRefund: no payment is moved yet. When a
+    //    gateway is wired in, loop over the refunds here and use refund._id
+    //    as the idempotency key. Until then an admin marks each refund paid
+    //    with completeRefund().
+    logger.info('Event-cancellation refunds approved — payment reversal pending', {
+      eventId: event._id.toString(),
+      refunds: created.length + pending.length,
+      totalAmount: total,
+    });
+
+    return { created: created.length, promoted: pending.length, free: free.length, total };
+  }
+
+  // Admin only: mark an approved refund as paid out (e.g. after a manual MoMo
+  // transfer). This is what moves a refund from `approved` to `completed`.
+  async completeRefund(refundId, actingUser, paymentReference = null) {
+    if (!actingUser?.id) throw new AppError('Authentication required', 401);
+    if (!actingUser.isAdmin) throw new AppError('Forbidden', 403);
+    if (!isObjectIdString(refundId)) throw new AppError('Invalid refund', 400);
+
+    let reference = null;
+    if (paymentReference !== null && paymentReference !== undefined && paymentReference !== '') {
+      if (typeof paymentReference !== 'string' || paymentReference.trim().length > 100) {
+        throw new AppError('paymentReference must be text of 100 characters or fewer', 400);
+      }
+      reference = paymentReference.trim();
+    }
+
+    const existing = await Refund.findById(refundId).select('status').lean();
+    if (!existing) throw new AppError('Refund not found', 404);
+    if (existing.status !== 'approved') {
+      throw new AppError('Only approved refunds can be marked as paid', 409);
+    }
+
+    const refund = await Refund.findOneAndUpdate(
+      { _id: refundId, status: 'approved' },
+      { $set: { status: 'completed', completedAt: new Date(), paymentReference: reference } },
+      { returnDocument: 'after' }
+    );
+    if (!refund) throw new AppError('Refund was already processed', 409);
     return refund;
   }
 

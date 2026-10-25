@@ -5,6 +5,7 @@ const Refund = require('../models/Refund');
 const Waitlist = require('../models/Waitlist');
 const Favorite = require('../models/Favorite');
 const { sendEmail, sendSMS } = require('./notificationService');
+const refundService = require('./refundService');
 const { AppError } = require('../utils/appError');
 const { logger } = require('../config/logger');
 const { escapeHtml, sanitizeHtml, sanitizeHeader } = require('../utils/htmlSecurity');
@@ -209,17 +210,20 @@ class EventService {
     event.isCancelled = true;
     await event.save();
 
-    // Mark all active tickets as cancelled so they can't be scanned at the
-    // door. Staff scans will hit the `status === 'cancelled'` guard in
-    // staffService.validateTicket and return a `cancelled` result.
-    await Ticket.updateMany(
-      { eventId, status: 'active' },
-      { $set: { status: 'cancelled' } }
-    );
+    // Every unused ticket is refunded in full, automatically. The buyer does
+    // not have to ask and the organizer does not approve their own
+    // cancellation. Tickets end up `cancelled` (so they can't be scanned at
+    // the door — staffService.validateTicket has a guard for that) and point
+    // at their refund via `refundId`. The refund logic lives in refundService.
+    const refundResult = await refundService.refundCancelledEvent(event, requesterId);
+    logger.info('Event cancelled - tickets voided and refunds created', {
+      eventId: event._id.toString(),
+      ...refundResult,
+    });
 
-    // Fetch tickets for notification (attendance snapshot)
-    const tickets = await Ticket.find({ eventId })
-      .select('id userEmail userPhone')
+    // Notify the holders whose tickets were just cancelled
+    const tickets = await Ticket.find({ eventId, status: 'cancelled' })
+      .select('id userEmail userPhone price')
       .lean();
 
     if (tickets.length === 0) return event;
@@ -243,10 +247,15 @@ class EventService {
     const subjectSafe = sanitizeHeader(`Event cancelled: ${event.title}`);
 
     // SMS can't render HTML — strip tags entirely so "&lt;b&gt;" style
-    // entities don't appear literally in the SMS.
-    const smsText = sanitizeHtml(
+    // entities don't appear literally in the SMS. Paid tickets are told about
+    // the automatic refund; free tickets have nothing to refund.
+    const smsPaid = sanitizeHtml(
       `Glycr: The event "${event.title}" has been cancelled by ${organizerName}. ` +
-      `Your ticket is no longer valid. Contact the organizer for refund details.`
+      `Your ticket is no longer valid. A full refund is being processed automatically (5-7 business days).`
+    );
+    const smsFree = sanitizeHtml(
+      `Glycr: The event "${event.title}" has been cancelled by ${organizerName}. ` +
+      `Your ticket is no longer valid.`
     );
 
     // ── Notify ticket holders (fire-and-forget) ──
@@ -258,15 +267,20 @@ class EventService {
     let smsAttempts = 0;
 
     for (const ticket of tickets) {
+      const refundable = Number(ticket.price) > 0;
+
       if (ticket.userEmail) {
         emailAttempts++;
+        const refundLine = refundable
+          ? `<p>You don't need to do anything. A full refund of the price you paid is being processed automatically and should reach your original payment method within 5–7 business days.</p>`
+          : '';
         const html = `
           <h2>Event cancelled: ${titleEsc}</h2>
           <p>We regret to inform you that <strong>${titleEsc}</strong> has been cancelled by ${organizerEsc}.</p>
           <p><strong>When:</strong> ${dateStr}</p>
           <p><strong>Where:</strong> ${venueEsc}${locationEsc ? `, ${locationEsc}` : ''}</p>
           <p>Your ticket (ID: <code>${escapeHtml(ticket.id)}</code>) is no longer valid for entry.</p>
-          <p>If you paid for this ticket, please contact the organizer or Glycr support to request a refund.</p>
+          ${refundLine}
           <p>– Glycr Team</p>
         `;
         sendEmail(ticket.userEmail, subjectSafe, html)
@@ -278,7 +292,7 @@ class EventService {
       }
       if (ticket.userPhone) {
         smsAttempts++;
-        sendSMS(ticket.userPhone, smsText)
+        sendSMS(ticket.userPhone, refundable ? smsPaid : smsFree)
           .catch((err) => logger.error('Cancellation SMS failed', {
             eventId: event._id.toString(),
             ticketId: ticket.id,
@@ -294,9 +308,6 @@ class EventService {
       smsAttempts,
     });
 
-    // NOTE: automatic refund creation is still a future feature. The
-    // notification tells attendees to contact the organizer for refunds —
-    // that matches the current refundService flow (manual approve/reject).
     return event;
   }
 
@@ -306,6 +317,16 @@ class EventService {
     if (!event.isCancelled) throw new AppError('Event is not cancelled', 400);
     if (new Date(event.date) <= new Date()) {
       throw new AppError('Past events cannot be restored', 400);
+    }
+
+    // Once refunds exist the cancellation is final: undoing it would mean
+    // reversing real money movements.
+    const inProgress = await Refund.countDocuments({
+      eventId,
+      status: { $in: ['approved', 'completed'] },
+    });
+    if (inProgress > 0) {
+      throw new AppError('This event has refunds in progress and cannot be restored.', 409);
     }
 
     event.isCancelled = false;

@@ -81,6 +81,26 @@ exports.rejectRefund = async (req, res, next) => {
   }
 };
 
+// Admin only: mark an approved refund as paid out.
+exports.completeRefund = async (req, res, next) => {
+  try {
+    const { paymentReference } = req.body || {};
+    const refund = await refundService.completeRefund(
+      req.params.id,
+      { id: req.user.id, isAdmin: req.user.isAdmin },
+      paymentReference
+    );
+    logService.audit(req.user.email, 'complete_refund', String(req.params.id), {
+      type: 'payout', adminId: req.user.id, refundId: req.params.id,
+      amount: refund?.amount,
+      paymentReference: refund?.paymentReference || null, ...ctx(req),
+    });
+    res.json(refund);
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.getAllRefunds = async (req, res, next) => {
   try {
     if (!req.user.isAdmin) {
