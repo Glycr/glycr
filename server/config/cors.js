@@ -2,7 +2,7 @@
 const { logger } = require('./logger');
 const { AppError } = require('../utils/appError');
 
-const isProd = process.env.NODE_ENV;
+const isProd = process.env.NODE_ENV === 'production';
 
 // Comma-separated list in .env, e.g. ALLOWED_ORIGINS=https://glycr.com,https://admin.glycr.com
 // Normalize: strip whitespace AND trailing slashes. Browsers never send a
