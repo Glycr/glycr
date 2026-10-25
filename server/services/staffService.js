@@ -124,7 +124,7 @@ class StaffService {
     const staff = await Staff.findOneAndUpdate(
       this._staffLookup(staffIdOrId, organizerId),
       { status },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!staff) throw new AppError('Staff member not found', 404);
     return staff;
@@ -185,7 +185,7 @@ class StaffService {
     const updated = await Ticket.findOneAndUpdate(
       { _id: ticket._id, status: 'active', validated: false },
       { $set: { status: 'used', validated: true, validatedAt: new Date() } },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!updated) {

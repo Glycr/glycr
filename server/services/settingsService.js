@@ -39,7 +39,7 @@ class SettingsService {
     return Settings.findOneAndUpdate(
       {},
       { $setOnInsert: { platformFee: 3 } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
     );
   }
 

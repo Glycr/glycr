@@ -66,7 +66,7 @@ class PayoutService {
     const settings = await Settings.findOneAndUpdate(
       {},
       { $setOnInsert: { platformFee: 3 } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
     );
     return settings.platformFee;
   }
@@ -270,7 +270,7 @@ class PayoutService {
     const updated = await Payout.findOneAndUpdate(
       { _id: payoutId, status: 'pending' },
       { $set: { status: 'completed', completedAt: new Date(), processedBy: processedById || null } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!updated) throw new AppError('Payout already processed', 409);
 
@@ -305,7 +305,7 @@ class PayoutService {
           processedBy: processedById || null,
         },
       },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!payout) {

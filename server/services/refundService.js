@@ -83,7 +83,7 @@ class RefundService {
     const locked = await Ticket.findOneAndUpdate(
       { _id: ticket._id, status: 'active', refunded: false },
       { $set: { status: 'refund_pending' } },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!locked) {
@@ -186,7 +186,7 @@ class RefundService {
           processedBy: actingUser.id,
         },
       },
-      { new: true }
+      { returnDocument: 'after' }
     ).populate('ticketId').populate('eventId');
 
     if (!refund) throw new AppError('Refund already processed', 409);
@@ -267,7 +267,7 @@ class RefundService {
           rejectionReason: rejectionReason.trim(),
         },
       },
-      { new: true }
+      { returnDocument: 'after' }
     ).populate('ticketId').populate('eventId');
 
     if (!refund) throw new AppError('Refund already processed', 409);

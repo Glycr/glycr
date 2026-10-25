@@ -182,7 +182,7 @@ class UserService {
 
     try {
       const user = await User.findByIdAndUpdate(userId, clean, {
-        new: true,
+        returnDocument: 'after',
         runValidators: true,
       }).select('-password');
       if (!user) throw new AppError('User not found', 404);
@@ -200,7 +200,7 @@ class UserService {
   async changeRole(userId, newRole) {
     const allowedRoles = ['customer', 'organizer', 'moderator', 'admin'];
     if (!allowedRoles.includes(newRole)) throw new AppError('Invalid role', 400);
-    const user = await User.findByIdAndUpdate(userId, { role: newRole }, { new: true }).select('-password');
+    const user = await User.findByIdAndUpdate(userId, { role: newRole }, { returnDocument: 'after' }).select('-password');
     if (!user) throw new AppError('User not found', 404);
     return user;
   }
@@ -265,13 +265,13 @@ class UserService {
   }
 
   async suspendUser(userId) {
-    const user = await User.findByIdAndUpdate(userId, { suspended: true }, { new: true }).select('-password');
+    const user = await User.findByIdAndUpdate(userId, { suspended: true }, { returnDocument: 'after' }).select('-password');
     if (!user) throw new AppError('User not found', 404);
     return user;
   }
 
   async unsuspendUser(userId) {
-    const user = await User.findByIdAndUpdate(userId, { suspended: false }, { new: true }).select('-password');
+    const user = await User.findByIdAndUpdate(userId, { suspended: false }, { returnDocument: 'after' }).select('-password');
     if (!user) throw new AppError('User not found', 404);
     return user;
   }
@@ -361,7 +361,7 @@ class UserService {
       await Favorite.findOneAndUpdate(
         { userId, eventId },
         { userId, eventId },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
       );
     } else {
       await Favorite.findOneAndDelete({ userId, eventId });

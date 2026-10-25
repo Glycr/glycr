@@ -55,7 +55,7 @@ class FeaturedService {
           isFeatured: featured,
           featuredOrder: featured ? (featuredOrder ?? event.featuredOrder ?? 0) : 0,
         } },
-      { new: true }
+      { returnDocument: 'after' }
     ).lean();
   }
 }

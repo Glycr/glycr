@@ -138,7 +138,7 @@ class EventService {
     }
 
     const updated = await Event.findByIdAndUpdate(eventId, clean, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     });
     return updated;
@@ -350,13 +350,13 @@ class EventService {
   }
 
   async flagEvent(eventId) {
-    const event = await Event.findByIdAndUpdate(eventId, { flagged: true }, { new: true });
+    const event = await Event.findByIdAndUpdate(eventId, { flagged: true }, { returnDocument: 'after' });
     if (!event) throw new AppError('Event not found', 404);
     return event;
   }
 
   async unflagEvent(eventId) {
-    const event = await Event.findByIdAndUpdate(eventId, { flagged: false }, { new: true });
+    const event = await Event.findByIdAndUpdate(eventId, { flagged: false }, { returnDocument: 'after' });
     if (!event) throw new AppError('Event not found', 404);
     return event;
   }

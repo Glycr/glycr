@@ -102,7 +102,7 @@ class TicketService {
     const reserved = await Event.findOneAndUpdate(
       { _id: eventId, [soldPath]: { $lte: capacity - qty } },
       { $inc: { [soldPath]: qty } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!reserved) {
       throw new AppError('Not enough tickets available (concurrent purchase)', 409);
@@ -236,7 +236,7 @@ class TicketService {
     const updated = await Ticket.findOneAndUpdate(
       { _id: ticket._id, status: 'active', validated: false },
       { $set: { status: 'used', validated: true, validatedAt: new Date() } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!updated) throw new AppError('Ticket already used', 409);
     return updated;
@@ -298,7 +298,7 @@ class TicketService {
     const locked = await Ticket.findOneAndUpdate(
       { _id: ticket._id, status: 'active' },
       { $set: { status: 'refund_pending' } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!locked) throw new AppError('Ticket already used, cancelled, or refunded', 400);
 
