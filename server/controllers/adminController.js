@@ -288,3 +288,17 @@ exports.getAllCoupons = async (req, res, next) => {
     next(err);
   }
 };
+
+// adminController.js
+exports.completePayout = async (req, res, next) => {
+  try {
+    const payout = await adminService.completePayout(req.user.id, req.params.id, req.body?.paymentReference);
+    logService.audit(req.user.email, 'complete_payout', String(req.params.id), {
+      type: 'payout', adminId: req.user.id, payoutId: req.params.id,
+      amount: payout?.amount, method: payout?.method, ...ctx(req),
+    });
+    res.json(payout);
+  } catch (err) {
+    next(err);
+  }
+};

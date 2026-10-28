@@ -2,18 +2,30 @@
 // TABS & FILTER HELPER FUNCTIONS
 // ===============================================
 
+// A tab that fails to render must never stop the tab itself from opening.
+function _renderSafely(fn) {
+  try { fn(); } catch (err) { console.error(`${fn.name || 'render'} failed`, err); }
+}
+
 function showTab(tab, el) {
+  const target = document.getElementById(tab);
+  if (!target) return;
+
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(tab).classList.add('active');
+  target.classList.add('active');
   if (el) el.classList.add('active');
-  if (tab === 'logs')             renderLogs();
-  if (tab === 'waitlist')         renderWaitlist();
-  if (tab === 'refunds')          renderRefunds();
-  if (tab === 'service-requests') renderServiceRequests();
-  if (tab === 'transactions')     { renderTransactions(); renderTransactionSummaryCards(); }
-  if (tab === 'messages')         { renderMessages(); updateMessageStats(); updateBroadcastAudiencePreview(); }
-  if (tab === 'reports')          { renderReports(); renderCharts(); }
+
+  // Tabs that show totals rebuild the stats first, so they are never empty or stale
+  if (tab === 'dashboard')        { _renderSafely(calculateStats); _renderSafely(renderDashboard); }
+  if (tab === 'payouts')          { _renderSafely(calculateStats); _renderSafely(renderPayouts); }
+  if (tab === 'refunds')          { _renderSafely(calculateStats); _renderSafely(renderRefunds); }
+  if (tab === 'logs')             _renderSafely(renderLogs);
+  if (tab === 'waitlist')         _renderSafely(renderWaitlist);
+  if (tab === 'service-requests') _renderSafely(renderServiceRequests);
+  if (tab === 'transactions')     { _renderSafely(renderTransactions); _renderSafely(renderTransactionSummaryCards); }
+  if (tab === 'messages')         { _renderSafely(renderMessages); _renderSafely(updateMessageStats); _renderSafely(updateBroadcastAudiencePreview); }
+  if (tab === 'reports')          { _renderSafely(calculateStats); _renderSafely(renderReports); _renderSafely(renderCharts); }
 }
 
 // Filter alias functions (trigger re‑render after filter change)

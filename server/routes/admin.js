@@ -71,6 +71,7 @@ router.patch('/admin/service-requests/:id/in-progress', requireModeratorOrAdmin,
 router.get('/admin/payouts', requireModeratorOrAdmin, adminController.getAllPayouts);
 router.patch('/admin/payouts/:id/approve', requireAdmin, adminController.approvePayout);
 router.patch('/admin/payouts/:id/reject', requireAdmin, adminController.rejectPayout);
+router.patch('/admin/payouts/:id/complete', auth, requireAdmin, adminController.completePayout);
 
 // ── Logs ──
 // Moderator reads logs (for investigation), admin can clear them.

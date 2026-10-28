@@ -10,9 +10,13 @@ const payoutSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
+  // pending   → requested, waiting for review
+  // approved  → approved, money reserved but not sent yet
+  // completed → money sent and the payment reference recorded
+  // rejected  → declined, or an approved payout that could not be sent
   status: {
     type: String,
-    enum: ['pending', 'completed', 'rejected'],
+    enum: ['pending', 'approved', 'completed', 'rejected'],
     default: 'pending',
     index: true,
   },
@@ -20,9 +24,14 @@ const payoutSchema = new mongoose.Schema({
   notes:       { type: String, default: '' },
   details:     { type: mongoose.Schema.Types.Mixed, default: {} },
   requestedAt: { type: Date, default: Date.now },
+  approvedAt:  { type: Date, default: null },            // when an admin approved it
+  // completedAt = when the money was sent (also used as "processed at" for rejections)
   completedAt: { type: Date, default: null },
   rejectionReason: { type: String, default: null },
   processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },  // who approved/rejected
+  completedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },  // who sent the money
+  // Transaction ID of the transfer (MoMo reference, bank reference, ...)
+  paymentReference: { type: String, trim: true, maxlength: 100, default: null },
 });
 
 payoutSchema.virtual('id').get(function () { return this._id.toString(); });

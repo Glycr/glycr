@@ -297,6 +297,7 @@
         <select class="select" id="event-filter" onchange="filterEvents()">
           <option value="all">All Events</option>
           <option value="live">Live Events</option>
+          <option value="featured">Featured (carousel)</option>
           <option value="cancelled">Cancelled</option>
           <option value="flagged">Flagged</option>
           <option value="unpublished">Unpublished</option>
@@ -344,6 +345,8 @@
           <option value="active">Active</option>
           <option value="used">Used</option>
           <option value="cancelled">Cancelled</option>
+          <option value="refund_pending">Refund pending</option>
+          <option value="refunded">Refunded</option>
         </select>
         <select class="select" id="ticket-type-filter" onchange="filterTickets()">
           <option value="all">All Types</option>
@@ -496,7 +499,7 @@
         <h2 style="font-size:2rem; font-weight:700;">Payout Management</h2>
         <div style="display:flex; gap:0.75rem; align-items:center;">
           <div style="text-align:right; margin-right:0.5rem;">
-            <p style="font-size:0.875rem; color:#94a3b8;">Pending Payouts</p>
+            <p style="font-size:0.875rem; color:#94a3b8;">Awaiting Payout</p>
             <p style="font-size:1.5rem; font-weight:700; color:#6366f1;" id="pending-payout-amount">₵0.00</p>
           </div>
           <button class="btn btn-success" onclick="openExportModal('payouts')"><i class="fa-solid fa-file-export"></i> Export</button>
@@ -507,13 +510,16 @@
         <select class="select" id="payout-status-filter" onchange="filterPayouts()">
           <option value="all">All Status</option>
           <option value="pending">Pending</option>
-          <option value="completed">Completed</option>
+          <option value="approved">Approved (awaiting transfer)</option>
+          <option value="completed">Paid</option>
           <option value="rejected">Rejected</option>
         </select>
         <select class="select" id="payout-method-filter" onchange="filterPayouts()">
           <option value="all">All Methods</option>
-          <option value="momo">MoMo</option>
+          <option value="mobile_money">Mobile Money</option>
           <option value="bank">Bank</option>
+          <option value="paypal">PayPal</option>
+          <option value="stripe">Stripe</option>
         </select>
         <input type="date" class="input" id="payout-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterPayouts()">
         <input type="date" class="input" id="payout-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterPayouts()">
@@ -522,6 +528,7 @@
         <span id="payouts-selected-count">0 selected</span>
         <div style="display:flex; gap:0.5rem;">
           <button class="btn btn-success" onclick="bulkApprovePayouts()"><i class="fa-solid fa-check"></i> Approve</button>
+          <button class="btn btn-primary" onclick="bulkCompletePayouts()"><i class="fa-solid fa-money-bill-transfer"></i> Mark as paid</button>
           <button class="btn btn-danger" onclick="bulkRejectPayouts()"><i class="fa-solid fa-xmark"></i> Reject</button>
           <button class="btn btn-primary" onclick="openExportModal('payouts', true)"><i class="fa-solid fa-file-export"></i> Export Selected</button>
         </div>
@@ -553,6 +560,10 @@
             <p style="font-size:0.875rem; color:#94a3b8;">Pending Refunds</p>
             <p style="font-size:1.5rem; font-weight:700; color:#ef4444;" id="pending-refund-amount">₵0.00</p>
           </div>
+          <div style="text-align:right; margin-right:0.5rem;">
+            <p style="font-size:0.875rem; color:#94a3b8;">Awaiting Payout</p>
+            <p style="font-size:1.5rem; font-weight:700; color:#0ea5e9;" id="awaiting-payout-amount">₵0.00</p>
+          </div>
           <button class="btn btn-success" onclick="openExportModal('refunds')"><i class="fa-solid fa-file-export"></i> Export</button>
         </div>
       </div>
@@ -561,7 +572,8 @@
         <select class="select" id="refund-status-filter" onchange="filterRefunds()">
           <option value="all">All Status</option>
           <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
+          <option value="approved">Approved (awaiting payout)</option>
+          <option value="completed">Paid</option>
           <option value="rejected">Rejected</option>
         </select>
         <select class="select" id="refund-reason-filter" onchange="filterRefunds()">
@@ -570,6 +582,12 @@
           <option value="duplicate">Duplicate Purchase</option>
           <option value="other">Other</option>
         </select>
+        <select class="select" id="refund-source-filter" onchange="filterRefunds()">
+          <option value="all">All Sources</option>
+          <option value="buyer_request">Buyer requests</option>
+          <option value="event_cancelled">Event cancelled (auto)</option>
+          <option value="admin_cancelled">Cancelled by staff</option>
+        </select>
         <input type="date" class="input" id="refund-date-from" style="min-width:unset; flex:0 0 150px;" oninput="filterRefunds()">
         <input type="date" class="input" id="refund-date-to" style="min-width:unset; flex:0 0 150px;" oninput="filterRefunds()">
       </div>
@@ -577,6 +595,7 @@
         <span id="refunds-selected-count">0 selected</span>
         <div style="display:flex; gap:0.5rem;">
           <button class="btn btn-success" onclick="bulkApproveRefunds()"><i class="fa-solid fa-check"></i> Approve</button>
+          <button class="btn btn-primary" onclick="bulkCompleteRefunds()"><i class="fa-solid fa-money-bill-transfer"></i> Mark as paid</button>
           <button class="btn btn-danger" onclick="bulkRejectRefunds()"><i class="fa-solid fa-xmark"></i> Reject</button>
           <button class="btn btn-primary" onclick="openExportModal('refunds', true)"><i class="fa-solid fa-file-export"></i> Export Selected</button>
         </div>

@@ -2001,7 +2001,8 @@ class GlycrApp {
     if (status !== 'all') payouts = payouts.filter(p => p.status === status);
     const sym       = this.getCurrencySymbol(this.currentUser.currency || 'GHC');
     const totalPaid = payouts.filter(p => p.status === 'completed').reduce((a, p) => a + p.amount, 0);
-    const totalPend = payouts.filter(p => p.status === 'pending').reduce((a, p) => a + p.amount, 0);
+    const totalPend = payouts.filter(p => p.status === 'pending' || p.status === 'approved')
+      .reduce((a, p) => a + p.amount, 0);
     const safeSet   = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     safeSet('total-paid-out', `${sym}${totalPaid.toFixed(2)}`);
     safeSet('total-pending-amount', `${sym}${totalPend.toFixed(2)}`);
@@ -2010,8 +2011,12 @@ class GlycrApp {
     if (!payouts.length) { tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No payouts found</td></tr>'; }
     else {
       tbody.innerHTML = payouts.map(p => {
-        const sc = p.status === 'completed' ? 'completed' : p.status === 'pending' ? 'pending' : 'failed';
-        return `<tr><td style="color:var(--teal); font-family:'JetBrains Mono',monospace; font-weight:600;">${sym}${p.amount}</td><td>${(p.method || '').toUpperCase()}</td><td><span class="status-pill ${sc}">${p.status}</span></td><td>${new Date(p.requestedAt).toLocaleDateString('en-GB')}</td><td>${p.completedAt ? new Date(p.completedAt).toLocaleDateString('en-GB') : '—'}</td></tr>`;
+        const sc = p.status === 'completed' ? 'completed'
+          : (p.status === 'pending' || p.status === 'approved') ? 'pending' : 'failed';
+        const statusText = p.status === 'approved' ? 'Approved · being sent' : p.status;
+        return `<tr><td style="color:var(--teal); font-family:'JetBrains Mono',monospace; font-weight:600;">${sym}${p.amount}</td>
+<td>${(p.method || '').toUpperCase()}</td><td><span class="status-pill ${sc}">${esc(statusText)}</span></td>
+<td>${new Date(p.requestedAt).toLocaleDateString('en-GB')}</td><td>${p.completedAt ? new Date(p.completedAt).toLocaleDateString('en-GB') : '—'}</td></tr>`;
       }).join('');
     }
     const csvBtn = document.getElementById('export-payouts-csv');

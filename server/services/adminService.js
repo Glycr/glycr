@@ -278,6 +278,11 @@ class AdminService {
     return payoutService.rejectPayout(payoutId, reason, processedById);
   }
 
+  // adminService.js
+  async completePayout(adminId, payoutId, paymentReference) {
+    return payoutService.completePayout(payoutId, adminId, paymentReference);
+  }
+
   // ---------- Coupons ----------
   // Admin view: all coupons from all organizers.
   async getAllCoupons() {

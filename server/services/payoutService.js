@@ -8,9 +8,22 @@ const { sendEmail } = require('./notificationService');
 const { AppError } = require('../utils/appError');
 const { logger } = require('../config/logger');
 const { escapeHtml, sanitizeHeader } = require('../utils/htmlSecurity');
+const { isObjectIdString } = require('../utils/validators');
 
 const MIN_PAYOUT = 10;
 const VALID_METHODS = ['bank', 'mobile_money', 'paypal', 'stripe'];
+
+// Payout lifecycle:
+//   pending   → requested by the organizer, waiting for review
+//   approved  → an admin approved it; the money is reserved but NOT sent yet
+//   completed → an admin sent the money and recorded the payment reference
+//   rejected  → declined (also used to cancel an approved payout that could
+//               not be sent, e.g. wrong MoMo number; the money becomes
+//               available to the organizer again)
+//
+// Every status except `rejected` counts as money already committed, so it is
+// subtracted from the organizer's available balance.
+const COMMITTED_STATUSES = ['pending', 'approved', 'completed'];
 
 const METHOD_ALIASES = {
   // bank
@@ -71,8 +84,9 @@ class PayoutService {
     return settings.platformFee;
   }
 
-  // Returns net revenue minus all committed payouts (pending + completed).
-  // This is the source of truth for "how much can the organizer still withdraw?"
+  // Returns net revenue minus all committed payouts (pending + approved +
+  // completed). This is the source of truth for "how much can the organizer
+  // still withdraw?"
   async getAvailableBalance(organizerId) {
     const events = await Event.find({ organizerId, isCancelled: false }).select('_id').lean();
     const eventIds = events.map((e) => e._id);
@@ -88,7 +102,7 @@ class PayoutService {
 
     const payouts = await Payout.find({
       organizerId,
-      status: { $in: ['pending', 'completed'] },
+      status: { $in: COMMITTED_STATUSES },
     }).select('amount').lean();
 
     const totalCommitted = payouts.reduce((sum, p) => sum + (p.amount || 0), 0);
@@ -184,6 +198,8 @@ class PayoutService {
     //  RACE GUARD: One pending payout at a time
     //  Closes the window where two simultaneous requests both
     //  read the same `available` balance before either saves.
+    //  (Approved payouts are already subtracted from `available`,
+    //  so only `pending` needs guarding here.)
     // ═══════════════════════════════════════════════════════════
     const existingPending = await Payout.findOne({
       organizerId,
@@ -230,6 +246,8 @@ class PayoutService {
     return Payout.find({ organizerId }).sort('-requestedAt');
   }
 
+  // pending → approved. The money is reserved but not sent yet; an admin sends
+  // it and then calls completePayout() with the payment reference.
   async approvePayout(payoutId, processedById) {
     // 1. Read the payout (before mutation)
     const pre = await Payout.findById(payoutId).lean();
@@ -249,11 +267,11 @@ class PayoutService {
     const feePercent = await this.getPlatformFee();
     const netRevenue = round2(totalRevenue * (1 - feePercent / 100));
 
-    // 3. Sum ALL OTHER committed payouts (pending + completed), excluding this one
+    // 3. Sum ALL OTHER committed payouts (pending + approved + completed), excluding this one
     const others = await Payout.find({
       _id:          { $ne: pre._id },
       organizerId:  pre.organizerId,
-      status:       { $in: ['pending', 'completed'] },
+      status:       { $in: COMMITTED_STATUSES },
     }).select('amount').lean();
     const otherCommitted = others.reduce((s, p) => s + (p.amount || 0), 0);
 
@@ -266,10 +284,10 @@ class PayoutService {
       );
     }
 
-    // 5. Atomic transition (only pending → completed; blocks double-approval)
+    // 5. Atomic transition (only pending → approved; blocks double-approval)
     const updated = await Payout.findOneAndUpdate(
       { _id: payoutId, status: 'pending' },
-      { $set: { status: 'completed', completedAt: new Date(), processedBy: processedById || null } },
+      { $set: { status: 'approved', approvedAt: new Date(), processedBy: processedById || null } },
       { returnDocument: 'after' }
     );
     if (!updated) throw new AppError('Payout already processed', 409);
@@ -278,7 +296,7 @@ class PayoutService {
     const approvalHtml = `
       <h2>Payout Approved</h2>
       <p>Your payout request of ${fmt(updated.amount)} via ${escapeHtml(updated.method.toUpperCase())} has been approved.</p>
-      <p>Funds will be transferred within 3–5 business days.</p>
+      <p>We will send the funds within 3–5 business days and email you again with the payment reference once it has been sent.</p>
     `;
     sendEmail(updated.email, 'Payout Approved – Glycr', approvalHtml)
       .catch((err) => logger.error('Payout approval email failed', {
@@ -288,15 +306,64 @@ class PayoutService {
     return updated;
   }
 
-  // Added processedById third parameter — used by adminController and
-  // adminService to record which admin rejected the payout.
+  // approved → completed. Called by an admin after the money has really been
+  // sent (MoMo transfer, bank transfer, ...). The reference is the transaction
+  // ID of that transfer, so every payout has a record that can be checked
+  // against a bank or MoMo statement later.
+  async completePayout(payoutId, processedById, paymentReference) {
+    if (!isObjectIdString(payoutId)) throw new AppError('Invalid payout', 400);
+
+    const reference = typeof paymentReference === 'string' ? paymentReference.trim() : '';
+    if (!reference) throw new AppError('Payment reference is required', 400);
+    if (reference.length > 100) {
+      throw new AppError('Payment reference must be 100 characters or fewer', 400);
+    }
+
+    const payout = await Payout.findOneAndUpdate(
+      { _id: payoutId, status: 'approved' },
+      {
+        $set: {
+          status: 'completed',
+          completedAt: new Date(),
+          completedBy: processedById || null,
+          paymentReference: reference,
+        },
+      },
+      { returnDocument: 'after' }
+    );
+
+    if (!payout) {
+      const exists = await Payout.findById(payoutId).select('_id').lean();
+      if (!exists) throw new AppError('Payout not found', 404);
+      throw new AppError('Only approved payouts can be marked as paid', 409);
+    }
+
+    const paidHtml = `
+      <h2>Payout Sent</h2>
+      <p>Your payout of ${fmt(payout.amount)} via ${escapeHtml(payout.method.toUpperCase())} has been sent.</p>
+      <p><strong>Payment reference:</strong> ${escapeHtml(reference)}</p>
+      <p>It can take a short while to show in your account. Contact support if it has not arrived within 3 business days.</p>
+      <p>– Glycr Team</p>
+    `;
+    sendEmail(payout.email, 'Payout Sent – Glycr', paidHtml)
+      .catch((err) => logger.error('Payout paid email failed', {
+        payoutId: payout._id.toString(), err: err.message,
+      }));
+
+    return payout;
+  }
+
+  // pending OR approved → rejected. Rejecting an approved payout is how an
+  // admin cancels one that cannot be sent (wrong MoMo number, closed account);
+  // the amount becomes available to the organizer again.
+  // processedById records which admin rejected it.
   async rejectPayout(payoutId, reason, processedById = null) {
     if (!reason || typeof reason !== 'string' || !reason.trim()) {
       throw new AppError('Rejection reason is required', 400);
     }
 
     const payout = await Payout.findOneAndUpdate(
-      { _id: payoutId, status: 'pending' },
+      { _id: payoutId, status: { $in: ['pending', 'approved'] } },
       {
         $set: {
           status: 'rejected',

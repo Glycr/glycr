@@ -1,37 +1,64 @@
 // ===============================================
 // REPORTS + CHARTS
 // ===============================================
+// Revenue and ticket figures count sales only: cancelled and refunded tickets
+// are excluded (see saleTickets() in data.js), so these numbers match the
+// dashboard and the organizers' own dashboards.
 
 function renderReports() {
-  const byCategory = events.reduce((acc, ev) => {
-    const rev = tickets.filter(t => (t.eventId?.id||t.eventId?._id?.toString()) === ev.id).reduce((s,t) => s+(t.price||0), 0);
-    acc[ev.category] = (acc[ev.category] || 0) + rev;
-    return acc;
-  }, {});
+  // never crash on a half-loaded panel: build the stats if they are missing
+  if (!stats || stats.totalRefunded === undefined) calculateStats();
+
+  const sales = saleTickets();
+
+  // revenue per event, computed once instead of re-filtering every ticket for every event
+  const revenueByEvent = new Map();
+  for (const t of sales) {
+    const id = t.eventId?.id || t.eventId?._id?.toString() || t.eventId;
+    revenueByEvent.set(id, (revenueByEvent.get(id) || 0) + ticketRevenue(t));
+  }
+  const usersById = new Map(users.map(u => [u.id, u]));
+
+  const byCategory = {};
+  const byOrg = {};
+  for (const ev of events) {
+    const rev = revenueByEvent.get(ev.id) || 0;
+    byCategory[ev.category] = (byCategory[ev.category] || 0) + rev;
+
+    const org = usersById.get(ev.organizerId?.id || ev.organizerId?._id?.toString());
+    const key = org?.name || org?.email || 'Unknown';
+    byOrg[key] = (byOrg[key] || 0) + rev;
+  }
+
   const catHTML = Object.entries(byCategory).sort((a,b) => b[1]-a[1]).slice(0,5)
     .map(([cat,rev]) => `<div style="display:flex;justify-content:space-between;padding:0.75rem 0;border-bottom:1px solid #334155;"><span style="text-transform:capitalize;">${cat||'Uncategorised'}</span><span style="font-weight:700;color:#6366f1;">₵${rev.toFixed(2)}</span></div>`).join('');
   const catEl = document.getElementById('revenue-by-category');
   if (catEl) catEl.innerHTML = catHTML || '<div class="empty-state"><i class="fa-solid fa-chart-pie" style="display:block;font-size:1.5rem;margin-bottom:0.5rem;"></i>No data</div>';
 
-  const byOrg = events.reduce((acc, ev) => {
-    const rev = tickets.filter(t => (t.eventId?.id||t.eventId?._id?.toString()) === ev.id).reduce((s,t) => s+(t.price||0), 0);
-    const org = users.find(u => u.id === (ev.organizerId?.id||ev.organizerId?._id?.toString()));
-    const key = org?.name || org?.email || 'Unknown';
-    acc[key]  = (acc[key] || 0) + rev;
-    return acc;
-  }, {});
   const trophyColors = ['#f59e0b','#94a3b8','#b45309'];
   const orgHTML = Object.entries(byOrg).sort((a,b) => b[1]-a[1]).slice(0,5)
     .map(([name,rev],i) => `<div style="display:flex;justify-content:space-between;padding:0.75rem 0;border-bottom:1px solid #334155;align-items:center;"><span style="overflow:hidden;text-overflow:ellipsis;font-size:0.875rem;"><i class="fa-solid ${i<3?'fa-trophy':'fa-medal'}" style="color:${trophyColors[i]||'#334155'};margin-right:0.4rem;"></i>${name}</span><span style="font-weight:700;color:#8b5cf6;margin-left:1rem;">₵${rev.toFixed(2)}</span></div>`).join('');
   const orgEl = document.getElementById('top-organizers');
   if (orgEl) orgEl.innerHTML = orgHTML || '<div class="empty-state"><i class="fa-solid fa-trophy" style="display:block;font-size:1.5rem;margin-bottom:0.5rem;"></i>No data</div>';
 
-  const totalRevenue = tickets.reduce((s,t) => s+(t.price||0), 0);
-  setText('avg-ticket-price',  `₵${tickets.length > 0 ? (totalRevenue/tickets.length).toFixed(2) : '0.00'}`);
-  setText('avg-event-revenue', `₵${events.length  > 0 ? (totalRevenue/events.length).toFixed(2)  : '0.00'}`);
+  // ── platform statistics ──
+  const totalRevenue = sales.reduce((s,t) => s + ticketRevenue(t), 0);
+  const ticketCount  = sales.reduce((s,t) => s + ticketQty(t), 0);
+  const feePct       = Number(platformFeePercent);
+
+  setText('avg-ticket-price',  `₵${ticketCount > 0 ? (totalRevenue/ticketCount).toFixed(2) : '0.00'}`);
+  setText('avg-event-revenue', `₵${events.length > 0 ? (totalRevenue/events.length).toFixed(2) : '0.00'}`);
   setText('total-cancelled',   events.filter(e => e.isCancelled).length);
-  setText('platform-fee',      `₵${(totalRevenue*(platformFeePercent/100)).toFixed(2)} (${platformFeePercent}%)`);
-  setText('total-refunded',    `₵${stats.totalRefunded.toFixed(2)}`);
+  setText('platform-fee',      Number.isFinite(feePct)
+    ? `₵${(totalRevenue * (feePct/100)).toFixed(2)} (${feePct}%)`
+    : '—');
+
+  // refunds approved or paid; show how much of it is still waiting to be paid out
+  const refunded = stats.totalRefunded || 0;
+  const awaiting = stats.awaitingRefundPayout || 0;
+  setText('total-refunded', awaiting > 0
+    ? `₵${refunded.toFixed(2)} (₵${awaiting.toFixed(2)} unpaid)`
+    : `₵${refunded.toFixed(2)}`);
 }
 
 function setChartPeriod(period, btn) {
@@ -41,6 +68,7 @@ function setChartPeriod(period, btn) {
   renderCharts();
 }
 
+// valueField: null → count items, a string → sum that field, a function → sum fn(item)
 function groupByPeriod(items, dateField, valueField, period, numBuckets) {
   const now   = new Date();
   const buckets = [];
@@ -85,10 +113,11 @@ function groupByPeriod(items, dateField, valueField, period, numBuckets) {
       return !isNaN(d) && d >= start && d <= end;
     });
     if (valueField === null) return inRange.length;
+    if (typeof valueField === 'function') return inRange.reduce((s, item) => s + (Number(valueField(item)) || 0), 0);
     return inRange.reduce((s, item) => s + (Number(item[valueField]) || 0), 0);
   });
 
-  return { labels, values };
+  return { labels, values, buckets };
 }
 
 function renderCharts() {
@@ -100,8 +129,10 @@ function renderCharts() {
 
   const gridColor  = 'rgba(51,65,85,0.6)';
   const tickColor  = '#64748b';
+  const sales      = saleTickets();
 
-  const revData = groupByPeriod(tickets, 'purchasedAt', 'price', currentChartPeriod, numBuckets);
+  // ── revenue (sales only) ──
+  const revData = groupByPeriod(sales, 'purchasedAt', ticketRevenue, currentChartPeriod, numBuckets);
   const totalRev = revData.values.reduce((a,b) => a+b, 0);
   setText('chart-revenue-total', `₵${totalRev.toFixed(2)} total`);
 
@@ -145,7 +176,8 @@ function renderCharts() {
     });
   }
 
-  const tixData  = groupByPeriod(tickets, 'purchasedAt', null, currentChartPeriod, numBuckets);
+  // ── tickets sold (sales only) ──
+  const tixData  = groupByPeriod(sales, 'purchasedAt', ticketQty, currentChartPeriod, numBuckets);
   const totalTix = tixData.values.reduce((a,b) => a+b, 0);
   setText('chart-tickets-total', `${totalTix} tickets`);
 
@@ -173,8 +205,18 @@ function renderCharts() {
     });
   }
 
+  // ── user growth ──
   const rawUserData = groupByPeriod(users, 'createdAt', null, currentChartPeriod, numBuckets);
-  const cumulativeUsers = rawUserData.values.reduce((acc, val, i) => { acc.push((acc[i - 1] || 0) + val); return acc; }, []);
+  // "Total Users" starts from everyone who already existed before the first bucket,
+  // so the line shows real totals instead of starting at zero
+  const firstStart = rawUserData.buckets[0]?.start;
+  const baseline = firstStart
+    ? users.filter(u => { const d = new Date(u.createdAt); return !isNaN(d) && d < firstStart; }).length
+    : 0;
+  const cumulativeUsers = rawUserData.values.reduce((acc, val, i) => {
+    acc.push((i === 0 ? baseline : acc[i - 1]) + val);
+    return acc;
+  }, []);
   const totalNewUsers = rawUserData.values.reduce((a,b) => a+b, 0);
   setText('chart-users-total', `+${totalNewUsers} new`);
 
