@@ -36,7 +36,10 @@ class UserService {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const role = isOrganizer ? 'organizer' : 'customer';
+
+
+    const isOrg = isOrganizer === true;          // Joi already coerces to boolean
+    const role = isOrg ? 'organizer' : 'customer';
 
     const user = new User({
       name,
@@ -45,6 +48,7 @@ class UserService {
       password: hashedPassword,
       phone,
       role,
+      isOrganizer: isOrg,
     });
 
     try {
