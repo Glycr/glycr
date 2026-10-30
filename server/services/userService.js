@@ -62,7 +62,7 @@ class UserService {
   <h1>Welcome to Glycr, ${escapeHtml(user.name)}!</h1>
   <p>You've successfully created an account on Ghana's premier event ticketing platform.</p>
   <p>Start exploring events and discover amazing experiences.</p>
-  <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}">Get started</a></p>
+  <p><a href="${process.env.FRONTEND_URL}">Get started</a></p>
 `;
     sendEmail(user.email, 'Welcome to Glycr!', welcomeHtml)
       .catch((e) => logger.error('Welcome email failed', { err: e.message }));
