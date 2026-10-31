@@ -586,16 +586,23 @@ class GlycrApp {
   }
 
   async handleAuth() {
-    const email    = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    const isLogin  = document.getElementById('auth-title').textContent === 'Sign In';
+    const identifier = document.getElementById('email').value.trim();
+    const password   = document.getElementById('password').value;
+    const isLogin    = document.getElementById('auth-title').textContent === 'Sign In';
 
     this.clearFieldErrors('email-err', 'password-err', 'first-name-err', 'last-name-err', 'username-err', 'confirm-password-err', 'phone-err');
 
     let valid = true;
-    if (!email)                    { this.setFieldError('email', 'email-err', 'Email is required'); valid = false; }
-    else if (!this.validateEmail(email)) { this.setFieldError('email', 'email-err', 'Invalid email format'); valid = false; }
-    if (!password)                 { this.setFieldError('password', 'password-err', 'Password is required'); valid = false; }
+
+    // Login accepts an email OR a username, so only check the email format when registering
+    if (!identifier) {
+      this.setFieldError('email', 'email-err', isLogin ? 'Email or username is required' : 'Email is required');
+      valid = false;
+    } else if (!isLogin && !this.validateEmail(identifier)) {
+      this.setFieldError('email', 'email-err', 'Invalid email format');
+      valid = false;
+    }
+    if (!password) { this.setFieldError('password', 'password-err', 'Password is required'); valid = false; }
     if (!valid) return;
 
     if (!isLogin) {
@@ -605,27 +612,68 @@ class GlycrApp {
       const phone     = document.getElementById('phone').value.trim();
       const confirmPw = document.getElementById('confirm-password').value;
       const isOrg     = document.getElementById('is-organizer').checked;
+
       if (!firstName) { this.setFieldError('first-name', 'first-name-err', 'Required'); valid = false; }
       if (!lastName)  { this.setFieldError('last-name',  'last-name-err',  'Required'); valid = false; }
       if (!username)  { this.setFieldError('username',   'username-err',   'Required'); valid = false; }
-      if (!phone)     { this.setFieldError('phone', 'phone-err', 'Phone is required'); valid = false; }
+      else if (!/^[a-zA-Z0-9_.]{3,30}$/.test(username)) {
+        this.setFieldError('username', 'username-err', '3–30 characters: letters, numbers, _ or .');
+        valid = false;
+      }
+      if (!phone) { this.setFieldError('phone', 'phone-err', 'Phone is required'); valid = false; }
       else if (!this.validatePhone(phone)) { this.setFieldError('phone', 'phone-err', 'Use format: +233xxxxxxxxx'); valid = false; }
       if (password !== confirmPw) { this.setFieldError('confirm-password', 'confirm-password-err', 'Passwords do not match'); valid = false; }
       if (this.checkPasswordStrength(password).width === '0%') { this.setFieldError('password', 'password-err', 'Password is too weak'); valid = false; }
       if (!valid) return;
+
+      const btn = document.getElementById('auth-btn');
+      if (btn) btn.disabled = true;
       try {
-        const result = await this.fetchApi('/auth/register', { method: 'POST', body: JSON.stringify({ name: `${firstName} ${lastName}`, email, password, phone, isOrganizer: isOrg, username }) });
-        await this._onAuthSuccess(result);
-      } catch (err) { this.showToast(err.message); }
+        await this.fetchApi('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: `${firstName} ${lastName}`,
+            email: identifier,
+            password,
+            phone,
+            isOrganizer: isOrg,
+            username,
+          }),
+        });
+        // register returns the user only (no token), so sign in to get one
+        const result = await this.fetchApi('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email: identifier, password }),
+        });
+        await this._onAuthSuccess(result, true);
+      } catch (err) {
+        this.showToast(err.message);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
     } else {
+      const btn = document.getElementById('auth-btn');
+      if (btn) btn.disabled = true;
       try {
-        const result = await this.fetchApi('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
-        await this._onAuthSuccess(result);
-      } catch (err) { this.setFieldError('password', 'password-err', err.message || 'Invalid credentials'); }
+        const result = await this.fetchApi('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email: identifier, password }),
+        });
+        await this._onAuthSuccess(result, false);
+      } catch (err) {
+        this.setFieldError('password', 'password-err', err.message || 'Invalid credentials');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
     }
   }
 
-  async _onAuthSuccess(result) {
+  async _onAuthSuccess(result, isNewUser = false) {
+    // Never store a junk token if the response has the wrong shape
+    if (!result?.token || !result?.user) {
+      throw new Error('Sign-in failed. Please try again.');
+    }
+
     localStorage.setItem('token', result.token);
     this.currentUser = result.user;
     localStorage.setItem('user', JSON.stringify(result.user));
@@ -633,9 +681,20 @@ class GlycrApp {
     this.closeAllModals();
     await this.fetchPlatformFee();
     await this.loadAllData();
-    if (this.currentUser.isOrganizer) { await this.renderDashboardFromData(); this.showSection('dashboard'); }
-    else { await this.loadProfile(); this.showSection('profile'); }
-    this.pushNotification({ type: 'purchase', text: `Welcome back, ${this.currentUser.name ? this.currentUser.name.split(' ')[0] : 'there'}! 👋` });
+
+    if (this.currentUser.isOrganizer) {
+      await this.renderDashboardFromData();
+      this.showSection('dashboard');
+    } else {
+      await this.loadProfile();
+      this.showSection('profile');
+    }
+
+    const first = this.currentUser.name ? this.currentUser.name.split(' ')[0] : 'there';
+    this.pushNotification({
+      type: 'purchase',
+      text: isNewUser ? `Welcome to Glycr, ${first}! 🎉` : `Welcome back, ${first}! 👋`,
+    });
   }
 
   logout() {
