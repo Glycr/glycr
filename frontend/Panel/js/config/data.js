@@ -13,11 +13,27 @@ function isSaleTicket(t) {
 function ticketQty(t) {
   return t.isGroupTicket ? (Number(t.totalSlots) || 1) : 1;
 }
+// face value of the ticket (what the organizer priced)
 function ticketRevenue(t) {
   return (Number(t.price) || 0) * ticketQty(t);
 }
 function saleTickets() {
   return tickets.filter(isSaleTicket);
+}
+
+// The platform's fee for a ticket, as recorded when it was bought.
+// Tickets from before fees were stored (and not yet backfilled) fall back to
+// today's percentage.
+function ticketPlatformFee(t) {
+  if (t.platformFee !== null && t.platformFee !== undefined) return Number(t.platformFee) || 0;
+  return ticketRevenue(t) * (Number(platformFeePercent) || 0) / 100;
+}
+
+// Platform income = fees on tickets that are still sales, plus fees the
+// platform kept when a buyer who paid the fee asked for their money back
+// (`feeRetained` is set when that refund is approved).
+function platformIncomeOf(t) {
+  return (isSaleTicket(t) || t.feeRetained) ? ticketPlatformFee(t) : 0;
 }
 
 // ── load ──────────────────────────────────────────────────────────
@@ -84,7 +100,9 @@ function calculateStats() {
   const amountOf = (list, ...statuses) => list
     .filter(x => statuses.includes(x.status))
     .reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const feePct = Number(platformFeePercent) || 0;
+
+  const totalRevenue = sales.reduce((s, t) => s + ticketRevenue(t), 0);
+  const platformIncome = tickets.reduce((s, t) => s + platformIncomeOf(t), 0);
 
   stats = {
     totalUsers:       users.length,
@@ -92,9 +110,14 @@ function calculateStats() {
     totalEvents:      events.length,
     liveEvents:       events.filter(e => e.isPublished && !e.isCancelled && new Date(e.date) > new Date()).length,
 
-    // sales: cancelled and refunded tickets are not revenue
-    totalRevenue:     sales.reduce((s, t) => s + ticketRevenue(t), 0),
+    // sales: cancelled and refunded tickets are not revenue (face value of tickets sold)
+    totalRevenue,
     totalTickets:     sales.reduce((s, t) => s + ticketQty(t), 0),
+
+    // what the platform earns, from the fees recorded on each ticket
+    platformFeeAmount: platformIncome,
+    effectiveFeeRate:  totalRevenue > 0 ? (platformIncome / totalRevenue) * 100 : 0,
+    platformFeeRate:   Number(platformFeePercent) || 0,    // the configured percentage
 
     // payouts: pending + approved is money owed to organizers and not sent yet
     pendingPayouts:   amountOf(payouts, 'pending', 'approved'),
@@ -110,8 +133,6 @@ function calculateStats() {
     flaggedEvents:    events.filter(e => e.flagged).length,
     waitlistCount:    waitlist.length,
     openServiceRequests: serviceRequests.filter(r => r.status !== 'resolved').length,
-    platformFeeRate:  feePct,
-    get platformFeeAmount() { return this.totalRevenue * (feePct / 100); },
   };
 }
 
@@ -134,7 +155,7 @@ function renderDashboard() {
   setText('quick-sr-count',         stats.openServiceRequests);
   setText('open-sr-count',          stats.openServiceRequests);
   const feeEl = document.getElementById('stat-platform-fee');
-  if (feeEl) feeEl.textContent = `₵${stats.platformFeeAmount.toFixed(2)} (${stats.platformFeeRate}%)`;
+  if (feeEl) feeEl.textContent = `₵${stats.platformFeeAmount.toFixed(2)} (${stats.effectiveFeeRate.toFixed(1)}% effective)`;
 
   const txnCount = document.getElementById('quick-transactions-count');
   if (txnCount) txnCount.textContent = typeof transactions !== 'undefined' ? transactions.length : 0;
