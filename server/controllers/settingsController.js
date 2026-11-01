@@ -4,6 +4,13 @@ const { AppError } = require('../utils/appError');
 
 const ctx = (req) => ({ ip: req.ip, userAgent: req.get('user-agent') });
 
+const snapshot = (s) => ({
+  platformFee: s.platformFee,
+  platformFeeFloor: s.platformFeeFloor,
+  feePaidBy: s.feePaidBy,
+  refundDeadlineDays: s.refundDeadlineDays,
+});
+
 exports.getSettings = async (req, res, next) => {
   try {
     const settings = await settingsService.getSettings();
@@ -26,10 +33,7 @@ exports.updateSettings = async (req, res, next) => {
     // so logging the full snapshot is safer than trying to predict which
     // fields will survive.
     const before = await settingsService.getSettings();
-    const beforeSnapshot = {
-      platformFee: before.platformFee,
-      refundDeadlineDays: before.refundDeadlineDays,
-    };
+    const beforeSnapshot = snapshot(before);
 
     const settings = await settingsService.updateSettings(updates);
 
@@ -37,10 +41,7 @@ exports.updateSettings = async (req, res, next) => {
       type: 'system', adminId: req.user.id,
       attemptedFields: Object.keys(updates),
       before: beforeSnapshot,
-      after: {
-        platformFee: settings.platformFee,
-        refundDeadlineDays: settings.refundDeadlineDays,
-      },
+      after: snapshot(settings),
       ...ctx(req),
     });
 

@@ -1,25 +1,19 @@
 // services/analyticsService.js
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
-const { AppError } = require('../utils/appError');
 const Payout = require('../models/Payout');
+const { AppError } = require('../utils/appError');
 const settingsService = require('./settingsService');
+const revenueService = require('./revenueService');
 const payoutService = require('./payoutService');
 
 const MAX_DAYS = 90;
 const TZ = 'Africa/Accra';   // day boundaries for the sales trend (UTC+0, no daylight saving)
 
-// Tickets that no longer count as sales: the event was cancelled, or the money is being / was returned.
-const VOIDED_STATUSES = ['cancelled', 'refund_pending', 'refunded'];
-
-// One ticket document = 1 ticket, except group tickets, which hold `totalSlots` tickets.
-const QTY = { $cond: [{ $eq: ['$isGroupTicket', true] }, '$totalSlots', 1] };
-// Revenue per document. If `price` on a group ticket is already the TOTAL (not per slot),
-// change this to just { $ifNull: ['$price', 0] }. If you store the final amount charged
-// (after coupons/group discounts) in another field, use that field here.
-const REVENUE = { $multiply: [{ $ifNull: ['$price', 0] }, QTY] };
+// Same rules as the summary: only active or used tickets are sales,
+// group tickets count all their slots.
+const { SALE_STATUSES, QTY, REVENUE } = revenueService;
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
-
 
 class AnalyticsService {
   async getSalesTrend(organizerId, days = 7) {
@@ -35,9 +29,7 @@ class AnalyticsService {
     const events = await Event.find({ organizerId }).select('_id').lean();
     const eventIds = events.map((e) => e._id);
 
-    // --- One aggregation instead of loading every ticket into memory.
-    //     Cancelled / refunded tickets are not counted as sales, and group
-    //     tickets count as all of their slots (same rules as the summary). ---
+    // --- One aggregation instead of loading every ticket into memory ---
     const DAY_MS = 24 * 60 * 60 * 1000;
     const since = new Date(Date.now() - (parsed + 1) * DAY_MS);   // a day of margin; days are matched by key below
 
@@ -45,7 +37,7 @@ class AnalyticsService {
       { $match: {
           eventId: { $in: eventIds },
           purchasedAt: { $ne: null, $gte: since },
-          status: { $nin: VOIDED_STATUSES },
+          status: { $in: SALE_STATUSES },
         } },
       { $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$purchasedAt', timezone: TZ } },
@@ -76,21 +68,10 @@ class AnalyticsService {
   async getOrganizerSummary(organizerId) {
     if (!organizerId) throw new AppError('organizerId is required', 400);
 
-    const events = await Event.find({ organizerId }).select('_id').lean();
-    const eventIds = events.map((e) => e._id);
-
     const settings = await settingsService.getSettings();
-    const feePercent = settings.platformFee;
 
-    const [rows, payoutRows, availableForPayout] = await Promise.all([
-      Ticket.aggregate([
-        { $match: { eventId: { $in: eventIds }, status: { $nin: VOIDED_STATUSES } } },
-        { $group: {
-            _id: { eventId: '$eventId', type: '$ticketType' },
-            sold: { $sum: QTY },
-            revenue: { $sum: REVENUE },
-          } },
-      ]),
+    const [breakdown, payoutRows, availableForPayout] = await Promise.all([
+      revenueService.getOrganizerBreakdown(organizerId),
       // approved = reserved but not sent yet, so it is still money owed to the organizer
       Payout.find({ organizerId, status: { $in: ['pending', 'approved', 'completed'] } })
         .select('status amount')
@@ -99,44 +80,27 @@ class AnalyticsService {
       payoutService.getAvailableBalance(organizerId),
     ]);
 
-    const perEvent = {};
-    const byType = {};
-    let ticketsSold = 0;
-    let grossRevenue = 0;
-
-    for (const row of rows) {
-      const id = String(row._id.eventId);
-      const pe = (perEvent[id] ||= { sold: 0, revenue: 0, net: 0 });
-      pe.sold += row.sold;
-      pe.revenue += row.revenue;
-      byType[row._id.type] = (byType[row._id.type] || 0) + row.sold;
-      ticketsSold += row.sold;
-      grossRevenue += row.revenue;
-    }
-    for (const pe of Object.values(perEvent)) {
-      pe.revenue = r2(pe.revenue);
-      pe.net = r2(pe.revenue * (1 - feePercent / 100));
-    }
-
     const paid = (status) =>
       payoutRows
         .filter((p) => p.status === status)
         .reduce((sum, p) => sum + (p.amount || 0), 0);
-    const netRevenue = r2(grossRevenue * (1 - feePercent / 100));
 
     return {
-      feePercent,
-      totalEvents: events.length,
-      ticketsSold,
-      grossRevenue: r2(grossRevenue),
-      netRevenue,
+      feePercent: settings.platformFee,
+      feeFloor: settings.platformFeeFloor,
+      totalEvents: breakdown.totalEvents,
+      ticketsSold: breakdown.ticketsSold,
+      grossRevenue: breakdown.gross,           // face value of sales
+      platformFees: breakdown.fees,            // all platform fees
+      organizerFees: breakdown.organizerFees,  // the part deducted from this organizer
+      netRevenue: breakdown.net,               // what the organizer has earned
       completedPayouts: r2(paid('completed')),
       // requested or approved but not yet sent
       pendingPayouts: r2(paid('pending') + paid('approved')),
       approvedPayouts: r2(paid('approved')),
       availableForPayout,
-      perEvent,
-      byType,
+      perEvent: breakdown.perEvent,
+      byType: breakdown.byType,
     };
   }
 }

@@ -7,45 +7,44 @@ const Refund  = require('../models/Refund');
 const Coupon  = require('../models/Coupon');
 const { sendEmail, sendSMS } = require('./notificationService');
 const couponService = require('./couponService');
+const settingsService = require('./settingsService');
 const { AppError } = require('../utils/appError');
 const { logger } = require('../config/logger');
 const { escapeHtml, sanitizeHeader } = require('../utils/htmlSecurity');
+const { isObjectIdString } = require('../utils/validators');
 
 const MAX_QUANTITY_PER_ORDER = 50;
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 
 class TicketService {
-  async purchaseTicket(
-    userId = null, eventId, ticketType, quantity, paymentDetails,
-    groupBooking = {}, promoCode = null, buyerName = null
-  ) {
+  // ── shared steps (used by both the quote and the purchase) ──────
+
+  _validateOrderInput(eventId, ticketType, quantity) {
     if (!eventId) throw new AppError('eventId is required', 400);
+    if (!isObjectIdString(String(eventId))) throw new AppError('Invalid event', 400);
     if (!ticketType || typeof ticketType !== 'string') {
       throw new AppError('ticketType is required', 400);
     }
-
     const qty = Number(quantity);
     if (!Number.isInteger(qty) || qty < 1 || qty > MAX_QUANTITY_PER_ORDER) {
       throw new AppError(
         `quantity must be an integer between 1 and ${MAX_QUANTITY_PER_ORDER}`, 400
       );
     }
+    return qty;
+  }
 
-    if (!paymentDetails || typeof paymentDetails !== 'object') {
-      throw new AppError('paymentDetails is required', 400);
-    }
-    if (!paymentDetails.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentDetails.email)) {
-      throw new AppError('Valid email is required for ticket', 400);
-    }
-    if (!paymentDetails.phone) {
-      throw new AppError('Phone number is required for ticket', 400);
-    }
-
+  async _loadSellableEvent(eventId) {
     const event = await Event.findById(eventId);
     if (!event) throw new AppError('Event not found', 404);
     if (event.isCancelled) throw new AppError('Event cancelled', 400);
     if (event.isPublished === false) throw new AppError('Event is not published', 400);
+    return event;
+  }
 
+  // Ticket value after early-bird, group and promo discounts (the amount the
+  // organizer is paid for), before any platform fee.
+  async _priceOrder(event, ticketType, qty, promoCode, userId) {
     const ticketTypes = event.ticketTypes;
     if (!ticketTypes || !(ticketTypes instanceof Map)) {
       throw new AppError('Event ticket types are corrupted', 500);
@@ -63,39 +62,99 @@ class TicketService {
 
     // ── Pricing ──
     const now = new Date();
-    const originalPricePerTicket = Number(typeData.price) || 0;
-    let pricePerTicket = originalPricePerTicket;
+    let unitPrice = Number(typeData.price) || 0;
 
     if (typeData.earlyBirdEnd && typeData.earlyBirdPrice != null) {
       const ebEnd = new Date(typeData.earlyBirdEnd);
       if (!isNaN(ebEnd) && now < ebEnd) {
-        pricePerTicket = Number(typeData.earlyBirdPrice);
+        unitPrice = Number(typeData.earlyBirdPrice);
       }
     }
 
+    const subtotal = round2(unitPrice * qty);
+
     const minQty = Number(typeData.groupDiscountMinQty) || 5;
     const discPct = Number(typeData.groupDiscount) || 0;
+    let groupDiscount = 0;
     let groupDiscountApplied = false;
     if (discPct > 0 && discPct <= 100 && qty >= minQty) {
-      pricePerTicket = pricePerTicket * (1 - discPct / 100);
+      groupDiscount = round2(subtotal * discPct / 100);
       groupDiscountApplied = true;
     }
-
-    const subtotal = round2(pricePerTicket * qty);
+    const afterGroup = round2(subtotal - groupDiscount);
 
     // ── Promo code ──
-    let discountAmount = 0;
+    let promoDiscount = 0;
     let appliedCoupon = null;
     if (promoCode) {
       const { discount, coupon } = await couponService.applyCoupon(
-        promoCode, eventId, subtotal, userId
+        promoCode, String(event._id), afterGroup, userId
       );
-      discountAmount = round2(discount);
+      promoDiscount = round2(discount);
       appliedCoupon = coupon;
     }
 
-    const finalTotal = round2(subtotal - discountAmount);
-    pricePerTicket = round2(finalTotal / qty);
+    return {
+      capacity, subtotal, groupDiscount, groupDiscountApplied, discPct,
+      promoDiscount, appliedCoupon,
+      faceTotal: round2(afterGroup - promoDiscount),
+    };
+  }
+
+  // ── checkout quote ──────────────────────────────────────────────
+  // The all-in price, shown to the buyer BEFORE they pay: ticket price,
+  // discounts, the service fee (only when the buyer pays it) and the total.
+  // Uses exactly the same pricing as the purchase, so the two cannot differ.
+  async quotePurchase({ eventId, ticketType, quantity, promoCode } = {}, userId = null) {
+    const qty = this._validateOrderInput(eventId, ticketType, quantity);
+    const event = await this._loadSellableEvent(eventId);
+    const priced = await this._priceOrder(event, ticketType, qty, promoCode, userId);
+    const money = await settingsService.quoteOrder(priced.faceTotal, event);
+
+    const labels = [];
+    if (priced.groupDiscountApplied) labels.push(`Group ${priced.discPct}%`);
+    if (priced.appliedCoupon) labels.push(priced.appliedCoupon.code || promoCode);
+
+    return {
+      currency: event.currency,
+      quantity: qty,
+      unitPrice: round2(priced.subtotal / qty),
+      subtotal: priced.subtotal,
+      discount: round2(priced.groupDiscount + priced.promoDiscount),
+      discountLabel: labels.join(' + '),
+      serviceFee: money.serviceFee,
+      feePaidBy: money.feePaidBy,
+      total: money.buyerTotal,
+    };
+  }
+
+  // ── purchase ────────────────────────────────────────────────────
+
+  async purchaseTicket(
+    userId = null, eventId, ticketType, quantity, paymentDetails,
+    groupBooking = {}, promoCode = null, buyerName = null
+  ) {
+    const qty = this._validateOrderInput(eventId, ticketType, quantity);
+
+    if (!paymentDetails || typeof paymentDetails !== 'object') {
+      throw new AppError('paymentDetails is required', 400);
+    }
+    if (!paymentDetails.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentDetails.email)) {
+      throw new AppError('Valid email is required for ticket', 400);
+    }
+    if (!paymentDetails.phone) {
+      throw new AppError('Phone number is required for ticket', 400);
+    }
+
+    const event = await this._loadSellableEvent(eventId);
+    const priced = await this._priceOrder(event, ticketType, qty, promoCode, userId);
+    const { capacity, appliedCoupon, promoDiscount, faceTotal } = priced;
+
+    // The money for this order, worked out once and written onto every ticket:
+    // a later change to the fee settings never touches past sales.
+    const money = await settingsService.quoteOrder(faceTotal, event);
+    const facePrices = settingsService.allocateFee(money.faceTotal, qty);   // sums exactly to the face total
+    const fees = settingsService.allocateFee(money.fee, qty);               // sums exactly to the order fee
 
     // ── Atomically reserve capacity ──
     const soldPath = `ticketTypes.${ticketType}.sold`;
@@ -136,7 +195,10 @@ class TicketService {
           eventId,
           userId,
           ticketType,
-          price: pricePerTicket,
+          price: facePrices[i],                 // face price: what the organizer is paid for
+          platformFee: fees[i],                 // the platform's fee for this ticket
+          feePaidBy: money.feePaidBy,           // who pays it: 'organizer' or 'buyer'
+          amountPaid: round2(facePrices[i] + (money.feePaidBy === 'buyer' ? fees[i] : 0)),
           userEmail: paymentDetails.email.toLowerCase().trim(),
           userPhone: paymentDetails.phone,
           buyerName: resolvedBuyerName,
@@ -146,7 +208,7 @@ class TicketService {
           validated: false,
           status: 'active',
           promoCode: promoCode || null,
-          discountAmount: discountAmount > 0 ? round2(discountAmount / qty) : 0,
+          discountAmount: promoDiscount > 0 ? round2(promoDiscount / qty) : 0,
         });
         await ticket.save();
         purchasedTickets.push(ticket);
@@ -170,14 +232,14 @@ class TicketService {
 
     // ── Build discount description ──
     let discountDesc = '';
-    if (groupDiscountApplied && discountAmount > 0) {
-      discountDesc = `Group discount (${discPct}%) + Promo code (${appliedCoupon?.code || promoCode}) applied: -₵${discountAmount.toFixed(2)}`;
-    } else if (groupDiscountApplied) {
-      const groupSavings = round2(originalPricePerTicket * qty * discPct / 100);
-      discountDesc = `Group discount (${discPct}%) applied: -₵${groupSavings.toFixed(2)}`;
-    } else if (discountAmount > 0) {
-      discountDesc = `Promo code ${appliedCoupon?.code || promoCode} applied: -₵${discountAmount.toFixed(2)}`;
+    if (priced.groupDiscountApplied && promoDiscount > 0) {
+      discountDesc = `Group discount (${priced.discPct}%) + Promo code (${appliedCoupon?.code || promoCode}) applied: -₵${(priced.groupDiscount + promoDiscount).toFixed(2)}`;
+    } else if (priced.groupDiscountApplied) {
+      discountDesc = `Group discount (${priced.discPct}%) applied: -₵${priced.groupDiscount.toFixed(2)}`;
+    } else if (promoDiscount > 0) {
+      discountDesc = `Promo code ${appliedCoupon?.code || promoCode} applied: -₵${promoDiscount.toFixed(2)}`;
     }
+    const feeDesc = money.serviceFee > 0 ? `Service fee: ₵${money.serviceFee.toFixed(2)}` : '';
 
     // ── Notify buyer — fire-and-forget ──
     const subjectSafe = sanitizeHeader(`Your Ticket for ${event.title}`);
@@ -186,15 +248,16 @@ class TicketService {
         <h2>Your Glycr Ticket</h2>
         <p>Thank you for purchasing a ticket to <strong>${escapeHtml(event.title)}</strong>.</p>
         ${discountDesc ? `<p style="color:#3dbb86;">${escapeHtml(discountDesc)}</p>` : ''}
-        <p><strong>Final total:</strong> ₵${finalTotal.toFixed(2)}</p>
+        ${feeDesc ? `<p>${escapeHtml(feeDesc)}</p>` : ''}
+        <p><strong>Order total:</strong> ₵${money.buyerTotal.toFixed(2)}</p>
         <p>Ticket ID: ${escapeHtml(ticket.id)}</p>
         <p>Type: ${escapeHtml(ticket.ticketType.toUpperCase())}</p>
-        <p>Price paid: ₵${ticket.price}</p>
+        <p>Paid for this ticket: ₵${ticket.amountPaid.toFixed(2)}</p>
         <p>Date: ${new Date(event.date).toLocaleString()}</p>
         <p>Venue: ${escapeHtml(event.venue)}, ${escapeHtml(event.location)}</p>
         <p>Present this QR code at the entrance.</p>
       `;
-      const emailText = `Your Glycr Ticket for ${event.title}. Ticket ID: ${ticket.id}. Price paid: ₵${ticket.price}. Date: ${new Date(event.date).toLocaleString()}. Venue: ${event.venue}, ${event.location}.${discountDesc ? ` ${discountDesc}` : ''}`;
+      const emailText = `Your Glycr Ticket for ${event.title}. Ticket ID: ${ticket.id}. Paid: ₵${ticket.amountPaid.toFixed(2)}. Date: ${new Date(event.date).toLocaleString()}. Venue: ${event.venue}, ${event.location}.${discountDesc ? ` ${discountDesc}` : ''}${feeDesc ? ` ${feeDesc}.` : ''}`;
       const smsText = `Glycr: Your ticket for ${event.title} (${ticket.ticketType}) is confirmed. Ticket ID: ${ticket.id}. Show this QR code at the entrance.`;
 
       sendEmail(ticket.userEmail, subjectSafe, emailHtml, emailText)
@@ -276,6 +339,7 @@ class TicketService {
 
   // Admin / organizer cancellation. Same authority model as validateTicket:
   // admin any ticket, organizer only their own event's tickets.
+  // Refunds everything the buyer paid, including a service fee they paid.
   async cancelTicket(ticketId, actingUser) {
     if (!ticketId) throw new AppError('ticketId is required', 400);
     if (!actingUser || !actingUser.id) {
@@ -302,21 +366,23 @@ class TicketService {
     );
     if (!locked) throw new AppError('Ticket already used, cancelled, or refunded', 400);
 
+    const paid = round2(ticket.amountPaid ?? ticket.price);
+
     let refund;
     try {
       refund = new Refund({
-        source: 'admin_cancelled',
         ticketId: ticket._id,
         userId: ticket.userId,
         eventId: ticket.eventId._id,
-        amount: ticket.price,
+        amount: paid,
         reason: actingUser.isAdmin
           ? 'Cancelled by admin'
           : 'Cancelled by organizer',
         status: 'pending',
+        source: 'admin_cancelled',
         requestedAt: new Date(),
         isPartial: false,
-        originalPrice: ticket.price,
+        originalPrice: paid,
       });
       await refund.save();
 

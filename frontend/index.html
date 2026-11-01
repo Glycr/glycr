@@ -41,7 +41,6 @@
     </div>
   </div>
 </div>
-<div id="toast-message" class="toast-message" style="display:none;"></div>
 
 <!-- ===== NOTIFICATIONS PANEL ===== -->
 <div id="notifications-panel" class="notifications-panel" role="dialog" aria-label="Notifications" aria-modal="false">
@@ -518,8 +517,8 @@
       </select>
     </div>
     <div class="filter-actions">
-      <button class="btn btn-outline btn-sm" id="export-payouts-csv"><i class="fas fa-file-csv"></i> CSV</button>
-      <button class="btn btn-outline btn-sm" id="export-payouts-pdf"><i class="fas fa-file-pdf"></i> PDF</button>
+      <button class="btn btn-outline btn-sm" id="payout-page-csv"><i class="fas fa-file-csv"></i> CSV</button>
+      <button class="btn btn-outline btn-sm" id="payout-page-pdf"><i class="fas fa-file-pdf"></i> PDF</button>
     </div>
   </div>
   <div class="payout-summary-row">
@@ -577,7 +576,7 @@
       <button class="export-btn export-btn-csv" id="export-events-csv"><i class="fas fa-file-csv"></i><span>Events CSV</span></button>
       <button class="export-btn export-btn-csv" id="export-payouts-csv-report"><i class="fas fa-file-csv"></i><span>Payouts CSV</span></button>
       <button class="export-btn export-btn-pdf" id="export-events-pdf"><i class="fas fa-file-pdf"></i><span>Events PDF</span></button>
-      <button class="export-btn export-btn-pdf" id="export-payouts-pdf"><i class="fas fa-file-pdf"></i><span>Payouts PDF</span></button>
+      <button class="export-btn export-btn-pdf" id="export-payouts-pdf-report"><i class="fas fa-file-pdf"></i><span>Payouts PDF</span></button>
     </div>
   </div>
   <div class="report-charts-row">
@@ -620,7 +619,6 @@
       </ul>
     </div>
 
-    <!-- In the "For Organizers" footer column, add id to the <div class="footer-links-group"> -->
     <div class="footer-links-group" id="footer-organizer-links" style="display:none;">
       <h4 class="footer-heading">For Organizers</h4>
       <ul>
@@ -739,6 +737,7 @@
     <button class="modal-close" aria-label="Close">&times;</button>
     <div class="ticket-display">
       <h3><i class="fas fa-ticket-alt"></i> Your Ticket</h3>
+      <p id="ticket-event-title" class="ticket-event-title"></p>
       <div id="ticket-canvas" class="ticket-canvas"></div>
       <p id="ticket-id" class="ticket-id-mono"></p>
       <!-- Calendar Add Buttons -->
@@ -1110,6 +1109,13 @@
           <span class="field-error" id="phone-err"></span>
         </div>
         <label class="checkbox-row" style="margin-top:0.75rem;"><input type="checkbox" id="is-organizer"> I'm an event organiser</label>
+        <label class="checkbox-row terms-row" style="margin-top:0.75rem;">
+          <input type="checkbox" id="agree-terms">
+          <span>I agree to the
+            <a href="#" onclick="app.openLegal('terms-modal'); return false;">Terms of Service</a> and
+            <a href="#" onclick="app.openLegal('privacy-modal'); return false;">Privacy Policy</a></span>
+        </label>
+        <span class="field-error" id="agree-terms-err"></span>
       </div>
       <button type="submit" class="btn btn-primary btn-block" id="auth-btn" style="margin-top:0.25rem;">Sign In</button>
     </form>
@@ -1220,10 +1226,10 @@
               <option value="accra-central">Accra Central</option><option value="west-legon">West Legon</option>
             </optgroup>
             <optgroup label="Other Cities">
-              <option value="kumasi">Kumasi</option><option value="takoradi">Takoradi</option>
-              <option value="cape-coast">Cape Coast</option><option value="tamale">Tamale</option>
+              <option value="kasoa">Kasoa</option> <option value="kumasi">Kumasi</option><option value="takoradi">Takoradi</option>
+              <option value="cape-coast">Cape Coast</option><option value="tamale">Tamale</option><option value="aburi">Aburi</option>
               <option value="ho">Ho</option><option value="sunyani">Sunyani</option>
-              <option value="koforidua">Koforidua</option>
+              <option value="koforidua">Koforidua</option><option value="akosombo">Akosombo</option>
             </optgroup>
             <option value="online-events">Online</option>
           </select>
@@ -1300,19 +1306,6 @@
   </div>
 </div>
 
-<!-- Cancel event -->
-<div id="cancel-event-modal" class="modal" role="dialog" aria-modal="true">
-  <div class="modal-backdrop"></div>
-  <div class="modal-box" style="max-width:420px;">
-    <div class="modal-header"><h3 class="modal-title" id="cancel-title">Cancel Event?</h3><button class="modal-close" aria-label="Close">&times;</button></div>
-    <p id="cancel-reason" style="color:var(--dim); font-size:0.88rem; line-height:1.7; margin-bottom:1.25rem;"></p>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" id="dismiss-cancel" style="flex:1;">Keep Event</button>
-      <button class="btn btn-danger" id="confirm-cancel" style="flex:1;">Yes, Cancel</button>
-    </div>
-  </div>
-</div>
-
 <!-- Payout request -->
 <div id="payout-modal" class="modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop"></div>
@@ -1350,28 +1343,67 @@
   </div>
 </div>
 
-<!-- Settings -->
-<div id="settings-modal" class="modal" role="dialog" aria-modal="true">
+<!-- SETTINGS (tabbed) -->
+<div id="settings-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
   <div class="modal-backdrop"></div>
   <div class="modal-box">
-    <div class="modal-header"><h3 class="modal-title">Settings</h3><button class="modal-close" aria-label="Close">&times;</button></div>
-    <form id="settings-form" class="form">
-      <div class="form-field"><label class="form-label">Current Password</label><input type="password" id="current-password" placeholder="••••••••" class="input" required></div>
-      <div class="form-field">
-        <label class="form-label">New Password</label>
-        <input type="password" id="new-password-settings" placeholder="••••••••" class="input" required>
-        <div class="strength-track"><div class="strength-fill" id="settings-strength-bar"></div></div>
-        <div class="strength-hint" id="settings-strength-text"></div>
+    <div class="modal-header"><h3 class="modal-title" id="settings-title">Settings</h3><button class="modal-close" aria-label="Close">&times;</button></div>
+
+    <div class="settings-tabs" role="tablist">
+      <button type="button" class="settings-tab active" data-tab="password" role="tab" aria-selected="true" onclick="app.switchSettingsTab('password')"><i class="fas fa-lock"></i> Password</button>
+      <button type="button" class="settings-tab" data-tab="notifications" role="tab" aria-selected="false" onclick="app.switchSettingsTab('notifications')"><i class="fas fa-bell"></i> Notifications</button>
+      <button type="button" class="settings-tab" data-tab="appearance" role="tab" aria-selected="false" onclick="app.switchSettingsTab('appearance')"><i class="fas fa-palette"></i> Appearance</button>
+      <button type="button" class="settings-tab" data-tab="account" role="tab" aria-selected="false" onclick="app.switchSettingsTab('account')"><i class="fas fa-user-slash"></i> Account</button>
+    </div>
+
+    <!-- Password -->
+    <div class="settings-panel active" id="settings-tab-password">
+      <form id="settings-form" class="form">
+        <div class="form-field"><label class="form-label">Current Password</label><input type="password" id="current-password" placeholder="••••••••" class="input" autocomplete="current-password" required></div>
+        <div class="form-field">
+          <label class="form-label">New Password</label>
+          <input type="password" id="new-password-settings" placeholder="••••••••" class="input" autocomplete="new-password" required>
+          <div class="strength-track"><div class="strength-fill" id="settings-strength-bar"></div></div>
+          <div class="strength-hint" id="settings-strength-text"></div>
+        </div>
+        <div class="form-field"><label class="form-label">Confirm New Password</label><input type="password" id="confirm-new-password-settings" placeholder="••••••••" class="input" autocomplete="new-password" required></div>
+        <button type="submit" class="btn btn-primary btn-block">Update Password</button>
+      </form>
+      <div id="settings-status" class="status-msg" style="display:none;"></div>
+    </div>
+
+    <!-- Notifications -->
+    <div class="settings-panel" id="settings-tab-notifications">
+      <p class="settings-hint">Choose how Glycr reminds you about your events.</p>
+      <label class="checkbox-row"><input type="checkbox" id="notify-email" checked> Email reminders</label>
+      <label class="checkbox-row" style="margin-top:0.6rem;"><input type="checkbox" id="notify-sms" checked> SMS reminders</label>
+      <button type="button" class="btn btn-primary btn-block" style="margin-top:1.25rem;" onclick="app.saveNotificationPrefs()">Save Preferences</button>
+    </div>
+
+    <!-- Appearance -->
+    <div class="settings-panel" id="settings-tab-appearance">
+      <p class="settings-hint">Pick how Glycr looks on this device.</p>
+      <div class="theme-options">
+        <button type="button" class="theme-choice" data-theme="light"  onclick="app.setThemePref('light')"><i class="fas fa-sun"></i> Light</button>
+        <button type="button" class="theme-choice" data-theme="dark"   onclick="app.setThemePref('dark')"><i class="fas fa-moon"></i> Dark</button>
+        <button type="button" class="theme-choice" data-theme="system" onclick="app.setThemePref('system')"><i class="fas fa-desktop"></i> System</button>
       </div>
-      <div class="form-field"><label class="form-label">Confirm New Password</label><input type="password" id="confirm-new-password-settings" placeholder="••••••••" class="input" required></div>
-      <div class="form-field">
-        <label class="form-label">Notifications</label>
-        <label class="checkbox-row"><input type="checkbox" id="notify-email" checked> Email reminders</label>
-        <label class="checkbox-row"><input type="checkbox" id="notify-sms" checked> SMS reminders</label>
+    </div>
+
+    <!-- Account -->
+    <div class="settings-panel" id="settings-tab-account">
+      <div class="settings-info-row"><span>Signed in as</span><strong id="settings-account-email">—</strong></div>
+      <div class="danger-zone">
+        <h4><i class="fas fa-user-slash"></i> Deactivate account</h4>
+        <p>Deactivating hides your profile and any events you organise, and signs you out. Your tickets, payouts and history are kept. Sign in again at any time to reactivate.</p>
+        <div class="form-field">
+          <label class="form-label">Confirm with your password</label>
+          <input type="password" id="deactivate-password" class="input" placeholder="••••••••" autocomplete="current-password">
+          <span class="field-error" id="deactivate-password-err"></span>
+        </div>
+        <button type="button" class="btn btn-danger btn-block" id="deactivate-btn" onclick="app.deactivateAccount()">Deactivate my account</button>
       </div>
-      <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
-    </form>
-    <div id="settings-status" class="status-msg" style="display:none;"></div>
+    </div>
   </div>
 </div>
 
@@ -1541,6 +1573,24 @@
       <h4>What are Cookies?</h4><p>Cookies are small text files stored on your device when you visit Glycr.</p>
       <h4>How We Use Cookies</h4><p>We use cookies for authentication, preferences, analytics, and to improve your experience.</p>
       <h4>Managing Cookies</h4><p>You can disable cookies in your browser settings, but this may affect platform functionality.</p>
+    </div>
+  </div>
+</div>
+
+<!-- GLOBAL CONFIRM DIALOG (reusable: app.confirmDialog({...})) -->
+<div id="confirm-dialog" class="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+  <div class="confirm-backdrop" id="confirm-backdrop"></div>
+  <div class="confirm-box">
+    <div class="confirm-icon danger" id="confirm-icon"><i class="fas fa-triangle-exclamation"></i></div>
+    <h3 class="confirm-title" id="confirm-title"></h3>
+    <p class="confirm-message" id="confirm-message"></p>
+    <div class="confirm-input-wrap" id="confirm-input-wrap" style="display:none;">
+      <label class="form-label" id="confirm-input-label"></label>
+      <textarea id="confirm-input" class="input" rows="2"></textarea>
+    </div>
+    <div class="confirm-actions">
+      <button type="button" class="btn btn-ghost" id="confirm-cancel-btn">Cancel</button>
+      <button type="button" class="btn btn-danger" id="confirm-ok-btn">Confirm</button>
     </div>
   </div>
 </div>

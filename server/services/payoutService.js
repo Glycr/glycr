@@ -1,17 +1,31 @@
 // services/payoutService.js
 const Payout = require('../models/Payout');
 const User = require('../models/User');
-const Event = require('../models/Event');
-const Ticket = require('../models/Ticket');
-const Settings = require('../models/Settings');
 const { sendEmail } = require('./notificationService');
+const revenueService = require('./revenueService');
+const settingsService = require('./settingsService');
 const { AppError } = require('../utils/appError');
 const { logger } = require('../config/logger');
 const { escapeHtml, sanitizeHeader } = require('../utils/htmlSecurity');
 const { isObjectIdString } = require('../utils/validators');
 
-const MIN_PAYOUT = 10;
 const VALID_METHODS = ['bank', 'mobile_money', 'paypal', 'stripe'];
+
+// Minimum payout per method, in cedis. A bank transfer costs a fixed amount
+// to send, so small bank payouts would be eaten by that cost; mobile money
+// transfers are cheap. Change these numbers to change the rule.
+const MIN_PAYOUT_BY_METHOD = {
+  bank: 50,
+  mobile_money: 10,
+  paypal: 10,
+  stripe: 10,
+};
+const METHOD_LABEL = {
+  bank: 'bank transfer',
+  mobile_money: 'mobile money',
+  paypal: 'PayPal',
+  stripe: 'card/Stripe',
+};
 
 // Payout lifecycle:
 //   pending   → requested by the organizer, waiting for review
@@ -75,30 +89,17 @@ const fmt = (n) => `₵${Number(n).toFixed(2)}`;
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 
 class PayoutService {
+  // Kept for callers that still ask for the percentage.
   async getPlatformFee() {
-    const settings = await Settings.findOneAndUpdate(
-      {},
-      { $setOnInsert: { platformFee: 3 } },
-      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
-    );
+    const settings = await settingsService.getSettings();
     return settings.platformFee;
   }
 
-  // Returns net revenue minus all committed payouts (pending + approved +
-  // completed). This is the source of truth for "how much can the organizer
-  // still withdraw?"
+  // Net revenue (already after the platform fee, wherever the organizer pays
+  // it) minus all committed payouts (pending + approved + completed). This is
+  // the source of truth for "how much can the organizer still withdraw?"
   async getAvailableBalance(organizerId) {
-    const events = await Event.find({ organizerId, isCancelled: false }).select('_id').lean();
-    const eventIds = events.map((e) => e._id);
-
-    const tickets = await Ticket.find({
-      eventId: { $in: eventIds },
-      status: { $in: ['active', 'used'] },
-    }).select('price').lean();
-
-    const totalRevenue = tickets.reduce((sum, t) => sum + (t.price || 0), 0);
-    const feePercent = await this.getPlatformFee();
-    const netRevenue = totalRevenue * (1 - feePercent / 100);
+    const { net } = await revenueService.getOrganizerBreakdown(organizerId);
 
     const payouts = await Payout.find({
       organizerId,
@@ -107,7 +108,7 @@ class PayoutService {
 
     const totalCommitted = payouts.reduce((sum, p) => sum + (p.amount || 0), 0);
 
-    return Math.max(0, round2(netRevenue - totalCommitted));
+    return Math.max(0, round2(net - totalCommitted));
   }
 
   // Backward-compat alias. Behavior changed — now subtracts pending too.
@@ -131,16 +132,20 @@ class PayoutService {
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       throw new AppError('Amount must be a positive number', 400);
     }
-    if (parsedAmount < MIN_PAYOUT) {
-      throw new AppError(`Minimum payout amount is ${fmt(MIN_PAYOUT)}`, 400);
-    }
     const roundedAmount = round2(parsedAmount);
 
-    // ── Validate method ──
+    // ── Validate method (the minimum depends on it) ──
     const canonicalMethod = normalizeMethod(method);
     if (!canonicalMethod) {
       throw new AppError(
         `Method must be one of: ${VALID_METHODS.join(', ')} (received: "${method}")`,
+        400
+      );
+    }
+    const minimum = MIN_PAYOUT_BY_METHOD[canonicalMethod] ?? 10;
+    if (roundedAmount < minimum) {
+      throw new AppError(
+        `Minimum payout by ${METHOD_LABEL[canonicalMethod]} is ${fmt(minimum)}`,
         400
       );
     }
@@ -254,18 +259,9 @@ class PayoutService {
     if (!pre) throw new AppError('Payout not found', 404);
     if (pre.status !== 'pending') throw new AppError('Payout already processed', 409);
 
-    // 2. Recompute net revenue for this organizer
-    const events = await Event.find({ organizerId: pre.organizerId, isCancelled: false })
-      .select('_id').lean();
-    const eventIds = events.map((e) => e._id);
-
-    const tickets = await Ticket.find({
-      eventId: { $in: eventIds },
-      status: { $in: ['active', 'used'] },
-    }).select('price').lean();
-    const totalRevenue = tickets.reduce((sum, t) => sum + (t.price || 0), 0);
-    const feePercent = await this.getPlatformFee();
-    const netRevenue = round2(totalRevenue * (1 - feePercent / 100));
+    // 2. Recompute what this organizer has earned (after fees)
+    const { net } = await revenueService.getOrganizerBreakdown(pre.organizerId);
+    const netRevenue = round2(net);
 
     // 3. Sum ALL OTHER committed payouts (pending + approved + completed), excluding this one
     const others = await Payout.find({

@@ -4,6 +4,37 @@ function esc(v) {
   ));
 }
 
+// ─────────────────────────────────────────────────────────────
+//  GLOBAL SUCCESS TOASTS
+//  Any non-GET API call that succeeds and matches a row here
+//  shows a success toast automatically (see fetchApi).
+//  Pass { successMsg: 'text' } to override, or { successMsg: false } to silence.
+// ─────────────────────────────────────────────────────────────
+const SUCCESS_TOASTS = [
+  ['PUT',    /^\/auth\/profile$/,                    'Profile updated'],
+  ['POST',   /^\/auth\/change-password$/,            'Password updated'],
+  ['POST',   /^\/auth\/forgot-password$/,            'If that email exists, a reset link has been sent'],
+  ['POST',   /^\/auth\/reset-password$/,             'Password reset. You can sign in now'],
+  ['POST',   /^\/service-requests$/,                 'Message sent. We\'ll reply within 2–4 hours'],
+  ['POST',   /^\/newsletter\/subscribe$/,            'You\'re subscribed to the Glycr newsletter'],
+  ['POST',   /^\/waitlists$/,                        'You\'re on the waitlist'],
+  ['POST',   /^\/events\/[^/]+\/waitlists\/notify$/, 'Waitlist notified'],
+  ['POST',   /^\/coupons\/validate$/,                'Promo code applied'],
+  ['POST',   /^\/coupons$/,                          'Coupon created'],
+  ['POST',   /^\/tickets\/transfer$/,                'Ticket transferred'],
+  ['POST',   /^\/reviews$/,                          'Review submitted'],
+  ['POST',   /^\/refunds$/,                          'Refund request submitted'],
+  ['PATCH',  /^\/refunds\/[^/]+\/approve$/,          'Refund approved'],
+  ['PATCH',  /^\/refunds\/[^/]+\/reject$/,           'Refund rejected'],
+  ['POST',   /^\/payouts$/,                          'Payout request submitted'],
+  ['POST',   /^\/events$/,                           'Event created'],
+  ['PUT',    /^\/events\/[^/]+$/,                    'Event updated'],
+  ['PATCH',  /^\/events\/[^/]+\/cancel$/,            'Event cancelled. Ticket holders will be refunded'],
+  ['DELETE', /^\/events\/[^/]+$/,                    'Event deleted'],
+  ['POST',   /^\/staff$/,                            'Staff account created'],
+  ['DELETE', /^\/staff\/[^/]+$/,                     'Staff member removed'],
+];
+
 // Glycr App — v3 (Admin Panel Pattern - Full Data Refresh)
 class GlycrApp {
   constructor() {
@@ -58,6 +89,10 @@ class GlycrApp {
     this._modalFocusTrap = null;
     this._previousFocus = null;
     this._isRefreshing = false;
+    this._confirmResolve = null;
+    this._confirmHasInput = false;
+    this._confirmPrevFocus = null;
+    this._reopenAfter = null;
     this.dataLoaded = false;
     this.isLoadingData = false;
     this.setupInfiniteScroll();
@@ -83,6 +118,7 @@ class GlycrApp {
       { cat: 'account', q: 'How do I reset my password?', a: 'Click "Forgot Password?" on the Sign In page, enter your email, and follow the link sent to your inbox.' },
       { cat: 'account', q: 'Can I have both an attendee and organiser account?', a: 'Yes! You can enable the organiser role from your account settings or by checking "I\'m an event organiser" during registration.' },
       { cat: 'account', q: 'How do I update my profile information?', a: 'Go to Profile and click "Edit Profile" to update your name, email, and phone number.' },
+      { cat: 'account', q: 'Can I deactivate my account?', a: 'Yes. Open Settings → Account and choose "Deactivate my account". You can reactivate it at any time by signing in again.' },
     ];
     this.init();
   }
@@ -91,14 +127,105 @@ class GlycrApp {
   sendSMS(phone, msg) { console.log(`📱 SMS to ${phone}: ${msg}`); }
   sendEmail(email, subj, body) { console.log(`📧 Email to ${email}: ${subj}\n${body}`); }
 
-  showToast(message, type = 'error') {
-    const toast = document.getElementById('toast-message');
-    if (toast) {
-      toast.textContent = message;
-      toast.className = `toast-message ${type}`;
-      toast.style.display = 'block';
-      setTimeout(() => { toast.style.display = 'none'; }, 3500);
-    } else { alert(message); }
+  // ─── Global toasts (top-centre, stacked) ──────────────────
+  showToast(message, type = 'error', duration = 3500) {
+    let stack = document.getElementById('toast-stack');
+    if (!stack) {
+      stack = document.createElement('div');
+      stack.id = 'toast-stack';
+      stack.className = 'toast-stack';
+      stack.setAttribute('aria-live', 'polite');
+      document.body.appendChild(stack);
+    }
+    const icons = { success: 'fa-circle-check', error: 'fa-circle-exclamation', warning: 'fa-triangle-exclamation', info: 'fa-circle-info' };
+    const t = icons[type] ? type : 'info';
+    const el = document.createElement('div');
+    el.className = `toast toast-${t}`;
+    el.setAttribute('role', t === 'error' ? 'alert' : 'status');
+    el.innerHTML = `<i class="fas ${icons[t]}"></i><span></span>`;
+    el.querySelector('span').textContent = message;
+    const dismiss = () => { el.classList.add('leaving'); setTimeout(() => el.remove(), 200); };
+    el.addEventListener('click', dismiss);
+    stack.appendChild(el);
+    while (stack.children.length > 3) stack.firstElementChild.remove();
+    setTimeout(dismiss, duration);
+  }
+  showSuccess(m) { this.showToast(m, 'success'); }
+  showError(m)   { this.showToast(m, 'error'); }
+  showWarning(m) { this.showToast(m, 'warning'); }
+  showInfo(m)    { this.showToast(m, 'info'); }
+
+  // ─── Global confirm dialog ────────────────────────────────
+  // const ok = await this.confirmDialog({ title, message, confirmText, cancelText, tone: 'danger'|'primary' });
+  // With `input: { label, placeholder }` it resolves the typed text ('' allowed) on confirm, or null on cancel.
+  confirmDialog({ title = 'Are you sure?', message = '', confirmText = 'Confirm', cancelText = 'Cancel', tone = 'danger', input = null } = {}) {
+    const $ = id => document.getElementById(id);
+    if (this._confirmResolve) this._settleConfirm(false);
+    $('confirm-title').textContent   = title;
+    $('confirm-message').textContent = message;
+    $('confirm-ok-btn').textContent  = confirmText;
+    $('confirm-cancel-btn').textContent = cancelText;
+    $('confirm-ok-btn').className = `btn ${tone === 'danger' ? 'btn-danger' : 'btn-primary'}`;
+    const icon = $('confirm-icon');
+    icon.className = `confirm-icon ${tone}`;
+    icon.innerHTML = `<i class="fas ${tone === 'danger' ? 'fa-triangle-exclamation' : 'fa-circle-question'}"></i>`;
+    this._confirmHasInput = !!input;
+    $('confirm-input-wrap').style.display = input ? 'block' : 'none';
+    if (input) {
+      $('confirm-input-label').textContent = input.label || '';
+      $('confirm-input').placeholder = input.placeholder || '';
+      $('confirm-input').value = '';
+    }
+    this._confirmPrevFocus = document.activeElement;
+    $('confirm-dialog').classList.add('show');
+    (input ? $('confirm-input') : $('confirm-cancel-btn')).focus();   // destructive default = Cancel
+    return new Promise(resolve => { this._confirmResolve = resolve; });
+  }
+
+  _settleConfirm(ok) {
+    const resolve = this._confirmResolve;
+    if (!resolve) return;
+    this._confirmResolve = null;
+    const text = (document.getElementById('confirm-input')?.value || '').trim();
+    document.getElementById('confirm-dialog').classList.remove('show');
+    try { this._confirmPrevFocus?.focus(); } catch {}
+    resolve(this._confirmHasInput ? (ok ? text : null) : ok);
+  }
+
+  // ─── Password show/hide eye ───────────────────────────────
+  initPasswordToggles() {
+    document.querySelectorAll('input[type="password"]').forEach(inp => {
+      if (inp.dataset.pwToggle) return;
+      inp.dataset.pwToggle = '1';
+      const wrap = document.createElement('div');
+      wrap.className = 'pw-field';
+      inp.parentNode.insertBefore(wrap, inp);
+      wrap.appendChild(inp);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pw-toggle';
+      btn.setAttribute('aria-label', 'Show password');
+      btn.setAttribute('aria-pressed', 'false');
+      btn.innerHTML = '<i class="fas fa-eye"></i>';
+      btn.addEventListener('mousedown', e => e.preventDefault());   // keep focus in the input
+      btn.addEventListener('click', () => {
+        const show = inp.type === 'password';
+        inp.type = show ? 'text' : 'password';
+        btn.setAttribute('aria-pressed', String(show));
+        btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        btn.firstElementChild.className = `fas ${show ? 'fa-eye-slash' : 'fa-eye'}`;
+      });
+      wrap.appendChild(btn);
+    });
+  }
+
+  _resetPasswordToggles() {
+    document.querySelectorAll('.pw-field input[data-pw-toggle]').forEach(i => { i.type = 'password'; });
+    document.querySelectorAll('.pw-toggle').forEach(b => {
+      b.setAttribute('aria-pressed', 'false');
+      b.setAttribute('aria-label', 'Show password');
+      b.firstElementChild.className = 'fas fa-eye';
+    });
   }
 
   getCategoryIcon(slug) {
@@ -250,19 +377,32 @@ class GlycrApp {
     });
   }
 
+  _successMessageFor(method, endpoint) {
+    const path = endpoint.split('?')[0];
+    const hit = SUCCESS_TOASTS.find(([m, re]) => m === method && re.test(path));
+    return hit ? hit[2] : null;
+  }
+
   async fetchApi(endpoint, options = {}) {
+    const { successMsg, ...fetchOpts } = options;   // successMsg: string = override, false = silence
     const token = localStorage.getItem('token');
-    const headers = { ...options.headers };
+    const headers = { ...fetchOpts.headers };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    if (!(options.body instanceof FormData)) headers['Content-Type'] = 'application/json';
+    if (!(fetchOpts.body instanceof FormData)) headers['Content-Type'] = 'application/json';
     let url = `${this.apiBase}${endpoint}`;
     url += `${url.includes('?') ? '&' : '?'}_t=${Date.now()}`;
-    const response = await fetch(url, { ...options, headers });
+    const response = await fetch(url, { ...fetchOpts, headers });
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
       throw new Error(err.error || err.message || `HTTP ${response.status}`);
     }
-    return response.json();
+    const data = await response.json();
+    const method = (fetchOpts.method || 'GET').toUpperCase();
+    if (method !== 'GET' && successMsg !== false) {
+      const msg = successMsg || this._successMessageFor(method, endpoint);
+      if (msg) this.showSuccess(msg);
+    }
+    return data;
   }
 
   // ─── MASTER DATA LOADER (Admin Panel Pattern) ─────────────
@@ -338,12 +478,17 @@ class GlycrApp {
     if (privDate)  privDate.textContent  = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
     await this.checkAuth();
     this.bindEvents();
+    this.initPasswordToggles();
     this.bindNavLinks();
     this.setupMobileMenu();
     this.buildCarousel();
     this.checkResetToken();
     this.renderFAQs();
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') this.closeAllModals(); });
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') return;
+      if (this._confirmResolve) return this._settleConfirm(false);   // close only the confirm dialog
+      this.closeAllModals();
+    });
     this.setupInfiniteScroll();
     this.renderNotificationBadge();
     this.initCookieBanner();
@@ -465,9 +610,9 @@ class GlycrApp {
       s.style.color = 'var(--mint)'; s.textContent = '✓ Subscribed! Welcome to the Glycr community.';
       document.getElementById('newsletter-email').value = '';
     }  catch (err) {
-    s.style.color = 'var(--coral)';
-    s.textContent = err.message || 'Could not subscribe right now. Please try again.';
-  }
+      s.style.color = 'var(--coral)';
+      s.textContent = err.message || 'Could not subscribe right now. Please try again.';
+    }
   }
 
   clearAllNotifications() {
@@ -569,7 +714,7 @@ class GlycrApp {
       await this.fetchPlatformFee();
       await this.loadAllData();
       this.showSection(this.currentUser.isOrganizer ? 'dashboard' : 'profile');
-    } catch { this.logout(); }
+    } catch { this.logout(true); }
   }
 
   async fetchPlatformFee() {
@@ -590,7 +735,7 @@ class GlycrApp {
     const password   = document.getElementById('password').value;
     const isLogin    = document.getElementById('auth-title').textContent === 'Sign In';
 
-    this.clearFieldErrors('email-err', 'password-err', 'first-name-err', 'last-name-err', 'username-err', 'confirm-password-err', 'phone-err');
+    this.clearFieldErrors('email-err', 'password-err', 'first-name-err', 'last-name-err', 'username-err', 'confirm-password-err', 'phone-err', 'agree-terms-err');
 
     let valid = true;
 
@@ -612,6 +757,7 @@ class GlycrApp {
       const phone     = document.getElementById('phone').value.trim();
       const confirmPw = document.getElementById('confirm-password').value;
       const isOrg     = document.getElementById('is-organizer').checked;
+      const agreed    = !!document.getElementById('agree-terms')?.checked;
 
       if (!firstName) { this.setFieldError('first-name', 'first-name-err', 'Required'); valid = false; }
       if (!lastName)  { this.setFieldError('last-name',  'last-name-err',  'Required'); valid = false; }
@@ -624,6 +770,10 @@ class GlycrApp {
       else if (!this.validatePhone(phone)) { this.setFieldError('phone', 'phone-err', 'Use format: +233xxxxxxxxx'); valid = false; }
       if (password !== confirmPw) { this.setFieldError('confirm-password', 'confirm-password-err', 'Passwords do not match'); valid = false; }
       if (this.checkPasswordStrength(password).width === '0%') { this.setFieldError('password', 'password-err', 'Password is too weak'); valid = false; }
+      if (!agreed) {
+        this.setFieldError('agree-terms', 'agree-terms-err', 'Please accept the Terms of Service and Privacy Policy to continue');
+        valid = false;
+      }
       if (!valid) return;
 
       const btn = document.getElementById('auth-btn');
@@ -638,6 +788,7 @@ class GlycrApp {
             phone,
             isOrganizer: isOrg,
             username,
+            acceptedTerms: true,
           }),
         });
         // register returns the user only (no token), so sign in to get one
@@ -647,7 +798,7 @@ class GlycrApp {
         });
         await this._onAuthSuccess(result, true);
       } catch (err) {
-        this.showToast(err.message);
+        this.showError(err.message);
       } finally {
         if (btn) btn.disabled = false;
       }
@@ -695,9 +846,11 @@ class GlycrApp {
       type: 'purchase',
       text: isNewUser ? `Welcome to Glycr, ${first}! 🎉` : `Welcome back, ${first}! 👋`,
     });
+    if (result.reactivated) this.showSuccess('Welcome back. Your account has been reactivated');
+    else this.showSuccess(isNewUser ? `Account created. Welcome to Glycr, ${first}!` : `Welcome back, ${first}!`);
   }
 
-  logout() {
+  logout(silent = false) {
     this.currentUser = null;
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -712,6 +865,7 @@ class GlycrApp {
     this.allPayouts = [];
     this.orgRefunds = [];
     this.renderEvents(true);
+    if (silent !== true) this.showSuccess('You\'ve been signed out');
   }
 
   updateNav() {
@@ -748,9 +902,10 @@ class GlycrApp {
     if (!isLogin) {
       ['first-name', 'last-name', 'username', 'confirm-password', 'phone'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       const chk = document.getElementById('is-organizer'); if (chk) chk.checked = false;
+      const terms = document.getElementById('agree-terms'); if (terms) terms.checked = false;
     }
     this.clearPasswordStrength();
-    this.clearFieldErrors('email-err', 'password-err', 'first-name-err', 'last-name-err', 'username-err', 'confirm-password-err', 'phone-err');
+    this.clearFieldErrors('email-err', 'password-err', 'first-name-err', 'last-name-err', 'username-err', 'confirm-password-err', 'phone-err', 'agree-terms-err');
   }
 
   showSection(section) {
@@ -803,7 +958,7 @@ class GlycrApp {
       banner.style.transition = 'transform 0.3s ease';
       setTimeout(() => { banner.style.display = 'none'; }, 300);
     }
-    if (accepted) this.showToast('Cookies accepted. Thank you!', 'success');
+    if (accepted) this.showSuccess('Cookies accepted. Thank you!');
   }
 
   // ─── DASHBOARD ────────────────────────────────────────────
@@ -982,8 +1137,8 @@ class GlycrApp {
 
     const emailEl = document.getElementById('profile-email-display');
     const phoneEl = document.getElementById('profile-phone-display');
-    if (emailEl) emailEl.innerHTML = `<i class="fas fa-envelope"></i> ${this.currentUser.email || '—'}`;
-    if (phoneEl) phoneEl.innerHTML = `<i class="fas fa-phone"></i> ${this.currentUser.phone || '—'}`;
+    if (emailEl) emailEl.innerHTML = `<i class="fas fa-envelope"></i> ${esc(this.currentUser.email || '—')}`;
+    if (phoneEl) phoneEl.innerHTML = `<i class="fas fa-phone"></i> ${esc(this.currentUser.phone || '—')}`;
 
     await Promise.all([
       this._loadPurchaseHistory(),
@@ -1030,6 +1185,7 @@ class GlycrApp {
       const voided = eventCancelled || t.refunded || ['cancelled', 'refund_pending', 'refunded'].includes(t.status);
       const used   = t.status === 'used' || !!t.validated;
 
+      const canView     = !voided && !used;
       const canRefund   = !voided && !used && evDate && evDate > now;
       const canTransfer = !voided && !used && evDate && evDate > now && !t.transferred;
       const canReview   = !voided && isPast && !t.reviewed;
@@ -1047,6 +1203,8 @@ class GlycrApp {
     <div class="purchase-item-meta">${esc(String(t.ticketType).toUpperCase())} · ${t.price === 0 ? 'Free' : esc(sym) + esc(t.price)} · ${esc(new Date(t.purchasedAt).toLocaleDateString())}${statusLabel ? ` · <span style="color:${statusColor};">${esc(statusLabel)}</span>` : ''}</div>
   </div>
   <div class="purchase-item-actions">
+    ${canView ? `<button class="btn btn-ghost btn-sm" data-ui-action="view-ticket" ${d}><i class="fas fa-qrcode"></i> View</button>
+    <button class="btn btn-ghost btn-sm" data-ui-action="download-ticket" ${d}><i class="fas fa-file-pdf"></i> PDF</button>` : ''}
     ${canTransfer ? `<button class="btn btn-ghost btn-sm" style="color:var(--sky); border-color:rgba(125,211,252,0.3);" data-ui-action="transfer" ${d}><i class="fas fa-paper-plane"></i> Transfer</button>` : ''}
     ${canRefund   ? `<button class="btn btn-ghost btn-sm" style="color:var(--coral); border-color:rgba(255,107,107,0.3);" data-ui-action="refund" ${d}><i class="fas fa-undo"></i> Refund</button>` : ''}
     ${canReview   ? `<button class="btn btn-ghost btn-sm" style="color:var(--gold); border-color:rgba(251,191,36,0.3);" data-ui-action="review" ${d}><i class="fas fa-star"></i> Review</button>` : ''}
@@ -1094,7 +1252,7 @@ class GlycrApp {
     this.reminders = this.reminders.filter(r => r.id !== id);
     this.saveToStorage('glycr_reminders', this.reminders);
     this._loadRemindersTab();
-    this.showToast('Reminder removed.', 'warning');
+    this.showSuccess('Reminder removed');
   }
 
   async _loadReviewsTab() {
@@ -1108,10 +1266,10 @@ class GlycrApp {
     container.innerHTML = myReviews.map(r => `
       <div class="review-card">
         <div class="review-card-header">
-          <div class="review-card-event">${r.eventTitle}</div>
+          <div class="review-card-event">${esc(r.eventTitle)}</div>
           <div class="review-card-stars">${Array.from({length: 5}, (_, i) => `<i class="fas fa-star" style="color:${i < r.rating ? 'var(--gold)' : 'var(--border-2)'}"></i>`).join('')}</div>
         </div>
-        <div class="review-card-text">${r.text}</div>
+        <div class="review-card-text">${esc(r.text)}</div>
         <div class="review-card-date">${new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
       </div>`).join('');
   }
@@ -1126,12 +1284,12 @@ class GlycrApp {
         const ev = this.allEvents.find(e => e._id === r.eventId);
         const eventTitle = r.eventTitle && r.eventTitle !== 'undefined' ? r.eventTitle : (ev ? ev.title : 'Event');
         return `<div class="refund-item">
-          <div class="refund-item-title">${eventTitle} — ${(r.ticketType ? r.ticketType.toUpperCase() : '') || ''}</div>
+          <div class="refund-item-title">${esc(eventTitle)} — ${esc((r.ticketType ? r.ticketType.toUpperCase() : '') || '')}</div>
           <div class="refund-item-meta">
-            <span class="status-pill ${r.status}">${r.status}</span>
-            <span>${r.reason}</span>
-            ${r.amount ? `<span>₵${r.amount}</span>` : '<span>Full refund</span>'}
-            <span>${new Date(r.createdAt).toLocaleDateString()}</span>
+            <span class="status-pill ${esc(r.status)}">${esc(r.status)}</span>
+            <span>${esc(r.reason)}</span>
+            ${r.amount ? `<span>₵${esc(r.amount)}</span>` : '<span>Full refund</span>'}
+            <span>${esc(new Date(r.createdAt).toLocaleDateString())}</span>
           </div>
         </div>`;
       }).join('');
@@ -1155,7 +1313,7 @@ class GlycrApp {
       this.currentUser = u; localStorage.setItem('user', JSON.stringify(u)); this.updateNav();
       await this.loadAllData();
       this.closeAllModals();
-    } catch (err) { this.showToast(err.message); }
+    } catch (err) { this.showError(err.message); }
   }
 
   // ─── Events List ──────────────────────────────────────────
@@ -1399,7 +1557,7 @@ class GlycrApp {
         tier.addEventListener('keydown', e => { if (e.key === 'Enter') tier.click(); });
       });
       this.openModal('event-modal');
-    } catch (err) { this.showToast(err.message); }
+    } catch (err) { this.showError(err.message); }
   }
 
   // ─── Waitlist ─────────────────────────────────────────────
@@ -1561,8 +1719,12 @@ class GlycrApp {
     statusEl.textContent = this.selectedTicket.price === 0 ? 'Claiming tickets…' : `Processing payment…`;
     try {
       await this.delay(1800);
+      const isFree = this.selectedTicket.price === 0;
       const tickets = await this.fetchApi('/tickets/purchase', {
         method: 'POST',
+        successMsg: isFree
+          ? (qty > 1 ? `${qty} tickets claimed` : 'Ticket claimed')
+          : (qty > 1 ? `${qty} tickets purchased` : 'Ticket purchased'),
         body: JSON.stringify({
           eventId: this.selectedTicket.eventId, ticketType: this.selectedTicket.type, quantity: qty,
           paymentDetails: { email, phone },
@@ -1596,26 +1758,38 @@ class GlycrApp {
 
       await this.loadAllData();
 
-      const ticketCanvasEl = document.getElementById('ticket-canvas');
-      ticketCanvasEl.innerHTML = '';
-      this.closeAllModals();
-      this.openModal('ticket-modal');
-
-      new QRCode(ticketCanvasEl, {
-        text:         normTickets[0].id,
-        width:        184,
-        height:       184,
-        colorDark:    '#000000',
-        colorLight:   '#ffffff',
-        correctLevel: QRCode.CorrectLevel.H,
-      });
-
-      document.getElementById('ticket-id').textContent = `Ticket ID: ${normTickets[0].id}`;
-
-      const calRow = document.getElementById('calendar-add-row');
-      if (calRow) calRow.style.display = 'block';
+      this._showTicketModal(normTickets[0], ev);
 
     } catch (err) { statusEl.className = 'status-msg error'; statusEl.textContent = err.message; }
+  }
+
+  // Shared QR modal — used right after purchase AND from Purchase History
+  _showTicketModal(ticket, ev) {
+    const canvas = document.getElementById('ticket-canvas');
+    canvas.innerHTML = '';
+    this.closeAllModals();
+    this.openModal('ticket-modal');
+    new QRCode(canvas, {
+      text:         ticket.id,
+      width:        184,
+      height:       184,
+      colorDark:    '#000000',
+      colorLight:   '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H,
+    });
+    document.getElementById('ticket-id').textContent = `Ticket ID: ${ticket.id}`;
+    const t = document.getElementById('ticket-event-title'); if (t) t.textContent = ev?.title || '';
+    const calRow = document.getElementById('calendar-add-row'); if (calRow) calRow.style.display = 'block';
+  }
+
+  async viewTicket(ticketId, eventId, type) {
+    try {
+      const ev = this.allEvents.find(e => e._id === eventId) || await this.fetchApi(`/events/${eventId}`);
+      // so the modal's "Download PDF" and calendar buttons work for this ticket
+      this.lastPurchasedTickets = [{ id: ticketId, ticketType: type }];
+      this.lastPurchasedEvent = ev;
+      this._showTicketModal({ id: ticketId }, ev);
+    } catch (err) { this.showError(err.message || 'Could not load ticket.'); }
   }
 
   // ─── Calendar Integration ──────────────────────────────────
@@ -1657,7 +1831,7 @@ class GlycrApp {
   // ─── Ticket Transfer ───────────────────────────────────────
   openTransferModal(ticketId, eventTitle, ticketType) {
     document.getElementById('transfer-ticket-id').value = ticketId;
-    document.getElementById('transfer-ticket-info-display').innerHTML = `<strong>${eventTitle}</strong> — ${ticketType.toUpperCase()}`;
+    document.getElementById('transfer-ticket-info-display').innerHTML = `<strong>${esc(eventTitle)}</strong> — ${esc(ticketType.toUpperCase())}`;
     document.getElementById('transfer-recipient-email').value = '';
     document.getElementById('transfer-message').value = '';
     document.getElementById('transfer-status').style.display = 'none';
@@ -1692,7 +1866,7 @@ class GlycrApp {
   openReviewModal(eventId, eventTitle) {
     this.currentRating = 0;
     document.getElementById('review-event-id').value = eventId;
-    document.getElementById('review-event-info').innerHTML = `<div class="review-event-box">${eventTitle}<div class="review-event-sub">Share your experience</div></div>`;
+    document.getElementById('review-event-info').innerHTML = `<div class="review-event-box">${esc(eventTitle)}<div class="review-event-sub">Share your experience</div></div>`;
     document.getElementById('review-text').value = '';
     document.getElementById('review-status').style.display = 'none';
     this.clearFieldErrors('rating-err', 'review-text-err');
@@ -1772,8 +1946,11 @@ class GlycrApp {
   }
 
   async downloadTicketPDFById(ticketId, eventId, ticketType) {
-    try { const ev = await this.fetchApi(`/events/${eventId}`); await this._generateTicketPDF({ id: ticketId, ticketType }, ev); }
-    catch (err) { this.showToast('Could not load ticket data.'); }
+    try {
+      const ev = this.allEvents.find(e => e._id === eventId) || await this.fetchApi(`/events/${eventId}`);
+      await this._generateTicketPDF({ id: ticketId, ticketType }, ev);
+    }
+    catch (err) { this.showError('Could not load ticket data.'); }
   }
 
   async _generateTicketPDF(ticket, event) {
@@ -1879,6 +2056,7 @@ class GlycrApp {
     doc.text('glycr.com  ·  support@glycr.com', 74, 208, { align: 'center' });
 
     doc.save(`glycr-ticket-${ticketId}.pdf`);
+    this.showSuccess('Ticket PDF downloaded');
   }
 
   _getQRMatrix(text) {
@@ -1918,7 +2096,7 @@ class GlycrApp {
     const amount   = document.getElementById('refund-amount').value;
     this.clearFieldErrors('refund-reason-err');
     if (!reason) { this.setFieldError('refund-reason-select', 'refund-reason-err', 'Please select a reason'); return; }
-    if (!details) { this.showToast('Please provide more details'); return; }
+    if (!details) { this.showToast('Please provide more details', 'warning'); return; }
     const s = document.getElementById('refund-request-status');
     s.style.display = 'block'; s.className = 'status-msg loading'; s.textContent = 'Submitting request…';
     try {
@@ -1941,7 +2119,6 @@ class GlycrApp {
       const all = await this.fetchApi('/refunds/organizer');
       this.orgRefunds = all;
       let refunds = filter !== 'all' ? all.filter(r => r.status === filter) : all;
-      if (filter !== 'all') refunds = refunds.filter(r => r.status === filter);
       if (!refunds.length) { container.innerHTML = '<div class="empty-state"><h3>No refund requests</h3><p>All refund requests for your events will appear here.</p></div>'; return; }
       container.innerHTML = refunds.map(r => {
         const ev = this.allEvents.find(e => e._id === r.eventId);
@@ -1966,15 +2143,30 @@ class GlycrApp {
   }
 
   async approveRefund(refundId) {
-    if (!confirm('Approve this refund?')) return;
-    try { await this.fetchApi(`/refunds/${refundId}/approve`, { method: 'PATCH' }); await this.loadOrganizerRefunds(); await this.loadAllData(); this.showToast('Refund approved!', 'success'); }
-    catch (err) { this.showToast(err.message); }
+    const ok = await this.confirmDialog({
+      title: 'Approve this refund?',
+      message: 'The buyer will be refunded. This cannot be undone.',
+      confirmText: 'Approve refund', tone: 'primary',
+    });
+    if (!ok) return;
+    try {
+      await this.fetchApi(`/refunds/${refundId}/approve`, { method: 'PATCH' });
+      await this.loadOrganizerRefunds(); await this.loadAllData();
+    } catch (err) { this.showError(err.message); }
   }
 
   async rejectRefund(refundId) {
-    const reason = prompt('Reason for rejection (optional):') || '';
-    try { await this.fetchApi(`/refunds/${refundId}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) }); await this.loadOrganizerRefunds(); await this.loadAllData(); this.showToast('Refund rejected.', 'warning'); }
-    catch (err) { this.showToast(err.message); }
+    const reason = await this.confirmDialog({
+      title: 'Reject this refund?',
+      message: 'The buyer will be told their request was declined.',
+      confirmText: 'Reject refund', tone: 'danger',
+      input: { label: 'Reason (optional)', placeholder: 'Tell the buyer why…' },
+    });
+    if (reason === null) return;            // cancelled ('' means confirmed with no reason)
+    try {
+      await this.fetchApi(`/refunds/${refundId}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) });
+      await this.loadOrganizerRefunds(); await this.loadAllData();
+    } catch (err) { this.showError(err.message); }
   }
 
   // ─── Notifications ─────────────────────────────────────────
@@ -2008,7 +2200,7 @@ class GlycrApp {
       return `<div class="notif-item${n.unread ? ' unread' : ''}" data-notif-id="${n.id}">
         <div class="notif-item-icon ${iconClass.split(' ')[0]}"><i class="fas ${iconClass.split(' ')[1]}"></i></div>
         <div class="notif-item-body">
-          <div class="notif-item-text">${n.text}</div>
+          <div class="notif-item-text">${esc(n.text)}</div>
           <div class="notif-item-time">${timeAgo}</div>
         </div>
       </div>`;
@@ -2078,8 +2270,9 @@ class GlycrApp {
 <td>${new Date(p.requestedAt).toLocaleDateString('en-GB')}</td><td>${p.completedAt ? new Date(p.completedAt).toLocaleDateString('en-GB') : '—'}</td></tr>`;
       }).join('');
     }
-    const csvBtn = document.getElementById('export-payouts-csv');
-    const pdfBtn = document.getElementById('export-payouts-pdf');
+    // IDs are unique now: payout-page-csv / payout-page-pdf
+    const csvBtn = document.getElementById('payout-page-csv');
+    const pdfBtn = document.getElementById('payout-page-pdf');
     if (csvBtn) csvBtn.onclick = () => this.exportPayoutsToCSV(payouts);
     if (pdfBtn) pdfBtn.onclick = () => this.exportPayoutsToPDF(payouts);
   }
@@ -2133,7 +2326,7 @@ class GlycrApp {
       this.reportTicketChart = new Chart(tCtx, { type: 'doughnut', data: { labels: Object.keys(typeTotals), datasets: [{ data: Object.values(typeTotals), backgroundColor: ['rgba(45,212,191,0.75)', 'rgba(110,231,183,0.75)', 'rgba(251,191,36,0.75)', 'rgba(255,107,107,0.75)', 'rgba(125,211,252,0.75)'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#7a96aa', font: { family: 'JetBrains Mono', size: 10 }, padding: 12 } } } } });
     }
 
-    // ── Export buttons (unchanged) ──
+    // ── Export buttons ──
     const filterByDate = (arr, field) => {
       const sd = (document.getElementById('report-start-date') || {}).value;
       const ed = (document.getElementById('report-end-date') || {}).value;
@@ -2143,10 +2336,10 @@ class GlycrApp {
       return out;
     };
     const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
-    on('export-events-csv',         () => this.exportEventsToCSV(filterByDate(myEvents, 'date')));
-    on('export-payouts-csv-report', () => this.exportPayoutsToCSV(filterByDate(payouts, 'requestedAt')));
-    on('export-events-pdf',         () => this.exportEventsToPDF(filterByDate(myEvents, 'date')));
-    on('export-payouts-pdf',        () => this.exportPayoutsToPDF(filterByDate(payouts, 'requestedAt')));
+    on('export-events-csv',          () => this.exportEventsToCSV(filterByDate(myEvents, 'date')));
+    on('export-payouts-csv-report',  () => this.exportPayoutsToCSV(filterByDate(payouts, 'requestedAt')));
+    on('export-events-pdf',          () => this.exportEventsToPDF(filterByDate(myEvents, 'date')));
+    on('export-payouts-pdf-report',  () => this.exportPayoutsToPDF(filterByDate(payouts, 'requestedAt')));
   }
 
   // ─── Event Form ───────────────────────────────────────────
@@ -2198,13 +2391,13 @@ class GlycrApp {
     const div = document.createElement('div');
     div.className = 'ticket-type-row ticket-type';
     div.innerHTML = `
-      <input type="text"           class="input type-name"        placeholder="Type"     value="${name}">
-      <input type="number"         class="input type-price"        placeholder="Price"    min="0" value="${price}">
-      <input type="number"         class="input type-capacity"     placeholder="Capacity" min="1" value="${capacity}">
-      <input type="number"         class="input type-early-price"  placeholder="Early ₵"  min="0" value="${earlyBirdPrice}">
-      <input type="datetime-local" class="input type-early-end"                                    value="${earlyBirdEnd}">
-      <input type="number"         class="input type-group-min"    placeholder="Min qty"  min="1" value="${groupDiscountMinQty}">
-      <input type="number"         class="input type-group-disc"   placeholder="Disc %"   min="0" max="50" value="${groupDiscount}">
+      <input type="text"           class="input type-name"        placeholder="Type"     value="${esc(name)}">
+      <input type="number"         class="input type-price"        placeholder="Price"    min="0" value="${esc(price)}">
+      <input type="number"         class="input type-capacity"     placeholder="Capacity" min="1" value="${esc(capacity)}">
+      <input type="number"         class="input type-early-price"  placeholder="Early ₵"  min="0" value="${esc(earlyBirdPrice)}">
+      <input type="datetime-local" class="input type-early-end"                                    value="${esc(earlyBirdEnd)}">
+      <input type="number"         class="input type-group-min"    placeholder="Min qty"  min="1" value="${esc(groupDiscountMinQty)}">
+      <input type="number"         class="input type-group-disc"   placeholder="Disc %"   min="0" max="50" value="${esc(groupDiscount)}">
       <button type="button" class="remove-ticket" aria-label="Remove ticket type">✕</button>`;
     container.appendChild(div);
   }
@@ -2223,7 +2416,6 @@ class GlycrApp {
     if (!valid) return;
     const currency     = document.getElementById('event-currency').value;
     const ticketInputs = document.querySelectorAll('.ticket-type');
-    const originalTT   = this.editingEvent ? this.parseTicketTypes(this.editingEvent.ticketTypes) : null;
     const ticketTypes  = {};
     ticketInputs.forEach(inp => {
       const type  = inp.querySelector('.type-name').value.trim().toLowerCase();
@@ -2239,7 +2431,7 @@ class GlycrApp {
         ticketTypes[type] = tkt;
       }
     });
-    if (!Object.keys(ticketTypes).length) { this.showToast('Add at least one ticket type'); return; }
+    if (!Object.keys(ticketTypes).length) { this.showToast('Add at least one ticket type', 'warning'); return; }
     const formData = new FormData();
     formData.append('title',          title);
     formData.append('description',    document.getElementById('event-desc').value);
@@ -2266,7 +2458,7 @@ class GlycrApp {
       else { await this.fetchApi('/events', { method: 'POST', body: formData }); }
       await this.loadAllData();
       this.closeAllModals(); this.showSection('dashboard');
-    } catch (err) { this.showToast(err.message); }
+    } catch (err) { this.showError(err.message); }
   }
 
   // ─── Google Maps ──────────────────────────────────────────
@@ -2351,36 +2543,53 @@ class GlycrApp {
 
   // ─── Event Actions ────────────────────────────────────────
   async togglePublish(id) {
+    const ev = this.orgEvents.find(e => e._id === id);
+    const wasPublished = !!ev?.isPublished;
     try {
-      await this.fetchApi(`/events/${id}/publish`, { method: 'PATCH' });
+      await this.fetchApi(`/events/${id}/publish`, {
+        method: 'PATCH',
+        successMsg: wasPublished ? 'Event unpublished' : 'Event published',
+      });
       await this.loadAllData();
-    } catch (err) { this.showToast(err.message); }
+    } catch (err) { this.showError(err.message); }
   }
 
-  showCancelModal(id) {
+  async showCancelModal(id) {
     const ev = this.orgEvents.find(e => e._id === id);
     if (!ev) return;
-    document.getElementById('cancel-title').textContent = `Cancel ${ev.title}?`;
-    document.getElementById('cancel-reason').innerHTML = '<p>This will notify all ticket holders and trigger automatic refunds.</p><p>Are you sure you want to cancel this event?</p>';
+    const ok = await this.confirmDialog({
+      title: `Cancel ${ev.title}?`,
+      message: 'This notifies all ticket holders and triggers automatic refunds. This cannot be undone.',
+      confirmText: 'Yes, cancel event', cancelText: 'Keep event', tone: 'danger',
+    });
+    if (!ok) return;
     this.currentEventId = id;
-    this.openModal('cancel-event-modal');
+    await this.cancelEvent();
   }
 
   async cancelEvent() {
     try {
-      await this.fetchApi(`/events/${this.currentEventId}/cancel`, { method: 'PATCH' });
+      await this.fetchApi(`/events/${this.currentEventId}/cancel`, { method: 'PATCH' });   // toast comes from SUCCESS_TOASTS
       this.closeAllModals();
       await this.loadAllData();
-      this.showToast('Event cancelled. All ticket holders will be refunded.', 'warning');
-    } catch (err) { this.showToast(err.message); }
+    } catch (err) { this.showError(err.message); }
   }
 
   async deleteEvent(id) {
-    if (!confirm('Delete this event and all its tickets? This cannot be undone.')) return;
+    const ev = this.orgEvents.find(e => e._id === id);
+    const sold = Object.values(this.parseTicketTypes(ev?.ticketTypes)).reduce((a, t) => a + (t.sold || 0), 0);
+    const ok = await this.confirmDialog({
+      title: `Delete ${ev ? ev.title : 'this event'}?`,
+      message: sold > 0
+        ? `${sold} ticket${sold !== 1 ? 's have' : ' has'} been sold for this event. Deleting it permanently removes the event and all its tickets. If buyers need refunds, cancel the event instead.`
+        : 'This permanently deletes the event and all its tickets. This cannot be undone.',
+      confirmText: 'Yes, delete', cancelText: 'Keep event', tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await this.fetchApi(`/events/${id}`, { method: 'DELETE' });
       await this.loadAllData();
-    } catch (err) { this.showToast(err.message); }
+    } catch (err) { this.showError(err.message); }
   }
 
   exportReport(eventId) {
@@ -2481,15 +2690,15 @@ class GlycrApp {
     try {
       const [entries, ev] = await Promise.all([this.fetchApi(`/events/${eventId}/waitlists/${type}`), this.fetchApi(`/events/${eventId}`)]);
       document.getElementById('waitlist-view-title').textContent = `${type.toUpperCase()} Waitlist — ${ev.title}`;
-      document.getElementById('waitlist-entries').innerHTML = entries.map(e => `<div class="waitlist-entry"><p><strong>${e.name}</strong></p><p>${e.email} · ${e.phone}</p><p style="color:var(--muted); font-size:0.73rem;">${new Date(e.joinedAt).toLocaleString()}</p></div>`).join('') || '<p style="text-align:center; color:var(--muted); padding:2rem;">No entries</p>';
+      document.getElementById('waitlist-entries').innerHTML = entries.map(e => `<div class="waitlist-entry"><p><strong>${esc(e.name)}</strong></p><p>${esc(e.email)} · ${esc(e.phone)}</p><p style="color:var(--muted); font-size:0.73rem;">${new Date(e.joinedAt).toLocaleString()}</p></div>`).join('') || '<p style="text-align:center; color:var(--muted); padding:2rem;">No entries</p>';
       document.getElementById('notify-waitlist-btn').onclick = () => this.notifyWaitlist(eventId, type);
       this.openModal('waitlist-view-modal');
-    } catch (err) { this.showToast(err.message); }
+    } catch (err) { this.showError(err.message); }
   }
 
   async notifyWaitlist(eventId, type) {
-    try { await this.fetchApi(`/events/${eventId}/waitlists/notify`, { method: 'POST' }); alert('Waitlist notified!'); this.closeAllModals(); }
-    catch (err) { this.showToast(err.message); }
+    try { await this.fetchApi(`/events/${eventId}/waitlists/notify`, { method: 'POST' }); this.closeAllModals(); }
+    catch (err) { this.showError(err.message); }
   }
 
   // ─── Coupon Manager ───────────────────────────────────────
@@ -2499,7 +2708,7 @@ class GlycrApp {
     try {
       const myEvents = await this.fetchApi(`/events?organizerId=${this.currentUser.id}`);
       const sel = document.getElementById('coupon-event');
-      if (sel) sel.innerHTML = '<option value="">All my events</option>' + myEvents.map(e => `<option value="${e._id}">${e.title}</option>`).join('');
+      if (sel) sel.innerHTML = '<option value="">All my events</option>' + this._list(myEvents).map(e => `<option value="${esc(e._id)}">${esc(e.title)}</option>`).join('');
     } catch {}
   }
 
@@ -2513,7 +2722,7 @@ class GlycrApp {
       list.innerHTML = coupons.map(c => {
         const isExpired = new Date(c.expiryDate) < now;
         const discStr   = c.type === 'percentage' ? `${c.value}% off` : `₵${c.value} off`;
-        return `<div class="coupon-item"><div><div class="coupon-code">${c.code}</div><div class="coupon-meta">${discStr} · Expires ${new Date(c.expiryDate).toLocaleDateString()} · Used ${c.usedCount || 0}/${c.usageLimit || '∞'}</div></div><span class="coupon-badge ${isExpired ? 'expired' : 'active'}">${isExpired ? 'Expired' : 'Active'}</span></div>`;
+        return `<div class="coupon-item"><div><div class="coupon-code">${esc(c.code)}</div><div class="coupon-meta">${esc(discStr)} · Expires ${new Date(c.expiryDate).toLocaleDateString()} · Used ${c.usedCount || 0}/${c.usageLimit || '∞'}</div></div><span class="coupon-badge ${isExpired ? 'expired' : 'active'}">${isExpired ? 'Expired' : 'Active'}</span></div>`;
       }).join('');
     } catch { list.innerHTML = '<p style="color:var(--muted); font-size:0.82rem;">Could not load coupons</p>'; }
   }
@@ -2530,7 +2739,7 @@ class GlycrApp {
     s.style.display = 'block'; s.className = 'status-msg loading'; s.textContent = 'Creating code…';
     try {
       await this.fetchApi('/coupons', { method: 'POST', body: JSON.stringify({ code, type, value, expiryDate: expiry, usageLimit: limit ? parseInt(limit) : null, eventId: eventId || null }) });
-      s.className = 'status-msg success'; s.innerHTML = `<strong>✓ Code "${code}" created!</strong>`;
+      s.className = 'status-msg success'; s.innerHTML = `<strong>✓ Code "${esc(code)}" created!</strong>`;
       document.getElementById('coupon-code').value = ''; document.getElementById('coupon-value').value = '';
       await this.loadCoupons(); await this.loadAllData();
       setTimeout(() => { s.style.display = 'none'; }, 3000);
@@ -2556,10 +2765,11 @@ class GlycrApp {
     try {
       await this.fetchApi('/users/favorites', { method: 'POST', body: JSON.stringify({ eventId, action }) });
       this.saveToStorage('glycr_favorites', this.favorites);
+      this.showSuccess(action === 'add' ? 'Saved to favourites' : 'Removed from favourites');
     } catch (err) {
       if (action === 'add') list.splice(list.indexOf(eventId), 1); else list.push(eventId);   // roll back
       this._paintFavourite(eventId);
-      this.showToast(err.message || 'Could not update favourites.');
+      this.showError(err.message || 'Could not update favourites.');
       return;
     }
     const profileEl = document.getElementById('profile');
@@ -2594,6 +2804,7 @@ class GlycrApp {
     const a    = document.createElement('a');
     a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    this.showSuccess(`${filename} downloaded`);
   }
 
   exportEventsToCSV(events) {
@@ -2634,6 +2845,7 @@ class GlycrApp {
     });
     doc.autoTable({ head: [['Title', 'Date', 'Venue', 'Sold', 'Gross', 'Net', 'Status']], body: rows, startY: 30, styles: { fontSize: 8 }, headStyles: { fillColor: [19, 26, 35], textColor: [204, 217, 227] } });
     doc.save(`events_${new Date().toISOString().slice(0, 10)}.pdf`);
+    this.showSuccess('Events report downloaded');
   }
 
   exportPayoutsToPDF(payouts) {
@@ -2646,6 +2858,7 @@ class GlycrApp {
     const rows = payouts.map(p => [`${sym}${p.amount}`, p.method, p.status, new Date(p.requestedAt).toLocaleDateString(), p.completedAt ? new Date(p.completedAt).toLocaleDateString() : '—']);
     doc.autoTable({ head: [['Amount', 'Method', 'Status', 'Requested', 'Completed']], body: rows, startY: 30, styles: { fontSize: 8 }, headStyles: { fillColor: [19, 26, 35], textColor: [204, 217, 227] } });
     doc.save(`payouts_${new Date().toISOString().slice(0, 10)}.pdf`);
+    this.showSuccess('Payout report downloaded');
   }
 
   shareEvent() {
@@ -2653,7 +2866,7 @@ class GlycrApp {
     if (!ev) return;
     const url = `${window.location.href.split('#')[0]}#event-${ev._id}`;
     if (navigator.share) navigator.share({ title: ev.title, text: `Check out ${ev.title} on Glycr!`, url }).catch(() => {});
-    else navigator.clipboard.writeText(url).then(() => this.showToast('Event link copied!', 'success'));
+    else navigator.clipboard.writeText(url).then(() => this.showSuccess('Event link copied'));
   }
 
   // ─── Password / Auth Helpers ──────────────────────────────
@@ -2731,9 +2944,9 @@ class GlycrApp {
     const cp    = document.getElementById('confirm-new-password').value;
     const token = localStorage.getItem('reset_token');
     if (!token) return this.showToast('Invalid reset link');
-    if (!np || !cp) return this.showToast('Fill in both fields');
-    if (np !== cp) return this.showToast('Passwords do not match');
-    if (this.checkPasswordStrength(np).width === '0%') return this.showToast('Password is too weak');
+    if (!np || !cp) return this.showToast('Fill in both fields', 'warning');
+    if (np !== cp) return this.showToast('Passwords do not match', 'warning');
+    if (this.checkPasswordStrength(np).width === '0%') return this.showToast('Password is too weak', 'warning');
     const s = document.getElementById('reset-status');
     s.style.display = 'block'; s.className = 'status-msg loading'; s.textContent = 'Resetting…';
     try {
@@ -2745,10 +2958,28 @@ class GlycrApp {
     } catch (err) { s.className = 'status-msg error'; s.textContent = err.message; }
   }
 
+  // ─── Settings (tabbed) ────────────────────────────────────
   showSettingsModal() {
-    ['current-password', 'new-password-settings', 'confirm-new-password-settings'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['current-password', 'new-password-settings', 'confirm-new-password-settings', 'deactivate-password']
+      .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('settings-status').style.display = 'none';
+    this.clearFieldErrors('deactivate-password-err');
+    const pref = k => localStorage.getItem(k) !== 'false';     // default on
+    document.getElementById('notify-email').checked = pref('notify_email');
+    document.getElementById('notify-sms').checked   = pref('notify_sms');
+    document.getElementById('settings-account-email').textContent = this.currentUser?.email || '—';
+    this._markThemeChoice();
+    this.switchSettingsTab('password');
     this.openModal('settings-modal');
+  }
+
+  switchSettingsTab(tab) {
+    document.querySelectorAll('.settings-tab').forEach(b => {
+      const on = b.dataset.tab === tab;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    document.querySelectorAll('.settings-panel').forEach(p => p.classList.toggle('active', p.id === `settings-tab-${tab}`));
   }
 
   async saveSettings(e) {
@@ -2758,20 +2989,55 @@ class GlycrApp {
     const cp  = document.getElementById('confirm-new-password-settings').value;
     if (!cur || !np || !cp) return this.showSettingsError('Fill in all password fields');
     if (np !== cp) return this.showSettingsError('Passwords do not match');
+    if (np === cur) return this.showSettingsError('New password must be different from the current one');
     if (this.checkPasswordStrength(np).width === '0%') return this.showSettingsError('Password is too weak');
     const s = document.getElementById('settings-status');
     s.style.display = 'block'; s.className = 'status-msg loading'; s.textContent = 'Updating…';
     try {
       await this.fetchApi('/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword: cur, newPassword: np }) });
-      localStorage.setItem('notify_email', document.getElementById('notify-email').checked);
-      localStorage.setItem('notify_sms', document.getElementById('notify-sms').checked);
-      s.className = 'status-msg success'; s.textContent = 'Settings saved!';
-      await this.loadAllData();
-      setTimeout(() => this.closeAllModals(), 2000);
+      s.style.display = 'none';
+      this.closeAllModals();
     } catch (err) { s.className = 'status-msg error'; s.textContent = err.message; }
   }
 
   showSettingsError(msg) { const s = document.getElementById('settings-status'); s.style.display = 'block'; s.className = 'status-msg error'; s.textContent = msg; }
+
+  // Stored in the browser only for now; move to the User model when the backend supports it
+  saveNotificationPrefs() {
+    localStorage.setItem('notify_email', document.getElementById('notify-email').checked);
+    localStorage.setItem('notify_sms',   document.getElementById('notify-sms').checked);
+    this.showSuccess('Notification preferences saved');
+  }
+
+  setThemePref(pref) {
+    if (pref === 'system') { try { localStorage.removeItem('glycr_theme'); } catch {} this.applyTheme(this._getTheme()); }
+    else this.applyTheme(pref, true);
+    this._markThemeChoice();
+  }
+
+  _markThemeChoice() {
+    let saved = null; try { saved = localStorage.getItem('glycr_theme'); } catch {}
+    const cur = (saved === 'dark' || saved === 'light') ? saved : 'system';
+    document.querySelectorAll('.theme-choice').forEach(b => b.classList.toggle('active', b.dataset.theme === cur));
+  }
+
+  async deactivateAccount() {
+    const pw = document.getElementById('deactivate-password').value;
+    this.clearFieldErrors('deactivate-password-err');
+    if (!pw) return this.setFieldError('deactivate-password', 'deactivate-password-err', 'Enter your password to continue');
+    const ok = await this.confirmDialog({
+      title: 'Deactivate your account?',
+      message: 'Your profile and any events you organise will be hidden and you\'ll be signed out. Sign in again any time to reactivate.',
+      confirmText: 'Yes, deactivate', cancelText: 'Keep my account', tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await this.fetchApi('/auth/deactivate', { method: 'POST', body: JSON.stringify({ password: pw }), successMsg: false });
+      this.closeAllModals();
+      this.logout(true);
+      this.showSuccess('Account deactivated. Sign in again any time to reactivate');
+    } catch (err) { this.setFieldError('deactivate-password', 'deactivate-password-err', err.message); }
+  }
 
   // ─── Modal Helpers ────────────────────────────────────────
   openModal(modalId) {
@@ -2788,6 +3054,9 @@ class GlycrApp {
     });
   }
 
+  // Open Terms/Privacy from the sign-up form, then return to it (typed values stay in the DOM)
+  openLegal(id) { this._reopenAfter = 'auth-modal'; this.openModal(id); }
+
   _setupFocusTrap(modal) {
     if (this._modalFocusTrap) document.removeEventListener('keydown', this._modalFocusTrap);
     this._modalFocusTrap = (e) => {
@@ -2802,10 +3071,14 @@ class GlycrApp {
   }
 
   closeAllModals() {
+    if (this._confirmResolve) this._settleConfirm(false);
+    const back = this._reopenAfter; this._reopenAfter = null;
     document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
     document.body.style.overflow = '';
+    this._resetPasswordToggles();
     if (this._modalFocusTrap) { document.removeEventListener('keydown', this._modalFocusTrap); this._modalFocusTrap = null; }
     if (this._previousFocus) { try { this._previousFocus.focus(); } catch {} this._previousFocus = null; }
+    if (back) this.openModal(back);
   }
 
   // ─── Event Binding ────────────────────────────────────────
@@ -2846,8 +3119,6 @@ class GlycrApp {
     const payMethodEl = document.getElementById('payout-method');
     if (payMethodEl) payMethodEl.addEventListener('change', e => this.togglePayoutDetails(e.target.value));
     this.on('waitlist-form', 'submit', e => { e.preventDefault(); this.joinWaitlist(); });
-    this.on('confirm-cancel', 'click', () => this.cancelEvent());
-    this.on('dismiss-cancel', 'click', () => this.closeAllModals());
     this.on('notify-waitlist-btn', 'click', () => this.notifyWaitlist(this.currentEventId, this.selectedTicketType));
     this.on('forgot-password-link', 'click', e => { e.preventDefault(); this.closeAllModals(); this.showForgotPasswordModal(); });
     this.on('forgot-password-form', 'submit', e => { e.preventDefault(); this.handleForgotPassword(); });
@@ -2858,6 +3129,19 @@ class GlycrApp {
     this.on('coupons-btn',             'click', () => this.openCouponsModal());
     const logoHome = document.getElementById('logo-home');
     if (logoHome) logoHome.addEventListener('click', e => { e.preventDefault(); this.showSection('home'); });
+
+    // Global confirm dialog
+    this.on('confirm-ok-btn',     'click', () => this._settleConfirm(true));
+    this.on('confirm-cancel-btn', 'click', () => this._settleConfirm(false));
+    this.on('confirm-backdrop',   'click', () => this._settleConfirm(false));
+    document.getElementById('confirm-dialog')?.addEventListener('keydown', e => {
+      if (e.key !== 'Tab') return;
+      const f = [...e.currentTarget.querySelectorAll('button, textarea')].filter(el => el.offsetParent !== null);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
 
     const bindStrength = (inputId, barId, textId) => {
       const inp = document.getElementById(inputId);
@@ -2895,6 +3179,8 @@ class GlycrApp {
       if (ui) {
         const d = ui.dataset;
         switch (d.uiAction) {
+          case 'view-ticket':     this.viewTicket(d.ticketId, d.eventId, d.type); break;
+          case 'download-ticket': this.downloadTicketPDFById(d.ticketId, d.eventId, d.type); break;
           case 'transfer':        this.openTransferModal(d.ticketId, d.title, d.type); break;
           case 'refund':          this.openRefundModal(d.ticketId, d.title, d.type, Number(d.price)); break;
           case 'review':          this.openReviewModal(d.eventId, d.title); break;
@@ -3014,7 +3300,7 @@ Object.assign(GlycrApp.prototype, {
     if (!sel) return;
     const upcoming = this.orgEvents.filter(e => !e.isCancelled);
     sel.innerHTML = '<option value="">Select an event to validate…</option>' +
-      upcoming.map(e => `<option value="${e._id}">${e.title}</option>`).join('');
+      upcoming.map(e => `<option value="${esc(e._id)}">${esc(e.title)}</option>`).join('');
 
     const label = document.getElementById('validation-scope-label');
     if (label) label.textContent = `your ${upcoming.length} event${upcoming.length !== 1 ? 's' : ''} only`;
@@ -3025,7 +3311,7 @@ Object.assign(GlycrApp.prototype, {
     const logSel = document.getElementById('checkin-log-event-filter');
     if (logSel) {
       logSel.innerHTML = '<option value="">All my events</option>' +
-        upcoming.map(e => `<option value="${e._id}">${e.title}</option>`).join('');
+        upcoming.map(e => `<option value="${esc(e._id)}">${esc(e.title)}</option>`).join('');
     }
   },
 
@@ -3039,7 +3325,7 @@ Object.assign(GlycrApp.prototype, {
     if (!event) return;
     const tt = this.parseTicketTypes(event.ticketTypes);
     typeFilter.innerHTML = '<option value="">All types</option>' +
-      Object.keys(tt).map(t => `<option value="${t}">${t.toUpperCase()}</option>`).join('');
+      Object.keys(tt).map(t => `<option value="${esc(t)}">${esc(t.toUpperCase())}</option>`).join('');
     await this._loadValidationStats(eventId);
     await this._loadCheckinFeed(eventId);
   },
@@ -3057,7 +3343,7 @@ Object.assign(GlycrApp.prototype, {
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
       set('val-total', stats.total); set('val-used', stats.used);
       set('val-remaining', stats.remaining); set('val-pct', `${stats.pct}%`);
-    } catch (err) { this._resetValidationStats(); this.showToast(err.message || 'Could not load check-in stats.'); }
+    } catch (err) { this._resetValidationStats(); this.showError(err.message || 'Could not load check-in stats.'); }
   },
 
   async _loadCheckinFeed(eventId) {
@@ -3067,7 +3353,7 @@ Object.assign(GlycrApp.prototype, {
       const params = new URLSearchParams({ eventId, limit: 50 });
       if (typeFilter) params.append('ticketType', typeFilter);
       this.renderCheckinFeed(await this.fetchApi(`/tickets/validations?${params}`));
-    } catch (err) { this.renderCheckinFeed([]); this.showToast(err.message || 'Could not load check-ins.'); }
+    } catch (err) { this.renderCheckinFeed([]); this.showError(err.message || 'Could not load check-ins.'); }
   },
 
   renderCheckinFeed(validations) {
@@ -3092,16 +3378,16 @@ Object.assign(GlycrApp.prototype, {
           <i class="fas fa-check"></i></div>
         <div style="flex:1;min-width:0;">
           <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--teal);">
-            ${v.ticketId || '—'}</div>
+            ${esc(v.ticketId || '—')}</div>
           <div style="color:var(--text);margin-top:0.1rem;">
-            ${v.buyerName || v.buyerEmail || 'Guest'}
-            <span style="color:var(--muted);margin-left:0.5rem;">${(v.ticketType||'').toUpperCase()}</span>
+            ${esc(v.buyerName || v.buyerEmail || 'Guest')}
+            <span style="color:var(--muted);margin-left:0.5rem;">${esc((v.ticketType||'').toUpperCase())}</span>
           </div>
         </div>
         <div style="text-align:right;flex-shrink:0;">
           <div style="color:var(--muted);font-size:0.72rem;">${timeAgo}</div>
           <div style="margin-top:0.1rem;color:var(--dim);font-size:0.7rem;">
-            <i class="fas ${methodIcon}"></i> ${v.validatedBy || 'organizer'}</div>
+            <i class="fas ${methodIcon}"></i> ${esc(v.validatedBy || 'organizer')}</div>
         </div>
       </div>`;
     }).join('');
@@ -3154,11 +3440,11 @@ Object.assign(GlycrApp.prototype, {
     return `<div style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--radius);
     padding:1rem 1.1rem;margin-bottom:0.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
     <div style="flex:1;min-width:0;">
-      <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--teal);margin-bottom:0.2rem;">${tid}</div>
-      <div style="font-weight:600;color:var(--text);font-size:0.88rem;">${name}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--teal);margin-bottom:0.2rem;">${esc(tid)}</div>
+      <div style="font-weight:600;color:var(--text);font-size:0.88rem;">${esc(name)}</div>
       <div style="font-size:0.73rem;color:var(--muted);margin-top:0.15rem;">
-        ${(ticket.ticketType||'TICKET').toUpperCase()} · ${ticket.price===0?'Free':sym+(ticket.price||0)}
-        · ${ticket.userEmail||ticket.buyerEmail||'—'}
+        ${esc((ticket.ticketType||'TICKET').toUpperCase())} · ${ticket.price===0?'Free':esc(sym)+esc(ticket.price||0)}
+        · ${esc(ticket.userEmail||ticket.buyerEmail||'—')}
       </div>
       ${isUsed
       ? `<div style="margin-top:0.35rem;display:inline-flex;align-items:center;gap:0.35rem;font-size:0.7rem;
@@ -3169,11 +3455,11 @@ Object.assign(GlycrApp.prototype, {
             border-radius:100px;padding:0.15rem 0.5rem;"><i class="fas fa-ticket-alt"></i> Valid</div>`}
     </div>
     <button class="btn btn-primary btn-sm" ${isUsed?'disabled style="opacity:0.4;"':''}
-      data-validate-tid="${tid}"
-      data-validate-name="${name.replace(/"/g,'&quot;')}"
-      data-validate-type="${(ticket.ticketType||'ticket').replace(/"/g,'&quot;')}"
+      data-validate-tid="${esc(tid)}"
+      data-validate-name="${esc(name)}"
+      data-validate-type="${esc(ticket.ticketType||'ticket')}"
       data-validate-used="${isUsed}"
-      data-validate-eid="${eid}">
+      data-validate-eid="${esc(eid)}">
       <i class="fas fa-${isUsed?'check-double':'check-circle'}"></i> ${isUsed?'Used':'Validate'}
     </button>
   </div>`;
@@ -3185,9 +3471,9 @@ Object.assign(GlycrApp.prototype, {
     this._pendingValidate = { ticketId, eventId };
     const card = document.getElementById('validate-ticket-card');
     if (card) card.innerHTML = `
-      <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--teal);margin-bottom:0.4rem;">${ticketId}</div>
-      <div style="font-weight:600;color:var(--text);font-size:0.95rem;margin-bottom:0.15rem;">${eventName}</div>
-      <div style="font-size:0.78rem;color:var(--muted);">${ticketType.toUpperCase()}</div>`;
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--teal);margin-bottom:0.4rem;">${esc(ticketId)}</div>
+      <div style="font-weight:600;color:var(--text);font-size:0.95rem;margin-bottom:0.15rem;">${esc(eventName)}</div>
+      <div style="font-size:0.78rem;color:var(--muted);">${esc(ticketType.toUpperCase())}</div>`;
     const warn = document.getElementById('validate-already-used-warning');
     const btn  = document.getElementById('confirm-validate-btn');
     const title = document.getElementById('validate-modal-title');
@@ -3224,6 +3510,7 @@ Object.assign(GlycrApp.prototype, {
         s.className = 'status-msg error'; s.textContent = result.message || 'Validation failed.'; btn.disabled = false; return;
       }
       s.className = 'status-msg success'; s.innerHTML = '<strong>✓ Ticket validated!</strong> Attendee checked in.';
+      this.showSuccess('Ticket checked in');
       this.pushNotification({ type: 'purchase', text: `Ticket ${ticketId} validated.` });
       await this._loadValidationStats(eventId);
       await this._loadCheckinFeed(eventId);
@@ -3245,7 +3532,7 @@ Object.assign(GlycrApp.prototype, {
     try { this.acl.requireOrganizer(); } catch { return; }
     if (!this.dataLoaded) await this.loadAllData();
     const evOptions = this.orgEvents.filter(e => !e.isCancelled)
-      .map(e => `<option value="${e._id}">${e.title}</option>`).join('');
+      .map(e => `<option value="${esc(e._id)}">${esc(e.title)}</option>`).join('');
     const assign = document.getElementById('staff-event-assign');
     const filter = document.getElementById('staff-event-filter');
     if (assign) assign.innerHTML = '<option value="">Select event…</option>' + evOptions;
@@ -3282,7 +3569,7 @@ Object.assign(GlycrApp.prototype, {
         body: JSON.stringify({ name, email, phone, role, eventId, pin, organizerId: this.currentUser.id }),
       });
       s.className = 'status-msg success';
-      s.innerHTML = `<strong>✓ Staff account created!</strong> ${name} can now validate tickets for this event.`;
+      s.innerHTML = `<strong>✓ Staff account created!</strong> ${esc(name)} can now validate tickets for this event.`;
       ['staff-name','staff-email','staff-phone','staff-pin'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
@@ -3320,17 +3607,17 @@ Object.assign(GlycrApp.prototype, {
           background:linear-gradient(135deg,var(--teal),var(--sky));
           display:flex;align-items:center;justify-content:center;
           font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:700;color:var(--bg);">
-          ${(s.name||'S').charAt(0).toUpperCase()}</div>
+          ${esc((s.name||'S').charAt(0).toUpperCase())}</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-weight:600;color:var(--text);font-size:0.85rem;">${s.name||'—'}</div>
+          <div style="font-weight:600;color:var(--text);font-size:0.85rem;">${esc(s.name||'—')}</div>
           <div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem;">
-            ${s.email||'—'}, ${s.phone||'—'}
+            ${esc(s.email||'—')}, ${esc(s.phone||'—')}
             <span style="margin-left:0.5rem;padding:0.1rem 0.4rem;background:rgba(125,211,252,0.12);
               color:var(--sky);border-radius:100px;font-family:'JetBrains Mono',monospace;
-              font-size:0.6rem;letter-spacing:0.06em;text-transform:uppercase;">${s.role||'scanner'}</span>
+              font-size:0.6rem;letter-spacing:0.06em;text-transform:uppercase;">${esc(s.role||'scanner')}</span>
           </div>
           <div style="font-size:0.7rem;color:var(--muted);margin-top:0.1rem;">
-            <i class="fas fa-calendar-alt" style="font-size:0.6rem;"></i> ${evName}
+            <i class="fas fa-calendar-alt" style="font-size:0.6rem;"></i> ${esc(evName)}
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:0.35rem;flex-shrink:0;align-items:flex-end;">
@@ -3342,11 +3629,11 @@ Object.assign(GlycrApp.prototype, {
             ${active ? 'Active' : 'Inactive'}</span>
           <div style="display:flex;gap:0.3rem;">
             <button class="btn btn-ghost btn-sm" style="font-size:0.7rem;padding:0.2rem 0.5rem;"
-              onclick="app._toggleStaffStatus('${sid}', ${!active})">
+              data-ui-action="staff-toggle" data-id="${esc(sid)}" data-activate="${!active}">
               <i class="fas fa-${active ? 'pause' : 'play'}"></i> ${active ? 'Deactivate' : 'Activate'}
             </button>
             <button class="btn btn-danger btn-sm" style="font-size:0.7rem;padding:0.2rem 0.5rem;"
-              onclick="app._deleteStaff('${sid}')">
+              data-ui-action="staff-delete" data-id="${esc(sid)}">
               <i class="fas fa-trash"></i>
             </button>
           </div>
@@ -3354,7 +3641,7 @@ Object.assign(GlycrApp.prototype, {
       </div>`;
       }).join('');
     } catch (err) {
-      container.innerHTML = `<p style="color:var(--coral);font-size:0.82rem;padding:1rem 0;">${err.message || 'Failed to load staff members.'}</p>`;
+      container.innerHTML = `<p style="color:var(--coral);font-size:0.82rem;padding:1rem 0;">${esc(err.message || 'Failed to load staff members.')}</p>`;
     }
   },
 
@@ -3365,22 +3652,26 @@ Object.assign(GlycrApp.prototype, {
         method: 'PATCH',
         body: JSON.stringify({ status: activate ? 'active' : 'inactive' }),
       });
-      this.showToast(activate ? 'Staff member activated.' : 'Staff member deactivated.', activate ? 'success' : 'warning');
+      this.showToast(activate ? 'Staff member activated' : 'Staff member deactivated', activate ? 'success' : 'warning');
       await this._renderStaffList();
     } catch (err) {
-      this.showToast(err.message || 'Failed to update staff status.');
+      this.showError(err.message || 'Failed to update staff status.');
     }
   },
 
   async _deleteStaff(staffId) {
     try { this.acl.requireOrganizer(); } catch { return; }
-    if (!confirm('Remove this staff member?')) return;
+    const ok = await this.confirmDialog({
+      title: 'Remove this staff member?',
+      message: 'They will no longer be able to validate tickets.',
+      confirmText: 'Remove', tone: 'danger',
+    });
+    if (!ok) return;
     try {
-      await this.fetchApi(`/staff/${staffId}`, { method: 'DELETE' });
-      this.showToast('Staff member removed.', 'warning');
+      await this.fetchApi(`/staff/${staffId}`, { method: 'DELETE' });   // toast comes from SUCCESS_TOASTS
       await this._renderStaffList();
     } catch (err) {
-      this.showToast(err.message || 'Failed to remove staff member.');
+      this.showError(err.message || 'Failed to remove staff member.');
     }
   },
 
@@ -3394,13 +3685,13 @@ Object.assign(GlycrApp.prototype, {
     if (sel && this.orgEvents.length) {
       sel.innerHTML = '<option value="">All my events</option>' +
         this.orgEvents.filter(e => !e.isCancelled)
-          .map(e => `<option value="${e._id}">${e.title}</option>`).join('');
+          .map(e => `<option value="${esc(e._id)}">${esc(e.title)}</option>`).join('');
     }
     const staffSel = document.getElementById('checkin-log-staff-filter');
     if (staffSel) {
       const staffNames = [...new Set(this.staffMembers.map(s => s.name))];
       staffSel.innerHTML = '<option value="">Anyone</option><option value="organizer">Organizer (me)</option>' +
-        staffNames.map(n => `<option value="${n}">${n}</option>`).join('');
+        staffNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
     }
     this.openModal('checkin-log-modal');
     await this.loadCheckinLog();
@@ -3426,18 +3717,18 @@ Object.assign(GlycrApp.prototype, {
       tbody.innerHTML = logs.map(v => {
         const ev = this.allEvents.find(e => e._id === v.eventId || e._id === String(v.eventId));
         return `<tr>
-          <td style="font-family:'JetBrains Mono',monospace;color:var(--teal);font-size:0.75rem;">${v.ticketId||'—'}</td>
-          <td>${v.buyerName||v.buyerEmail||'Guest'}</td>
-          <td>${ev?ev.title:(v.eventId||'—')}</td>
-          <td><span style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;text-transform:uppercase;">${v.ticketType||'—'}</span></td>
+          <td style="font-family:'JetBrains Mono',monospace;color:var(--teal);font-size:0.75rem;">${esc(v.ticketId||'—')}</td>
+          <td>${esc(v.buyerName||v.buyerEmail||'Guest')}</td>
+          <td>${esc(ev?ev.title:(v.eventId||'—'))}</td>
+          <td><span style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;text-transform:uppercase;">${esc(v.ticketType||'—')}</span></td>
           <td>${v.validatedAt?new Date(v.validatedAt).toLocaleString('en-GB'):'—'}</td>
-          <td>${v.validatedBy||'organizer'}</td>
+          <td>${esc(v.validatedBy||'organizer')}</td>
           <td><span style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;padding:0.15rem 0.45rem;
             border-radius:100px;text-transform:uppercase;letter-spacing:0.05em;
             ${v.method==='scan'
           ?'background:rgba(45,212,191,0.1);color:var(--teal);border:1px solid rgba(45,212,191,0.2);'
           :'background:rgba(125,211,252,0.1);color:var(--sky);border:1px solid rgba(125,211,252,0.2);'}">
-            ${v.method||'manual'}</span></td>
+            ${esc(v.method||'manual')}</span></td>
         </tr>`;
       }).join('');
     } catch (err) {
@@ -3450,7 +3741,7 @@ Object.assign(GlycrApp.prototype, {
     try { this.acl.requireOrganizer(); } catch { return; }
     const rows = [...document.querySelectorAll('#checkin-log-tbody tr')].map(tr =>
       [...tr.querySelectorAll('td')].map(td => `"${td.textContent.trim()}"`).join(','));
-    if (!rows.length) return this.showToast('No data to export.');
+    if (!rows.length) return this.showToast('No data to export.', 'warning');
     const csv = 'Ticket ID,Buyer,Event,Type,Validated At,Validated By,Method\n' + rows.join('\n');
     this._dlBlob(csv, `checkin_log_${new Date().toISOString().slice(0,10)}.csv`, 'text/csv');
   },
@@ -3602,14 +3893,8 @@ GlycrApp.prototype.init = async function () {
 
 };
 
-// Patch showSection to handle validation-page
+// Patch showSection to handle validation-page + stale org data refresh
 const _origShowSection = GlycrApp.prototype.showSection;
-GlycrApp.prototype.showSection = function (section) {
-  _origShowSection.call(this, section);
-  if (section === 'validation-page') this.initValidationPage();
-};
-
-
 GlycrApp.prototype.showSection = function (section) {
   _origShowSection.call(this, section);
   if (section === 'validation-page') this.initValidationPage();
