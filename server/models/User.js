@@ -18,7 +18,11 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['customer', 'organizer', 'moderator', 'admin'], default: 'customer' },
   isOrganizer: { type: Boolean, default: false },
   isAdmin: { type: Boolean, default: false },
-  suspended: { type: Boolean, default: false },
+  suspended: { type: Boolean, default: false },   // admin action — the user cannot undo it
+  // Self-service deactivation. Unlike `suspended`, signing in again clears it.
+  deactivatedAt: { type: Date, default: null },
+  // When the user ticked "I agree to the Terms of Service and Privacy Policy" at sign-up.
+  termsAcceptedAt: { type: Date, default: null },
   currency: { type: String, default: 'GHC' },
   passwordChangedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },

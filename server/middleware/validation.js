@@ -19,6 +19,14 @@ const registerSchema = Joi.object({
   phone: Joi.string().pattern(/^\+233\d{9}$/).required(),
   isOrganizer: Joi.boolean().default(false),
   currency: Joi.string().valid('USD', 'EUR', 'GBP', 'CAD', 'GHC').default('GHC'),
+  // in registerSchema, after `currency`
+  acceptedTerms: Joi.boolean().valid(true).required()
+    .messages({
+      'any.only': 'You must accept the Terms of Service and Privacy Policy',
+      'any.required': 'You must accept the Terms of Service and Privacy Policy',
+    }),
+
+// add `deactivateSchema` to module.exports
 });
 
 // Login schema — accepts email OR username.
@@ -156,6 +164,12 @@ const payoutSchema = Joi.object({
   details: Joi.object().optional().allow(null),
 });
 
+
+// new schema
+const deactivateSchema = Joi.object({
+  password: Joi.string().required(),
+});
+
 // Generic validation middleware factory
 const validate = (schema) => (req, res, next) => {
   const { error, value } = schema.validate(req.body, {
@@ -185,4 +199,5 @@ module.exports = {
   payoutSchema,
   validate,
   sanitizeText,
+  deactivateSchema,
 };

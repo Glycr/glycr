@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const { validate, registerSchema, loginSchema } = require('../middleware/validation');
+const { validate, registerSchema, loginSchema, deactivateSchema } = require('../middleware/validation');
 const { authLimiter, resetLimiter, registerLimiter } = require('../middleware/rateLimit');
 const auth = require('../middleware/auth');
 const { loginSlowDown } = require('../middleware/slowDown');
@@ -58,5 +58,16 @@ router.post('/auth/reset-password', authController.resetPassword);
 // per user per 15 min. Successful changes decrement the counter, so a user
 // changing password twice in a day isn't blocked.
 router.post('/auth/change-password', auth, authLimiter, authController.changePassword);
+
+// ── Deactivate own account ──
+// Requires the current password. authLimiter (keyed on req.user.email) caps
+// password guessing from a stolen session at 5 failures per 15 minutes.
+router.post(
+  '/auth/deactivate',
+  auth,
+  validate(deactivateSchema),
+  authLimiter,
+  authController.deactivateAccount
+);
 
 module.exports = router;

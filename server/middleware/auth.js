@@ -54,13 +54,18 @@ module.exports = async (req, res, next) => {
       // for staff, `req.user.id` for organizers — see staffController.resolveActor.
     } else {
       const user = await User.findById(decoded.id)
-        .select('suspended passwordChangedAt')
+        .select('suspended deactivatedAt passwordChangedAt')
         .lean();
       if (!user) {
         throw new AppError('User no longer exists', 401);
       }
       if (user.suspended) {
         throw new AppError('Account suspended', 401);
+      }
+      // Self-deactivated accounts cannot use any existing token. Signing in
+      // again (userService.login) clears deactivatedAt and issues a fresh one.
+      if (user.deactivatedAt) {
+        throw new AppError('Account deactivated — sign in again to reactivate it', 401);
       }
       // Reject tokens issued BEFORE the last password change — stolen tokens
       // die when the password resets, instead of surviving for up to 7 days.

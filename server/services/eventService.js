@@ -166,6 +166,24 @@ class EventService {
           409
         );
       }
+
+      // Sold tickets are financial records. Revenue and the available balance are
+      // computed from them, so deleting them would silently change what the
+      // organizer can withdraw and wipe the buyers' history.
+      const liveSales = await Ticket.countDocuments({
+        eventId,
+        status: { $in: ['active', 'used', 'refund_pending'] },
+      });
+      if (liveSales > 0) {
+        const upcoming = !event.isCancelled && new Date(event.date) > new Date();
+        throw new AppError(
+          `Cannot delete event — ${liveSales} ticket${liveSales !== 1 ? 's have' : ' has'} been sold. ` +
+          (upcoming
+            ? 'Cancel the event to refund buyers automatically, then delete it once the refunds are complete.'
+            : 'Events with sales are kept for financial records. You can unpublish it instead.'),
+          409
+        );
+      }
     }
 
     await event.deleteOne();

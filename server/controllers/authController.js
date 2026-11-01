@@ -115,3 +115,16 @@ exports.changePassword = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.deactivateAccount = async (req, res, next) => {
+  try {
+    const { password } = req.body || {};
+    await userService.deactivateAccount(req.user.id, password);
+    logService.audit(req.user.email, 'deactivate_account', req.user.email, {
+      type: 'auth', adminId: req.user.id, ...ctx(req),
+    });
+    res.json({ message: 'Account deactivated' });
+  } catch (err) {
+    next(err);
+  }
+};

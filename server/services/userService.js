@@ -7,7 +7,7 @@ const Payout = require('../models/Payout');
 const Refund = require('../models/Refund');
 const Waitlist = require('../models/Waitlist');
 const Favorite = require('../models/Favorite');
-const Review = require('../models/Review');      // ← add this line
+const Review = require('../models/Review');
 const config = require('../config');
 const { AppError } = require('../utils/appError');
 const { logger } = require('../config/logger');
@@ -19,7 +19,7 @@ const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 class UserService {
   async register(userData) {
-    const { name, email, password, phone, username, isOrganizer } = userData;
+    const { name, email, password, phone, username, isOrganizer, acceptedTerms } = userData;
 
     const normalizedEmail = String(email || '').toLowerCase().trim();
     if (!normalizedEmail) throw new AppError('Email is required', 400);
@@ -37,8 +37,9 @@ class UserService {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-
-    const isOrg = isOrganizer === true;          // Joi already coerces to boolean
+    // role and isOrganizer must always agree — the frontend, JWT and payout
+    // checks all read isOrganizer.
+    const isOrg = isOrganizer === true;
     const role = isOrg ? 'organizer' : 'customer';
 
     const user = new User({
@@ -49,6 +50,7 @@ class UserService {
       phone,
       role,
       isOrganizer: isOrg,
+      termsAcceptedAt: acceptedTerms ? new Date() : null,
     });
 
     try {
@@ -86,7 +88,7 @@ class UserService {
         { email: { $regex: `^${escaped}$`, $options: 'i' } },
         { username: lower },
       ],
-    }).select('+password');   // ← FIX: needed because User.password has select: false
+    }).select('+password');   // needed because User.password has select: false
 
     if (!user) throw new AppError('Invalid credentials', 401);
     if (user.suspended) throw new AppError('Account suspended', 403);
@@ -130,6 +132,17 @@ class UserService {
       await user.save();
     }
 
+    // Self-deactivated accounts come back to life on a successful sign-in.
+    // This sits AFTER the password check so a wrong password can never
+    // reactivate someone else's account. `suspended` (admin action) was
+    // already rejected above and is never cleared here.
+    let reactivated = false;
+    if (user.deactivatedAt) {
+      await User.updateOne({ _id: user._id }, { $set: { deactivatedAt: null } });
+      user.deactivatedAt = null;
+      reactivated = true;
+    }
+
     const token = jwt.sign(
       {
         id: user._id,
@@ -144,7 +157,7 @@ class UserService {
 
     const userObj = user.toObject({ virtuals: true });
     delete userObj.password;
-    return { token, user: userObj };
+    return { token, user: userObj, reactivated };
   }
 
   async getProfile(userId) {
@@ -204,7 +217,13 @@ class UserService {
   async changeRole(userId, newRole) {
     const allowedRoles = ['customer', 'organizer', 'moderator', 'admin'];
     if (!allowedRoles.includes(newRole)) throw new AppError('Invalid role', 400);
-    const user = await User.findByIdAndUpdate(userId, { role: newRole }, { returnDocument: 'after' }).select('-password');
+    // Keep the boolean flags in step with `role`, otherwise they drift apart
+    // (the frontend and JWT read isOrganizer / isAdmin, not role).
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { role: newRole, isOrganizer: newRole === 'organizer', isAdmin: newRole === 'admin' },
+      { returnDocument: 'after' }
+    ).select('-password');
     if (!user) throw new AppError('User not found', 404);
     return user;
   }
@@ -281,7 +300,7 @@ class UserService {
   }
 
   async changePassword(userId, currentPassword, newPassword) {
-    const user = await User.findById(userId).select('+password');   // ← FIX: needed to read current hash
+    const user = await User.findById(userId).select('+password');   // needed to read current hash
     if (!user) throw new AppError('User not found', 404);
 
     const valid = await bcrypt.compare(currentPassword, user.password);
@@ -294,6 +313,90 @@ class UserService {
     const userObj = user.toObject({ virtuals: true });
     delete userObj.password;
     return userObj;
+  }
+
+  // ── Self-service deactivation ──
+  // Hides the account and its events and signs the user out everywhere.
+  // Nothing is deleted: tickets, payouts and refunds stay intact, and signing
+  // in again (see login) reactivates the account. Events stay unpublished
+  // after reactivation, so the organizer republishes deliberately.
+  async deactivateAccount(userId, password) {
+    if (!password || typeof password !== 'string') {
+      throw new AppError('Password is required', 400);
+    }
+
+    const user = await User.findById(userId).select('+password role deactivatedAt');
+    if (!user) throw new AppError('User not found', 404);
+    if (user.deactivatedAt) throw new AppError('Account is already deactivated', 409);
+    if (user.role === 'admin' || user.role === 'moderator') {
+      throw new AppError('Staff accounts cannot be deactivated here. Contact an administrator.', 403);
+    }
+
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) throw new AppError('Password is incorrect', 401);
+
+    // ── Don't strand buyers or money ──
+    const ownedEvents = await Event.find({ organizerId: userId })
+      .select('_id isCancelled date')
+      .lean();
+
+    if (ownedEvents.length > 0) {
+      const now = new Date();
+      const upcomingIds = ownedEvents
+        .filter((e) => !e.isCancelled && new Date(e.date) > now)
+        .map((e) => e._id);
+
+      if (upcomingIds.length > 0) {
+        const liveTickets = await Ticket.exists({
+          eventId: { $in: upcomingIds },
+          status: { $in: ['active', 'refund_pending'] },
+        });
+        if (liveTickets) {
+          throw new AppError(
+            'You have upcoming events with tickets sold. Cancel those events (buyers are refunded automatically) or wait until they finish before deactivating.',
+            409
+          );
+        }
+      }
+
+      const unresolvedRefunds = await Refund.exists({
+        eventId: { $in: ownedEvents.map((e) => e._id) },
+        status: { $in: ['pending', 'approved'] },
+      });
+      if (unresolvedRefunds) {
+        throw new AppError('You have refund requests waiting for a decision. Resolve them before deactivating.', 409);
+      }
+    }
+
+    const payoutInProgress = await Payout.exists({
+      organizerId: userId,
+      status: { $in: ['pending', 'approved'] },
+    });
+    if (payoutInProgress) {
+      throw new AppError('You have a payout in progress. Wait for it to complete before deactivating.', 409);
+    }
+
+    // passwordChangedAt = now makes the auth middleware reject every token
+    // issued before this moment (other devices, stolen sessions).
+    const now = new Date();
+    await User.updateOne({ _id: userId }, { $set: { deactivatedAt: now, passwordChangedAt: now } });
+
+    // Hide their events. publishAt is cleared too, otherwise the scheduler
+    // would flip a scheduled draft back to published after deactivation.
+    await Event.updateMany({ organizerId: userId }, { $set: { isPublished: false, publishAt: null } });
+
+    const goodbyeHtml = `
+      <h2>Your Glycr account has been deactivated</h2>
+      <p>Hi ${escapeHtml(user.name || '')}, your account and any events you organise are now hidden.</p>
+      <p>Your tickets, payouts and history are kept. To reactivate, simply sign in again.</p>
+      <p>If you didn't do this, reset your password straight away.</p>
+      <p>– Glycr Team</p>
+    `;
+    User.findById(userId).select('email').lean()
+      .then((u) => u && sendEmail(u.email, 'Your Glycr account has been deactivated', goodbyeHtml))
+      .catch((e) => logger.error('Deactivation email failed', { err: e.message }));
+
+    return { deactivated: true };
   }
 
   // ── Full cascade delete — everything attached to this user ──
@@ -337,7 +440,6 @@ class UserService {
       await Waitlist.deleteMany({ eventId: { $in: ownedEventIds } });
       await Refund.deleteMany({ eventId: { $in: ownedEventIds } });
       await Review.deleteMany({ eventId: { $in: ownedEventIds } });
-
     }
 
     // The user's own activity
