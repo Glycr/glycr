@@ -232,6 +232,10 @@ class UserService {
     const query = {};
     if (filters.isOrganizer !== undefined) query.isOrganizer = filters.isOrganizer;
     if (filters.suspended !== undefined) query.suspended = filters.suspended;
+    // 👇 the line Claude was talking about
+    if (filters.deactivated !== undefined) {
+      query.deactivatedAt = filters.deactivated ? { $ne: null } : null;
+    }
     if (filters.role) query.role = filters.role;
     if (typeof filters.search === 'string' && filters.search.trim()) {
       const rx = new RegExp(escapeRegex(filters.search.trim().slice(0, 100)), 'i');
