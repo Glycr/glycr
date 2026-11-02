@@ -92,6 +92,14 @@ const eventSchema = Joi.object({
   // the Joi schema, `stripUnknown: true` would silently discard it and
   // scheduled publishing would be dead again.
   publishAt: Joi.date().iso().optional().allow(null),
+  // Per-event override for who pays the platform fee.
+  // Allow null (explicit "use platform default") and '' (empty form value).
+  // '' is converted to null by the Mongoose `set` transformer on save.
+  feePaidBy: Joi.string()
+    .valid('organizer', 'buyer')
+    .allow(null, '')
+    .optional(),
+
 });
 
 // Waitlist schema
