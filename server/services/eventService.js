@@ -20,6 +20,8 @@ const ORGANIZER_WRITABLE_FIELDS = [
   'organizerEmail', 'organizerPhone', 'ticketTypes',
   // Optional
   'location', 'address', 'lat', 'lng', 'publishAt',
+  // Per-event override for who pays the platform fee
+  'feePaidBy',
 ];
 
 const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -71,6 +73,14 @@ class EventService {
       if (parsed > new Date()) {
         publishAt = parsed;
         isPublished = false;
+      }
+    }
+
+    if (clean.feePaidBy !== undefined) {
+      if (clean.feePaidBy === null || clean.feePaidBy === '') {
+        clean.feePaidBy = null;
+      } else if (!['organizer', 'buyer'].includes(clean.feePaidBy)) {
+        throw new AppError('feePaidBy must be organizer, buyer, or empty', 400);
       }
     }
 
