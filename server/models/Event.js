@@ -36,8 +36,7 @@ const eventSchema = new mongoose.Schema({
   //   null / undefined  → use Settings.feePaidBy (platform default)
   //   'organizer'       → fee deducted from this event's organizer payout
   //   'buyer'           → fee added on top of the ticket price at checkout
-  feePaidBy: {type: String, enum: ['organizer', 'buyer'], default: null,
-  },
+  feePaidBy: {type: String, enum: ['organizer', 'buyer'], default: null, set: v => (v === '' ? null : v),},
 
   // Scheduling — stored for future use. Actual scheduled publishing requires
   // a background job that flips isPublished when this timestamp arrives.
