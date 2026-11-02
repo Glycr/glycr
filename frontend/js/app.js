@@ -994,7 +994,7 @@ class GlycrApp {
     safeSet('total-events', stats.totalEvents);
     safeSet('events-live', liveEvents);
     safeSet('pending-payouts', money(stats.availableBalance));
-    safeSet('platform-fee-display', this.platformFeePercent == null ? '—' : `${this.platformFeePercent}%`);
+    safeSet('platform-fee-display', this._feeLabel());
 
     await this._renderDashChart();
   }
@@ -2807,16 +2807,27 @@ class GlycrApp {
     this.showSuccess(`${filename} downloaded`);
   }
 
+  // Quote a CSV cell: double any quotes, and stop spreadsheet formulas (=, +, -, @) from running
+  _csvCell(v) {
+    let s = String(v ?? '');
+    if (/^[=+\-@]/.test(s)) s = `'${s}`;
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+
   exportEventsToCSV(events) {
-    const fee = this.platformFeePercent;
-    let csv = 'Title,Date,Venue,Location,Category,Status,Tickets Sold,Gross Revenue,Net Revenue\n';
+    // Figures come from the server, which uses the fee recorded on each ticket
+    // (so discounts, minimum fees and buyer-paid fees are all right).
+    const per = this.orgSummary?.perEvent;
+    if (!per) return this.showWarning('Revenue figures are not loaded yet. Try again in a moment.');
+    let csv = 'Title,Date,Venue,Location,Category,Status,Tickets Sold,Gross Revenue,Platform Fee (deducted),Net Revenue\n';
     events.forEach(e => {
-      const tt = this.parseTicketTypes(e.ticketTypes);
-      const sold  = Object.values(tt).reduce((a, t) => a + (t.sold || 0), 0);
-      const gross = Object.values(tt).reduce((a, t) => a + ((t.sold || 0) * t.price), 0);
-      const net   = gross * (1 - fee / 100);
-      const st    = e.isCancelled ? 'Cancelled' : e.isPublished ? 'Published' : 'Draft';
-      csv += `"${e.title}","${new Date(e.date).toLocaleString()}","${e.venue}","${e.location || ''}","${e.category}","${st}",${sold},${gross.toFixed(2)},${net.toFixed(2)}\n`;
+      const p = per[e._id] || { sold: 0, revenue: 0, organizerFees: 0, net: 0 };
+      const st = e.isCancelled ? 'Cancelled' : e.isPublished ? 'Published' : 'Draft';
+      csv += [
+        this._csvCell(e.title), this._csvCell(new Date(e.date).toLocaleString()), this._csvCell(e.venue),
+        this._csvCell(e.location || ''), this._csvCell(e.category), this._csvCell(st),
+        p.sold, p.revenue.toFixed(2), p.organizerFees.toFixed(2), p.net.toFixed(2),
+      ].join(',') + '\n';
     });
     this._dlBlob(csv, `events_${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv');
   }
@@ -2829,19 +2840,17 @@ class GlycrApp {
 
   exportEventsToPDF(events) {
     const { jsPDF } = window.jspdf;
+    const per  = this.orgSummary?.perEvent;
+    if (!per) return this.showWarning('Revenue figures are not loaded yet. Try again in a moment.');
     const doc  = new jsPDF();
-    const fee  = this.platformFeePercent;
     const sym  = this.getCurrencySymbol((this.currentUser && this.currentUser.currency) || 'GHC');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('My Events Report', 14, 16);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(120);
-    doc.text(`Platform Fee: ${fee}% · Generated: ${new Date().toLocaleString()}`, 14, 24);
+    doc.text(`Platform fee now: ${this._feeLabel()} · Generated: ${new Date().toLocaleString()}`, 14, 24);
     const rows = events.map(e => {
-      const tt    = this.parseTicketTypes(e.ticketTypes);
-      const sold  = Object.values(tt).reduce((a, t) => a + (t.sold || 0), 0);
-      const gross = Object.values(tt).reduce((a, t) => a + ((t.sold || 0) * t.price), 0);
-      const net   = gross * (1 - fee / 100);
-      const st    = e.isCancelled ? 'Cancelled' : e.isPublished ? 'Published' : 'Draft';
-      return [e.title, new Date(e.date).toLocaleDateString(), e.venue, sold, `${sym}${gross.toFixed(2)}`, `${sym}${net.toFixed(2)}`, st];
+      const p  = per[e._id] || { sold: 0, revenue: 0, net: 0 };
+      const st = e.isCancelled ? 'Cancelled' : e.isPublished ? 'Published' : 'Draft';
+      return [e.title, new Date(e.date).toLocaleDateString(), e.venue, p.sold, `${sym}${p.revenue.toFixed(2)}`, `${sym}${p.net.toFixed(2)}`, st];
     });
     doc.autoTable({ head: [['Title', 'Date', 'Venue', 'Sold', 'Gross', 'Net', 'Status']], body: rows, startY: 30, styles: { fontSize: 8 }, headStyles: { fillColor: [19, 26, 35], textColor: [204, 217, 227] } });
     doc.save(`events_${new Date().toISOString().slice(0, 10)}.pdf`);
@@ -2854,7 +2863,7 @@ class GlycrApp {
     const sym = this.getCurrencySymbol((this.currentUser && this.currentUser.currency) || 'GHC');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('Payout History', 14, 16);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(120);
-    doc.text(`Platform Fee: ${this.platformFeePercent}% · Generated: ${new Date().toLocaleString()}`, 14, 24);
+    doc.text(`Platform fee now: ${this._feeLabel()} · Generated: ${new Date().toLocaleString()}`, 14, 24);
     const rows = payouts.map(p => [`${sym}${p.amount}`, p.method, p.status, new Date(p.requestedAt).toLocaleDateString(), p.completedAt ? new Date(p.completedAt).toLocaleDateString() : '—']);
     doc.autoTable({ head: [['Amount', 'Method', 'Status', 'Requested', 'Completed']], body: rows, startY: 30, styles: { fontSize: 8 }, headStyles: { fillColor: [19, 26, 35], textColor: [204, 217, 227] } });
     doc.save(`payouts_${new Date().toISOString().slice(0, 10)}.pdf`);
@@ -2906,6 +2915,14 @@ class GlycrApp {
   async loadOrgSummary()  {
     this.orgSummary = await this.fetchApi('/analytics/organizer-summary');
     if (this.orgSummary.feePercent != null) this.platformFeePercent = this.orgSummary.feePercent;
+    this.platformFeeFloor = Number(this.orgSummary.feeFloor) || 0;
+  }
+
+  // "3%" or "3% (min ₵1)"; '—' while the fee hasn't loaded
+  _feeLabel() {
+    if (this.platformFeePercent == null) return '—';
+    const floor = Number(this.platformFeeFloor) || 0;
+    return floor > 0 ? `${this.platformFeePercent}% (min ₵${floor})` : `${this.platformFeePercent}%`;
   }
 
   async loadUserPrefs() {          // favourites + reviews follow the account (see item 7)

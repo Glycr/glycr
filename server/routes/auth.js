@@ -12,13 +12,7 @@ const { loginSlowDown } = require('../middleware/slowDown');
 // creating unique emails bypasses it).
 // authLimiter: 5 failed registrations/15min per (email, IP) — catches repeat
 // attempts against the same email (duplicate, weak password).
-router.post(
-  '/auth/register',
-  validate(registerSchema),
-  registerLimiter,
-  authLimiter,
-  authController.register
-);
+router.post('/auth/register', validate(registerSchema), registerLimiter, authLimiter, authController.register);
 
 // ── Login ──
 // validate first (rejects malformed bodies before they consume limiter budget),
@@ -26,12 +20,7 @@ router.post(
 // after 5 failures). Successful logins decrement both, so typos don't punish
 // legitimate users.
 router.post(
-  '/auth/login',
-  validate(loginSchema),
-  loginSlowDown,
-  authLimiter,
-  authController.login
-);
+  '/auth/login', validate(loginSchema), loginSlowDown, authLimiter, authController.login);
 
 // ── Authenticated: self profile ──
 router.get('/auth/profile', auth, authController.getProfile);
@@ -62,12 +51,6 @@ router.post('/auth/change-password', auth, authLimiter, authController.changePas
 // ── Deactivate own account ──
 // Requires the current password. authLimiter (keyed on req.user.email) caps
 // password guessing from a stolen session at 5 failures per 15 minutes.
-router.post(
-  '/auth/deactivate',
-  auth,
-  validate(deactivateSchema),
-  authLimiter,
-  authController.deactivateAccount
-);
+router.post('/auth/deactivate', auth, validate(deactivateSchema), authLimiter, authController.deactivateAccount);
 
 module.exports = router;

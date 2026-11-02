@@ -6,7 +6,15 @@ const ticketSchema = new mongoose.Schema({
   eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },  // null for guest purchases
   ticketType: { type: String, required: true },
-  price: { type: Number, required: true },
+
+  // ── Money, recorded once when the ticket is bought ──
+  // Never recomputed from today's settings, so changing the fee rule can't
+  // reprice past sales. revenueService / analyticsService / payoutService read these.
+  price: { type: Number, required: true },                 // face price: what the organizer is paid for (after discounts)
+  platformFee: { type: Number, default: null, min: 0 },    // the platform's fee for this ticket (null = bought before fees were stored)
+  feePaidBy: { type: String, enum: ['organizer', 'buyer'], default: null },  // who pays the fee
+  amountPaid: { type: Number, default: null, min: 0 },     // what the buyer actually paid (price, plus the fee if the buyer pays it)
+
   purchasedAt: { type: Date, default: Date.now },
 
   // Attendee contact

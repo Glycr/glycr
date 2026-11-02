@@ -17,6 +17,7 @@ exports.getStats = async (req, res, next) => {
 exports.getAllUsers = async (req, res, next) => {
   try {
     const users = await adminService.getAllUsers();
+    if (filters.deactivated !== undefined) query.deactivatedAt = filters.deactivated ? { $ne: null } : null;
     res.json(users);
   } catch (err) {
     next(err);

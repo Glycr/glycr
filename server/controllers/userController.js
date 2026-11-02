@@ -11,6 +11,9 @@ exports.getUsers = async (req, res, next) => {
       isOrganizer: req.query.isOrganizer === 'true' ? true
         : req.query.isOrganizer === 'false' ? false
           : undefined,
+      deactivated: req.query.deactivated === 'true' ? true
+        : req.query.deactivated === 'false' ? false
+          : undefined,
       suspended: req.query.suspended === 'true' ? true
         : req.query.suspended === 'false' ? false
           : undefined,
