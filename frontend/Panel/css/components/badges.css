@@ -17,6 +17,7 @@
 .badge-customer    { background: var(--color-brand-bg3);   color: var(--color-brand-light); }
 .badge-active      { background: var(--color-success-bg3); color: var(--color-success-text); }
 .badge-suspended   { background: var(--color-danger-bg3);  color: var(--color-danger-text); }
+.badge-deactivated { background: var(--color-danger-bg3);  color: var(--color-danger-text); }
 .badge-live        { background: var(--color-success-bg3); color: var(--color-success-text); }
 .badge-cancelled   { background: var(--color-orange-bg);   color: var(--color-orange); }
 .badge-flagged     { background: var(--color-danger-bg3);  color: var(--color-danger-text); }

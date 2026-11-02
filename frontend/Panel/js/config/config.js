@@ -18,6 +18,7 @@ let messages        = [];
 let transactions    = [];
 let stats           = {};
 let platformFeePercent = 3;
+let platformFeeFloor   = 0;
 
 const selectedIds = {
   users: new Set(),

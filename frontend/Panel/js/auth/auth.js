@@ -179,37 +179,109 @@ async function submitResetPassword() {
        <span style="font-size:0.75rem;opacity:0.8;">Expires at ${expiry.toLocaleTimeString()} (15 min window)</span>`
     );
   }
-  await addLog('user', 'Password reset link sent', {
+  /*await addLog('user', 'Password reset link sent', {
     adminName: currentAdmin.name, adminRole: currentAdmin.role,
     targetUser: user?.email, targetRole: user?.role, expiresIn: '15 minutes',
-  });
+  }); */
   toast.success('Reset link sent', `Email dispatched to ${user?.email}.`);
   setTimeout(() => closeModal('reset-password-modal'), 2500);
 }
 
-// Platform fee & settings
+
+// ─────────────────────────────────────────────────────────────
+// Platform settings: load / save
+// ─────────────────────────────────────────────────────────────
+
+async function openSettingsModal() {
+  await loadPlatformFee();          // always fresh from the server
+  openModal('settings-modal');
+}
+
 async function loadPlatformFee() {
   try {
     const res = await apiRequest('/admin/settings');
-    platformFeePercent = res.platformFee || 3;
-    const feeInput = document.getElementById('platform-fee-setting');
-    if (feeInput) feeInput.value = platformFeePercent;
-  } catch { platformFeePercent = 3; }
+    platformFeePercent = Number(res.platformFee)        || 3;
+    platformFeeFloor   = Number(res.platformFeeFloor)   || 0;
+
+    const feeEl     = document.getElementById('platform-fee-setting');
+    const floorEl   = document.getElementById('platform-fee-floor-setting');
+    const payerEl   = document.getElementById('fee-paid-by-setting');
+    const refundEl  = document.getElementById('refund-deadline-setting');
+    const updatedEl = document.getElementById('settings-updated-at');
+
+    if (feeEl)     feeEl.value     = platformFeePercent;
+    if (floorEl)   floorEl.value   = platformFeeFloor;
+    if (payerEl)   payerEl.value   = res.feePaidBy || 'organizer';
+    if (refundEl)  refundEl.value  = Number(res.refundDeadlineDays) || 7;
+    if (updatedEl) updatedEl.textContent = res.updatedAt
+      ? new Date(res.updatedAt).toLocaleString()
+      : '—';
+  } catch (err) {
+    platformFeePercent = 3;
+    platformFeeFloor   = 0;
+    console.warn('Failed to load platform settings', err);
+  }
 }
 
 async function savePlatformFee() {
-  if (!canEditSettings()) { toast.error('Permission denied', 'Only administrators can change platform settings.'); return; }
-  const newFee = parseFloat(document.getElementById('platform-fee-setting').value);
-  if (isNaN(newFee) || newFee < 0 || newFee > 50) { toast.warning('Invalid value', 'Platform fee must be between 0 and 50.'); return; }
-  try { await apiRequest('/admin/settings', { method: 'PUT', body: JSON.stringify({ platformFee: newFee }) }); } catch { /* local */ }
-  platformFeePercent = newFee;
-  await addLog('system', `Platform fee updated to ${newFee}%`, { adminName: currentAdmin.name, adminRole: currentAdmin.role });
-  await loadData();
-  toast.success('Settings saved', `Platform fee is now ${newFee}%.`);
+  if (!canEditSettings()) {
+    toast.error('Permission denied', 'Only administrators can change platform settings.');
+    return false;
+  }
+
+  const fee    = parseFloat(document.getElementById('platform-fee-setting').value);
+  const floor  = parseFloat(document.getElementById('platform-fee-floor-setting').value);
+  const payer  = document.getElementById('fee-paid-by-setting').value;
+  const refund = parseInt(document.getElementById('refund-deadline-setting').value, 10);
+
+  if (isNaN(fee)    || fee < 0 || fee > 50)       { toast.warning('Invalid value', 'Platform fee must be between 0 and 50.');    return false; }
+  if (isNaN(floor)  || floor < 0 || floor > 50)   { toast.warning('Invalid value', 'Minimum fee must be between 0 and 50.');     return false; }
+  if (!['organizer','buyer'].includes(payer))     { toast.warning('Invalid value', 'Fee payer must be organizer or buyer.');     return false; }
+  if (isNaN(refund) || refund < 0 || refund > 365){ toast.warning('Invalid value', 'Refund deadline must be between 0 and 365.'); return false; }
+
+  const body = {
+    platformFee:        fee,
+    platformFeeFloor:   floor,
+    feePaidBy:          payer,
+    refundDeadlineDays: refund,
+  };
+
+  try {
+    const res = await apiRequest('/admin/settings', { method: 'PUT', body: JSON.stringify(body) });
+
+    platformFeePercent = Number(res.platformFee      ?? fee);
+    platformFeeFloor   = Number(res.platformFeeFloor ?? floor);
+
+    const updatedEl = document.getElementById('settings-updated-at');
+    if (updatedEl) updatedEl.textContent =
+      new Date(res.updatedAt || Date.now()).toLocaleString();
+
+    await addLog('system',
+      `Platform settings updated — fee ${fee}%, floor ₵${floor}, paid by ${payer}, refund window ${refund}d`,
+      { adminName: currentAdmin.name, adminRole: currentAdmin.role });
+
+    await loadData();
+    toast.success('Settings saved',
+      `Fee ${fee}% · floor ₵${floor} · paid by ${payer} · refunds ${refund}d`);
+    return true;
+  } catch (err) {
+    toast.error('Save failed', err.message || 'Could not save settings.');
+    return false;
+  }
 }
 
 async function saveSettings() {
-  await savePlatformFee();
-  await addLog('system', 'Admin settings saved', { adminName: currentAdmin.name, adminRole: currentAdmin.role });
-  closeModal('settings-modal');
+  const ok = await savePlatformFee();
+  if (ok) closeModal('settings-modal');
+}
+
+function switchSettingsTab(name) {
+  document.querySelectorAll('.settings-tab').forEach(tab => {
+    const active = tab.dataset.tab === name;
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', String(active));
+  });
+  document.querySelectorAll('.settings-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === `settings-panel-${name}`);
+  });
 }

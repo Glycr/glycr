@@ -2366,6 +2366,7 @@ class GlycrApp {
       document.getElementById('event-location').value  = event.location || '';
       document.getElementById('event-category').value  = event.category;
       document.getElementById('event-currency').value  = event.currency;
+      document.getElementById('event-fee-paid-by').value = event.feePaidBy || '';
       document.getElementById('organizer-email').value = event.organizerEmail;
       document.getElementById('organizer-phone').value = event.organizerPhone;
       if (event.publishAt) { const paEl = document.getElementById('event-publish-at'); if (paEl) paEl.value = event.publishAt.slice(0, 16); }
@@ -2443,6 +2444,8 @@ class GlycrApp {
     formData.append('organizerEmail', orgEmail);
     formData.append('organizerPhone', orgPhone);
     formData.append('ticketTypes',    JSON.stringify(ticketTypes));
+    const feePaidBy = (document.getElementById('event-fee-paid-by') || {}).value;
+    if (feePaidBy) formData.append('feePaidBy', feePaidBy);
     const publishAt = (document.getElementById('event-publish-at') || {}).value;
     if (publishAt) formData.append('publishAt', publishAt);
     const lat = (document.getElementById('event-lat') || {}).value;

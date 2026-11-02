@@ -1244,6 +1244,19 @@
           </select>
         </div>
       </div>
+
+      <div class="form-field">
+        <label class="form-label"><i class="fas fa-percent"></i> Who Pays the Platform Fee?</label>
+        <select id="event-fee-paid-by" class="input">
+          <option value="">Use platform default</option>
+          <option value="organizer">Organizer pays — deducted from my sales</option>
+          <option value="buyer">Buyer pays — added at checkout</option>
+        </select>
+        <p style="font-size:0.73rem; color:var(--muted); margin-top:0.3rem;">
+          Leave as default to use the platform-wide setting. When the buyer pays, the fee is added on top of the ticket price at checkout. When you pay, it's deducted from your payout.
+        </p>
+      </div>
+      
       <div class="form-field">
         <label class="form-label"><i class="fas fa-clock"></i> Schedule Publication (optional)</label>
         <input type="datetime-local" id="event-publish-at" class="input">

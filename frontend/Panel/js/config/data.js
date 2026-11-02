@@ -23,10 +23,13 @@ function saleTickets() {
 
 // The platform's fee for a ticket, as recorded when it was bought.
 // Tickets from before fees were stored (and not yet backfilled) fall back to
-// today's percentage.
+// today's percentage, clamped to the configured floor so cheap legacy
+// tickets aren't under-reported.
 function ticketPlatformFee(t) {
   if (t.platformFee !== null && t.platformFee !== undefined) return Number(t.platformFee) || 0;
-  return ticketRevenue(t) * (Number(platformFeePercent) || 0) / 100;
+  const pctFee = ticketRevenue(t) * (Number(platformFeePercent) || 0) / 100;
+  const floor  = Number(platformFeeFloor) || 0;
+  return Math.max(pctFee, floor);
 }
 
 // Platform income = fees on tickets that are still sales, plus fees the

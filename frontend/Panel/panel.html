@@ -87,9 +87,11 @@
             <button class="profile-dropdown-item" onclick="openModal('profile-modal'); closeDropdown()">
               <i class="fa-regular fa-user"></i> My Profile
             </button>
-            <button class="profile-dropdown-item" onclick="openModal('settings-modal'); closeDropdown()">
+            <button class="profile-dropdown-item"
+                    onclick="loadPlatformFee(); openModal('settings-modal'); closeDropdown()">
               <i class="fa-solid fa-gear"></i> Settings
             </button>
+
             <button class="profile-dropdown-item" onclick="loadData(); closeDropdown()">
               <i class="fa-solid fa-rotate-right"></i> Refresh Data
             </button>
@@ -1669,52 +1671,112 @@
   </div>
 </div>
 
-<!-- Settings -->
+
 <div id="settings-modal" class="modal">
-  <div class="modal-content" style="max-width:480px;">
+  <div class="modal-content" style="max-width:520px;">
     <div class="modal-header">
-      <h3 class="modal-title"><i class="fa-solid fa-gear" style="color:#6366f1; margin-right:0.5rem;"></i>Settings</h3>
+      <h3 class="modal-title"><i class="fa-solid fa-gear" style="color:var(--color-brand); margin-right:0.5rem;"></i>Settings</h3>
       <button class="modal-close" onclick="closeModal('settings-modal')"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
-      <p style="font-size:0.78rem; color:#475569; text-transform:uppercase; letter-spacing:0.06em; font-weight:600; margin-bottom:0.75rem;">Notifications</p>
-      <div class="settings-row">
-        <div>
-          <div class="settings-label" style="color:#f1f5f9; font-size:0.875rem;">Email Alerts</div>
-          <div class="settings-label" style="font-size:0.75rem; margin-top:0.1rem;">Receive alerts for new payout requests</div>
+
+      <!-- Tabs -->
+      <div class="settings-tabs" role="tablist">
+        <button class="settings-tab active" data-tab="notifications" role="tab" aria-selected="true"
+                onclick="switchSettingsTab('notifications')">
+          <i class="fa-regular fa-bell"></i> Notifications
+        </button>
+        <button class="settings-tab" data-tab="platform" role="tab" aria-selected="false"
+                onclick="switchSettingsTab('platform')">
+          <i class="fa-solid fa-percent"></i> Platform Fees
+        </button>
+      </div>
+
+      <!-- Notifications -->
+      <div id="settings-panel-notifications" class="settings-panel active" role="tabpanel">
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <span class="settings-row-title">Email Alerts</span>
+            <span class="settings-row-hint">Receive alerts for new payout requests</span>
+          </div>
+          <label class="toggle-switch"><input type="checkbox" id="setting-email-alerts" checked><span class="toggle-slider"></span></label>
         </div>
-        <label class="toggle-switch"><input type="checkbox" id="setting-email-alerts" checked><span class="toggle-slider"></span></label>
-      </div>
-      <div class="settings-row">
-        <div>
-          <div class="settings-label" style="color:#f1f5f9; font-size:0.875rem;">Flagged Event Alerts</div>
-          <div class="settings-label" style="font-size:0.75rem; margin-top:0.1rem;">Notify when events are auto-flagged</div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <span class="settings-row-title">Flagged Event Alerts</span>
+            <span class="settings-row-hint">Notify when events are auto-flagged</span>
+          </div>
+          <label class="toggle-switch"><input type="checkbox" id="setting-flag-alerts" checked><span class="toggle-slider"></span></label>
         </div>
-        <label class="toggle-switch"><input type="checkbox" id="setting-flag-alerts" checked><span class="toggle-slider"></span></label>
-      </div>
-      <div class="settings-row">
-        <div>
-          <div class="settings-label" style="color:#f1f5f9; font-size:0.875rem;">Login Activity Logs</div>
-          <div class="settings-label" style="font-size:0.75rem; margin-top:0.1rem;">Log all admin login events</div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <span class="settings-row-title">Login Activity Logs</span>
+            <span class="settings-row-hint">Log all admin login events</span>
+          </div>
+          <label class="toggle-switch"><input type="checkbox" id="setting-login-logs" checked><span class="toggle-slider"></span></label>
         </div>
-        <label class="toggle-switch"><input type="checkbox" id="setting-login-logs" checked><span class="toggle-slider"></span></label>
       </div>
-      <p style="font-size:0.78rem; color:#475569; text-transform:uppercase; letter-spacing:0.06em; font-weight:600; margin:1.25rem 0 0.75rem;">Platform</p>
-      <div class="settings-row">
-        <span class="settings-label"><i class="fa-solid fa-percent" style="margin-right:0.5rem;"></i>Platform Fee (%)</span>
-        <input type="number" class="settings-input" id="platform-fee-setting" value="10" min="0" max="50" style="width:100px;">
+
+      <!-- Platform Fees -->
+      <div id="settings-panel-platform" class="settings-panel" role="tabpanel">
+
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <span class="settings-row-title">Platform Fee</span>
+            <span class="settings-row-hint">Percentage taken from each ticket sale</span>
+          </div>
+          <div class="settings-row-control">
+            <input type="number" class="settings-input settings-input--compact"
+                   id="platform-fee-setting" min="0" max="50" step="0.1" value="3">
+            <span class="settings-row-unit">%</span>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <span class="settings-row-title">Minimum Fee per Order</span>
+            <span class="settings-row-hint">0 = no minimum</span>
+          </div>
+          <div class="settings-row-control">
+            <span class="settings-row-unit">₵</span>
+            <input type="number" class="settings-input settings-input--compact"
+                   id="platform-fee-floor-setting" min="0" max="50" step="0.01" value="0">
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <span class="settings-row-title">Who Pays the Fee (default)</span>
+            <span class="settings-row-hint">Organizers can override per event</span>
+          </div>
+          <select class="settings-input settings-input--medium" id="fee-paid-by-setting">
+            <option value="organizer">Organizer (deducted)</option>
+            <option value="buyer">Buyer (added on top)</option>
+          </select>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <span class="settings-row-title">Refund Deadline</span>
+            <span class="settings-row-hint">Days after purchase a refund may be requested</span>
+          </div>
+          <div class="settings-row-control">
+            <input type="number" class="settings-input settings-input--compact"
+                   id="refund-deadline-setting" min="0" max="365" step="1" value="7">
+            <span class="settings-row-unit">days</span>
+          </div>
+        </div>
+
+        <div class="settings-updated-note">
+          <i class="fa-solid fa-clock"></i>
+          Last updated: <span id="settings-updated-at">—</span>
+        </div>
       </div>
-      <div class="settings-row">
-        <span class="settings-label"><i class="fa-solid fa-coins" style="margin-right:0.5rem;"></i>Default Currency</span>
-        <select class="settings-input" style="width:120px;">
-          <option value="GHC" selected>₵ GHC</option>
-          <option value="USD">$ USD</option>
-          <option value="EUR">€ EUR</option>
-        </select>
-      </div>
+
       <button class="btn btn-primary" style="width:100%; margin-top:1.25rem;" onclick="saveSettings()">
         <i class="fa-solid fa-floppy-disk"></i> Save Settings
       </button>
+
     </div>
   </div>
 </div>

@@ -1,63 +1,97 @@
 /* =============================================
-   PASSWORD STRENGTH
+   SETTINGS MODAL
 ============================================= */
-.strength-weak   { background: var(--color-danger) !important; width: 33% !important; }
-.strength-medium { background: var(--color-warning) !important; width: 66% !important; }
-.strength-strong { background: var(--color-success) !important; width: 100% !important; }
 
+/* --- Tab strip --- */
+.settings-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 0.75rem;
+}
 
-/* =============================================
-   PROFILE / SETTINGS MODAL
-============================================= */
+.settings-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: color var(--transition-base), border-color var(--transition-base);
+}
+
+.settings-tab:hover  { color: var(--color-text-primary); }
+.settings-tab.active {
+  color: var(--color-brand);
+  border-bottom-color: var(--color-brand);
+}
+
+/* --- Panels --- */
+.settings-panel         { display: none; }
+.settings-panel.active  { display: block; }
+
+/* --- Row --- */
 .settings-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
   padding: 0.875rem 0;
   border-bottom: 1px solid var(--color-border);
 }
 
 .settings-row:last-child { border-bottom: none; }
-.settings-label { font-size: var(--text-sm); color: var(--color-text-muted); }
-.settings-value { font-size: var(--text-sm); color: var(--color-text-primary); font-weight: var(--fw-medium); }
 
-.settings-input {
-  padding: 0.5rem 0.75rem;
-  background: var(--color-bg-base);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+/* Row: info (title + hint) */
+.settings-row-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.settings-row-title {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
   color: var(--color-text-primary);
-  font-size: var(--text-sm-med);
-  font-family: var(--font-sans);
-  width: 200px;
-  transition: border-color var(--transition-base);
 }
 
-.settings-input:focus { outline: none; border-color: var(--color-brand); }
-textarea.settings-input { vertical-align: top; }
-
-.toggle-switch { position: relative; width: 2.5rem; height: 1.4rem; cursor: pointer; }
-.toggle-switch input { opacity: 0; width: 0; height: 0; }
-
-.toggle-slider {
-  position: absolute;
-  inset: 0;
-  background: var(--color-bg-raised);
-  border-radius: var(--radius-pill);
-  transition: background var(--transition-base);
+.settings-row-hint {
+  font-size: var(--text-sm-minus);
+  color: var(--color-text-muted);
+  margin-top: 0.15rem;
 }
 
-.toggle-slider::before {
-  content: '';
-  position: absolute;
-  width: 1rem;
-  height: 1rem;
-  top: 0.2rem;
-  left: 0.2rem;
-  background: white;
-  border-radius: 50%;
-  transition: transform var(--transition-base);
+/* Row: control (input + unit) */
+.settings-row-control {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
 }
 
-.toggle-switch input:checked + .toggle-slider { background: var(--color-brand); }
-.toggle-switch input:checked + .toggle-slider::before { transform: translateX(1.1rem); }
+.settings-row-unit {
+  font-size: var(--text-sm-plus);
+  color: var(--color-text-muted);
+}
+
+/* Input width modifiers */
+.settings-input--compact { width: 90px; }
+.settings-input--medium  { width: 190px; }
+
+/* Footer note */
+.settings-updated-note {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--color-bg-base);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm-minus);
+  color: var(--color-text-muted);
+}
+
+.settings-updated-note i { margin-right: 0.35rem; }

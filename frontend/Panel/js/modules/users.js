@@ -27,10 +27,18 @@ function renderUsers() {
           <div style="color:#94a3b8;font-size:0.82rem;"><i class="fa-solid fa-mobile-screen-button" style="margin-right:0.3rem;"></i>${user.phone || '—'}</div>
         </td>
         <td><span class="badge ${bClass}"><i class="fa-solid ${icon}"></i> ${label}</span></td>
-        <td><span class="badge ${user.suspended ? 'badge-suspended' : 'badge-active'}">
-          <i class="fa-solid ${user.suspended ? 'fa-ban' : 'fa-circle-check'}"></i>
-          ${user.suspended ? 'Suspended' : 'Active'}
-        </span></td>
+        <td>${(() => {
+      const st = user.suspended     ? 'suspended'
+        : user.deactivatedAt ? 'deactivated'
+          :                      'active';
+      const map = {
+        active:      ['badge-active',      'fa-circle-check', 'Active'],
+        suspended:   ['badge-suspended',   'fa-ban',          'Suspended'],
+        deactivated: ['badge-deactivated', 'fa-user-slash',   'Deactivated'],
+      };
+      const [cls, ic, txt] = map[st];
+      return `<span class="badge ${cls}"><i class="fa-solid ${ic}"></i> ${txt}</span>`;
+    })()}</td>   
         <td><div class="actions">
           <button class="btn-icon" style="background:#6366f1;" onclick="viewUser('${user.id}')" title="View"><i class="fa-solid fa-eye"></i></button>
           ${canEditUser(user)      ? `<button class="btn-icon" style="background:#8b5cf6;" onclick="openEditUserModal('${user.id}')" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
@@ -52,7 +60,11 @@ function getFilteredUsers() {
   return users.filter(u => {
     const mSearch = !search || (u.name||'').toLowerCase().includes(search) || u.email.toLowerCase().includes(search);
     const mRole   = role   === 'all' || u.role === role;
-    const mStatus = status === 'all' || (status === 'active' && !u.suspended) || (status === 'suspended' && u.suspended);
+    const mStatus =
+      status === 'all'
+      || (status === 'active'      && !u.suspended && !u.deactivatedAt)
+      || (status === 'suspended'   &&  u.suspended)
+      || (status === 'deactivated' &&  u.deactivatedAt);
     return mSearch && mRole && mStatus && applyDateRangeFilter(u.createdAt, dfrom, dto);
   });
 }
