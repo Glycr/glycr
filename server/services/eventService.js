@@ -63,6 +63,15 @@ class EventService {
 
     const clean = pick(eventData, ORGANIZER_WRITABLE_FIELDS);
 
+
+    if (clean.feePaidBy !== undefined) {
+      if (clean.feePaidBy === null || clean.feePaidBy === '') {
+        clean.feePaidBy = null;
+      } else if (!['organizer', 'buyer'].includes(clean.feePaidBy)) {
+        throw new AppError('feePaidBy must be organizer, buyer, or empty', 400);
+      }
+    }
+
     // publishAt: if set to a future time, create as draft. The scheduler in
     // services/scheduler.js flips isPublished → true when publishAt arrives.
     let publishAt = null;
@@ -76,13 +85,7 @@ class EventService {
       }
     }
 
-    if (clean.feePaidBy !== undefined) {
-      if (clean.feePaidBy === null || clean.feePaidBy === '') {
-        clean.feePaidBy = null;
-      } else if (!['organizer', 'buyer'].includes(clean.feePaidBy)) {
-        throw new AppError('feePaidBy must be organizer, buyer, or empty', 400);
-      }
-    }
+
 
     const event = new Event({
       ...clean,
@@ -145,6 +148,14 @@ class EventService {
         const parsed = new Date(clean.publishAt);
         if (isNaN(parsed)) throw new AppError('Invalid publish date', 400);
         clean.publishAt = parsed;
+      }
+    }
+
+    if (clean.feePaidBy !== undefined) {
+      if (clean.feePaidBy === null || clean.feePaidBy === '') {
+        clean.feePaidBy = null;
+      } else if (!['organizer', 'buyer'].includes(clean.feePaidBy)) {
+        throw new AppError('feePaidBy must be organizer, buyer, or empty', 400);
       }
     }
 
