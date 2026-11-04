@@ -11,6 +11,11 @@ const { requireOrganizerOrStaff } = require('../middleware/rbac');
 // staff status), but allows guests through with req.user = null. Suspended users
 // with valid tokens are still rejected — they can't bypass suspension by hitting
 // a guest endpoint.
+
+// Checkout price (ticket price, discounts, service fee, total). Read-only:
+// reserves nothing and uses up no promo code. Same pricing as the purchase.
+router.post('/tickets/quote', optionalAuth, ticketController.quote);
+
 router.post('/tickets/purchase', optionalAuth, ticketController.purchase);
 
 // ── Authenticated ──

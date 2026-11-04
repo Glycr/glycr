@@ -3,6 +3,22 @@ const logService = require('../services/logService');
 
 const ctx = (req) => ({ ip: req.ip, userAgent: req.get('user-agent') });
 
+// All-in checkout price, shown to the buyer BEFORE they pay. Read-only: it
+// never reserves tickets or uses up a promo code. It runs through the same
+// pricing as purchase(), so the number the buyer sees is the number they pay.
+exports.quote = async (req, res, next) => {
+  try {
+    const { eventId, ticketType, quantity, promoCode } = req.body || {};
+    const quote = await ticketService.quotePurchase(
+      { eventId, ticketType, quantity, promoCode: promoCode || null },
+      req.user?.id || null          // null for guests
+    );
+    res.json(quote);
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.purchase = async (req, res, next) => {
   try {
     const {
